@@ -1,15 +1,20 @@
-# Toolkien: the whole platform as ONE Docker Compose resource.
+# Toolkien app stack. OpenBao (key provider) is a SEPARATE stack, deploy/openbao/compose.yml:
+# it is sealed after every restart, so app deploys must never recreate it.
 #
 #   Self-hosted:  cp deploy/compose.env.example .env.production   # fill it
+#                 docker compose -f deploy/openbao/compose.yml up -d --build   # once, first
 #                 docker compose --env-file .env.production up -d --build
-#   Coolify:      Docker Compose build pack, "Raw Compose Deployment" ON (see docs/deploy-coolify.md)
+#   Coolify:      two Docker Compose resources, "Raw Compose Deployment" ON (docs/deploy-coolify.md)
 #
 # | service      | networks                   | volume        | exposed               |
 # | ------------ | -------------------------- | ------------- | --------------------- |
-# | app          | public, core, sandbox      | no            | yes (reverse proxy)   |
-# | openbao      | core                       | yes (raft)    | no                    |
+# | app          | public, core, sandbox, vault | no          | yes (reverse proxy)   |
 # | egress-proxy | core, public               | no            | no                    |
 # | runner       | sandbox (internal)         | no            | no                    |
+# | (openbao)    | vault (internal, own stack) | yes (raft)   | no                    |
+#
+# Without OpenBao: set TOOLKIEN_MASTER_KEY and VAULT_NETWORK_EXTERNAL=false (weaker, see
+# docs/self-hosting.md).
 #
 # No Docker socket is mounted anywhere, no docker-in-docker. Only the app is reachable from
 # outside, through the reverse proxy (Traefik labels below, or APP_PUBLISH on loopback).
@@ -43,11 +48,13 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
       RESEND_BASE_URL: ${RESEND_BASE_URL:-}
-      OPENBAO_ADDR: http://openbao:8200
+      OPENBAO_ADDR: ${OPENBAO_ADDR:-http://openbao:8200}
       # Empty until OpenBao is initialised (deploy/openbao/init.sh prints them)
       OPENBAO_ROLE_ID: ${OPENBAO_ROLE_ID:-}
       OPENBAO_SECRET_ID: ${OPENBAO_SECRET_ID:-}
       OPENBAO_TRANSIT_KEY: ${OPENBAO_TRANSIT_KEY:-toolkien-tokens}
+      # Alternative to OpenBao (weaker): a base64 32-byte master key; leave empty with OpenBao
+      TOOLKIEN_MASTER_KEY: ${TOOLKIEN_MASTER_KEY:-}
       RUNNER_URL: ws://runner:8787
       RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?set RUNNER_SHARED_SECRET (openssl rand -hex 32)}
       EGRESS_PROXY_URL: http://toolkien:${EGRESS_PROXY_TOKEN:?set EGRESS_PROXY_TOKEN (openssl rand -hex 32)}@egress-proxy:3128
@@ -62,9 +69,8 @@ services:
     # Self-hosted: a host reverse proxy (Caddy, nginx) forwards to this loopback port.
     # Never bind it to 0.0.0.0: TLS and HSTS belong to the proxy.
     ports: ['${APP_PUBLISH:-127.0.0.1:3000}:3000']
-    networks: [public, core, sandbox]
+    networks: [public, core, sandbox, vault]
     depends_on:
-      openbao: { condition: service_started }
       egress-proxy: { condition: service_started }
       runner: { condition: service_started }
     labels:
@@ -80,16 +86,6 @@ services:
       - traefik.http.routers.toolkien.tls=true
       - traefik.http.routers.toolkien.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
       - traefik.http.services.toolkien.loadbalancer.server.port=3000
-
-  openbao:
-    <<: *hardening
-    build: { context: deploy/openbao }
-    # Sealed after every start: unseal with deploy/openbao/unseal.sh (docs/self-hosting.md)
-    tmpfs: ['/tmp:rw,nosuid,nodev,size=64m']
-    volumes: ['openbao-data:/openbao/data']
-    mem_limit: 512m
-    pids_limit: 256
-    networks: [core]
 
   egress-proxy:
     <<: *hardening
@@ -127,12 +123,14 @@ networks:
   public:
     name: ${PUBLIC_NETWORK:-toolkien_public}
     external: ${PUBLIC_NETWORK_EXTERNAL:-false}
-  # App ↔ OpenBao ↔ egress proxy. Internal: OpenBao has no route to the internet.
+  # App ↔ egress proxy. Internal.
   core:
     internal: true
+  # App ↔ OpenBao, created by the OpenBao stack (internal there). Without OpenBao set
+  # VAULT_NETWORK_EXTERNAL=false and this stack creates an unused network instead.
+  vault:
+    name: ${VAULT_NETWORK:-toolkien_vault}
+    external: ${VAULT_NETWORK_EXTERNAL:-true}
   # App ↔ runner. Internal: the runner has no route anywhere but the app.
   sandbox:
     internal: true
-
-volumes:
-  openbao-data:
