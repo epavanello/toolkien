@@ -78,6 +78,32 @@ export async function highlight(
 	});
 }
 
+/** One colored run of a line: Svelte renders it as a span, no `{@html}` needed */
+export type CodeToken = { content: string; light?: string; dark?: string };
+
+/**
+ * `code` as lines of colored tokens, for markup that animates or styles each line itself (the
+ * landing's script panel). Unknown languages come back as one uncolored token per line.
+ */
+export async function highlightTokens(code: string, lang: string = 'text'): Promise<CodeToken[][]> {
+	const grammar = ALIASES[lang.toLowerCase()];
+	if (!grammar || code.length > MAX_HIGHLIGHT_CHARS)
+		return code.split('\n').map((content) => [{ content }]);
+	const shiki = await getHighlighter();
+	const { tokens } = shiki.codeToTokens(code, {
+		lang: grammar,
+		themes: THEMES,
+		defaultColor: false
+	});
+	return tokens.map((line) =>
+		line.map(({ content, htmlStyle }) => ({
+			content,
+			light: htmlStyle?.['--shiki-light'],
+			dark: htmlStyle?.['--shiki-dark']
+		}))
+	);
+}
+
 let twoslash: Promise<ShikiTransformer> | undefined;
 
 /** Type hovers for ```ts twoslash fences (TypeScript runs at build time, never in the browser) */

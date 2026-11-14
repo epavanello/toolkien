@@ -1,17 +1,20 @@
 <script lang="ts" module>
+	import type { CodeToken } from '#lib/server/highlight.ts';
+
 	/** One measured quantity; `amount` (0–1) sets the bar length relative to the other panel */
 	export type CompareMetric = { label: string; value: string; amount: number };
 
 	/**
 	 * How a panel draws its situation:
 	 * - `calls`: a long ladder of round trips (agent ↔ tool), `count` rungs
-	 * - `script`: one script block with its few calls folded inside
+	 * - `script`: one script block with its few calls folded inside; `highlighted` (same lines as
+	 *   Shiki tokens, from the server) colors it, the first line (its caption comment) stays primary
 	 * - `mesh`: a grid of setups, `rows` × `columns` dots (every client × every tool)
 	 * - `hub`: the same tools and clients, each connected once to the hub
 	 */
 	export type CompareVisual =
 		| { kind: 'calls'; count: number }
-		| { kind: 'script'; lines: string[] }
+		| { kind: 'script'; lines: string[]; highlighted?: CodeToken[][] }
 		| { kind: 'mesh'; rows: string[]; columns: number }
 		| { kind: 'hub'; rows: string[]; columns: number };
 
@@ -102,9 +105,15 @@
 	{:else if item.visual.kind === 'script'}
 		<div class="relative flex flex-col mono text-xs leading-relaxed text-muted-foreground">
 			{#each item.visual.lines as line, index (index)}
+				{@const tokens = index === 0 ? undefined : item.visual.highlighted?.[index]}
 				<span
 					class="line whitespace-pre {index === 0 ? 'text-primary' : ''}"
-					style:--delay="{index * 70}ms">{line}</span
+					style:--delay="{index * 70}ms"
+					>{#if tokens}{#each tokens as token, at (at)}<span
+								class="token"
+								style:--shiki-light={token.light}
+								style:--shiki-dark={token.dark}>{token.content}</span
+							>{/each}{:else}{line}{/if}</span
 				>
 			{/each}
 			<span class="run-bar absolute inset-x-0 -bottom-1.5 h-0.5 rounded-full bg-primary"></span>
@@ -223,6 +232,13 @@
 	}
 	.run-bar {
 		opacity: 0;
+	}
+	/* Shiki dual-theme colors, following mode-watcher's `.dark` like `layout.css` */
+	.token {
+		color: var(--shiki-light, inherit);
+	}
+	:global(.dark) .token {
+		color: var(--shiki-dark, inherit);
 	}
 
 	/* Run: CSS only, transforms and opacity */

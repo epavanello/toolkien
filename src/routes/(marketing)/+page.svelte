@@ -98,7 +98,13 @@
 	title="Far fewer tokens. Much faster runs."
 	description="Classic tool calling loads every schema and sends the whole context back to the model after each call. With Toolkien the agent reads only the types it needs and chains the calls in one script."
 >
-	<Compare before={tokens.before} after={tokens.after} note={tokens.note} />
+	<Compare
+		before={tokens.before}
+		after={tokens.after.visual.kind === 'script'
+			? { ...tokens.after, visual: { ...tokens.after.visual, highlighted: data.scriptTokens } }
+			: tokens.after}
+		note={tokens.note}
+	/>
 </MarketingSection>
 
 <MarketingSection
