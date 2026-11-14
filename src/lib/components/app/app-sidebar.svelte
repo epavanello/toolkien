@@ -2,6 +2,7 @@
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import Logo from '#lib/components/brand/logo.svelte';
 	import * as Sidebar from '#lib/components/ui/sidebar/index.js';
 	import { isActive, workspaceNavigation } from '#lib/navigation.ts';
 	import type { WorkspaceSummary } from '#lib/server/workspaces/types.ts';
@@ -23,6 +24,19 @@
 
 <Sidebar.Root collapsible="icon">
 	<Sidebar.Header>
+		<a
+			href={resolve('/w/[workspace]', { workspace: workspace.slug })}
+			class="flex h-8 items-center rounded-sm px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+			aria-label="Toolkien, workspace home"
+		>
+			<Logo size="sm" label="" class="group-data-[collapsible=icon]:hidden" />
+			<Logo
+				variant="mark"
+				size="sm"
+				label=""
+				class="hidden group-data-[collapsible=icon]:inline-flex"
+			/>
+		</a>
 		<WorkspaceSwitcher current={workspace} {workspaces} />
 	</Sidebar.Header>
 	<Sidebar.Content>
@@ -33,7 +47,11 @@
 					{#each group.items as item (item.href)}
 						{@const active = isActive(page.url.pathname, item.href)}
 						<Sidebar.MenuItem>
-							<Sidebar.MenuButton isActive={active} tooltipContent={item.title}>
+							<Sidebar.MenuButton
+								isActive={active}
+								tooltipContent={item.title}
+								class="relative data-active:before:absolute data-active:before:inset-y-1.5 data-active:before:left-0 data-active:before:w-0.5 data-active:before:rounded-full data-active:before:bg-primary data-active:[&_svg]:text-primary"
+							>
 								{#snippet child({ props })}
 									<a href={item.href} aria-current={active ? 'page' : undefined} {...props}>
 										<item.icon />

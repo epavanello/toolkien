@@ -174,7 +174,10 @@ export function createBridge(deps: BridgeDeps): HandleToolCall {
 			});
 			return {
 				kind: 'stop',
-				response: fail('approval_rejected', `The user rejected this call to \`${tool.path}\`.`)
+				response: fail(
+					'approval_rejected',
+					`The user rejected this call to \`${tool.path}\`. Do not retry it; ask the user how to proceed.`
+				)
 			};
 		}
 		for (const row of forSeq) {
@@ -315,7 +318,10 @@ export function createBridge(deps: BridgeDeps): HandleToolCall {
 				);
 			}
 			if (existing.status === 'rejected') {
-				return fail('approval_rejected', `The user rejected this call to \`${path}\`.`);
+				return fail(
+					'approval_rejected',
+					`The user rejected this call to \`${path}\`. Do not retry it; ask the user how to proceed.`
+				);
 			}
 		}
 
@@ -323,13 +329,16 @@ export function createBridge(deps: BridgeDeps): HandleToolCall {
 		if (seq > limits.execMaxToolCalls) {
 			return fail(
 				'limit_tool_calls',
-				`Too many tool calls: the limit is ${limits.execMaxToolCalls} per execution.`
+				`Too many tool calls: the limit is ${limits.execMaxToolCalls} per execution (EXEC_MAX_TOOL_CALLS). Batch the work or split it across executions.`
 			);
 		}
 
 		const tool = await deps.connectors.resolveTool(ctx.actor, path);
 		if (!tool) {
-			return fail('unknown_tool', `No tool \`${path}\` in this workspace. Use tools_search.`);
+			return fail(
+				'unknown_tool',
+				`No tool \`${path}\` in this workspace (removed upstream, or its connector is disconnected or blocked). Use tools_search to find current tools.`
+			);
 		}
 		if (tool.workspaceId !== exec.workspaceId) {
 			await record({
@@ -372,7 +381,10 @@ export function createBridge(deps: BridgeDeps): HandleToolCall {
 				executionId: exec.id,
 				metadata: { seq, write: isWrite, reason: 'blocked' }
 			});
-			return fail('blocked', `\`${path}\` is blocked by the permissions of this workspace.`);
+			return fail(
+				'blocked',
+				`\`${path}\` is blocked by the permissions of this workspace. Do not retry it: tell the user, who can change the permission in Toolkien (Permissions).`
+			);
 		}
 		if (effective.level === 'ask') {
 			const gate = await approvalGate(ctx, exec, seq, tool, args, argsHash, isWrite);

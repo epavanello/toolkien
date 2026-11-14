@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "todoist",
+	"name": "Todoist",
+	"tagline": "Your personal and team to-do lists",
+	"description": "Add, reschedule and complete Todoist tasks and review your day or week, in plain language.",
+	"homepage": "https://developer.todoist.com/",
+	"icon": "icons/todoist.png",
+	"url": "https://ai.todoist.net/mcp",
+	"namespace": "todoist",
+	"publisher": "official",
+	"category": "productivity",
+	"tags": ["tasks", "to-dos", "planning"],
+	"examples": [
+		"What is on my plate today?",
+		"Add “renew passport” for next Monday with high priority"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Todoist's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server todoist.com offers CIMD and dynamic client registration."
+	}
+}

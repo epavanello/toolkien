@@ -1,20 +1,24 @@
 <script lang="ts">
-	/** Numbered steps (how it works, getting started) */
+	/**
+	 * Numbered steps (how it works, getting started): plates with a display numeral in ember and
+	 * the tool name in mono.
+	 */
 	let { items }: { items: { title: string; description: string; code?: string }[] } = $props();
 </script>
 
 <ol class="grid gap-4 md:grid-cols-3" data-slot="steps">
 	{#each items as item, index (item.title)}
-		<li class="flex flex-col gap-2">
-			<span
-				class="flex size-6 items-center justify-center rounded-md border bg-card text-xs font-medium tabular-nums"
-				>{index + 1}</span
-			>
-			<h3 class="text-sm font-semibold">{item.title}</h3>
+		<li class="flex flex-col gap-3 rounded-lg border bg-card p-5 shadow-plate">
+			<div class="flex items-baseline justify-between gap-3">
+				<span class="font-display text-4xl leading-none font-semibold text-primary tabular-nums"
+					>{index + 1}</span
+				>
+				{#if item.code}<code class="rounded-sm bg-muted px-1.5 py-0.5 mono text-xs"
+						>{item.code}</code
+					>{/if}
+			</div>
+			<h3 class="font-display text-xl font-semibold">{item.title}</h3>
 			<p class="text-sm text-pretty text-muted-foreground">{item.description}</p>
-			{#if item.code}<code class="w-fit rounded-sm bg-muted px-1.5 py-0.5 mono text-xs"
-					>{item.code}</code
-				>{/if}
 		</li>
 	{/each}
 </ol>

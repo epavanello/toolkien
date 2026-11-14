@@ -9,7 +9,7 @@
 <svelte:head><title>{title} · {brand.name}</title></svelte:head>
 
 <div class="mb-5 flex flex-col gap-1">
-	<h1 class="text-lg font-semibold">{title}</h1>
+	<h1 class="font-display text-2xl font-semibold tracking-tight">{title}</h1>
 	{#if children}
 		<p
 			class="text-sm text-muted-foreground [&_a]:text-primary [&_a]:underline-offset-4 [&_a]:hover:underline"

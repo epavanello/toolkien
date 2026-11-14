@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "calendly",
+	"name": "Calendly",
+	"tagline": "Scheduling links, availability and bookings",
+	"description": "Check availability, manage event types and look up scheduled meetings in Calendly.",
+	"homepage": "https://developer.calendly.com/docs/mcp/calendly-mcp-server",
+	"icon": "icons/calendly.png",
+	"url": "https://mcp.calendly.com/",
+	"namespace": "calendly",
+	"publisher": "official",
+	"category": "productivity",
+	"tags": ["scheduling", "meetings", "calendar"],
+	"examples": [
+		"When am I free for a 30 minute call next week?",
+		"List the meetings booked through my demo link today"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Calendly's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server calendly.com offers dynamic client registration."
+	}
+}

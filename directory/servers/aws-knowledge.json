@@ -1,0 +1,48 @@
+{
+	"$schema": "../schema.json",
+	"id": "aws-knowledge",
+	"name": "AWS Knowledge",
+	"tagline": "AWS documentation, regions and service availability",
+	"description": "Search AWS documentation, read full pages and check which services and features are available in each region, without an AWS account.",
+	"homepage": "https://awslabs.github.io/mcp/servers/aws-knowledge-mcp-server",
+	"icon": "icons/aws-knowledge.png",
+	"url": "https://knowledge-mcp.global.api.aws",
+	"namespace": "awsKnowledge",
+	"publisher": "official",
+	"category": "knowledge",
+	"tags": ["docs", "aws", "cloud"],
+	"examples": ["Is Bedrock available in eu-south-1?", "What are the limits of SQS FIFO queues?"],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"aws___search_documentation": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Documentation search."
+		},
+		"aws___read_documentation": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Fetches a docs page."
+		},
+		"aws___list_regions": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		},
+		"aws___get_regional_availability": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (5 tools)."
+	}
+}

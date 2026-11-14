@@ -1,0 +1,29 @@
+{
+	"$schema": "../schema.json",
+	"id": "cloudflare",
+	"name": "Cloudflare",
+	"tagline": "The whole Cloudflare API in one server",
+	"description": "Manage DNS, Workers, R2, zones and security settings across your Cloudflare account through one server that covers the entire Cloudflare API.",
+	"homepage": "https://developers.cloudflare.com/agents/model-context-protocol/cloudflare/servers-for-cloudflare/",
+	"icon": "icons/cloudflare.png",
+	"url": "https://mcp.cloudflare.com/mcp",
+	"namespace": "cloudflare",
+	"publisher": "official",
+	"category": "cloud",
+	"tags": ["dns", "workers", "cdn", "api"],
+	"popular": true,
+	"examples": ["List the DNS records of example.com", "Which Workers were deployed this week?"],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Cloudflare's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.cloudflare.com offers CIMD and dynamic client registration."
+	}
+}

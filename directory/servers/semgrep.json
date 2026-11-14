@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "semgrep",
+	"name": "Semgrep",
+	"tagline": "Scan code for vulnerabilities",
+	"description": "Scan code with Semgrep rules for security bugs and review findings from your Semgrep projects, so agents ship safer code.",
+	"homepage": "https://docs.semgrep.dev/mcp",
+	"icon": "icons/semgrep.png",
+	"url": "https://mcp.semgrep.ai/mcp",
+	"namespace": "semgrep",
+	"publisher": "official",
+	"category": "security",
+	"tags": ["sast", "code-scanning", "vulnerabilities"],
+	"examples": [
+		"Scan this file for injection vulnerabilities",
+		"What are the open critical findings in the web repo?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Semgrep's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server login.semgrep.dev offers CIMD and dynamic client registration."
+	}
+}

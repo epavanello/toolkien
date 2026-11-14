@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "attio",
+	"name": "Attio",
+	"tagline": "CRM records, lists and notes",
+	"description": "Search people, companies and deals, add notes and update records in Attio, so agents keep your CRM current.",
+	"homepage": "https://docs.attio.com/mcp/overview",
+	"icon": "icons/attio.png",
+	"url": "https://mcp.attio.com/mcp",
+	"namespace": "attio",
+	"publisher": "official",
+	"category": "crm",
+	"tags": ["crm", "contacts", "deals"],
+	"examples": [
+		"Which deals in the pipeline have had no activity for two weeks?",
+		"Add a note to Acme with the summary of today’s call"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Attio's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server app.attio.com offers dynamic client registration."
+	}
+}

@@ -1,0 +1,36 @@
+{
+	"$schema": "../schema.json",
+	"id": "grep",
+	"name": "Grep by Vercel",
+	"tagline": "Search code across a million public repositories",
+	"description": "Find real-world usage of any API by searching code across over a million public GitHub repositories, with no account needed.",
+	"homepage": "https://vercel.com/blog/grep-a-million-github-repositories-via-mcp",
+	"icon": "icons/grep.png",
+	"url": "https://mcp.grep.app",
+	"namespace": "grep",
+	"publisher": "official",
+	"category": "developer-tools",
+	"tags": ["code-search", "examples", "open-source"],
+	"examples": [
+		"Find examples of useActionState used with server actions",
+		"How do other projects configure Drizzle with libSQL?"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"searchGitHub": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			},
+			"note": "Public code search, no side effects."
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (1 tools)."
+	}
+}

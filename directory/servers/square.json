@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "square",
+	"name": "Square",
+	"tagline": "Payments, orders, catalog and customers",
+	"description": "Search transactions, orders, catalog items and customers in your Square seller account through the Square API.",
+	"homepage": "https://developer.squareup.com/docs/mcp",
+	"icon": "icons/square.png",
+	"url": "https://mcp.squareup.com/mcp",
+	"namespace": "square",
+	"publisher": "official",
+	"category": "payments",
+	"tags": ["payments", "commerce", "point-of-sale"],
+	"examples": [
+		"What were yesterday’s sales by location?",
+		"Add a new item “Iced latte” to the catalog at 4.50"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Square's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.squareup.com offers dynamic client registration."
+	}
+}

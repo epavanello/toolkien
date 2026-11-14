@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "launchdarkly",
+	"name": "LaunchDarkly",
+	"tagline": "Feature flags and targeting rules",
+	"description": "Create, inspect and roll out feature flags, adjust targeting and clean up stale flags in LaunchDarkly without opening the dashboard.",
+	"homepage": "https://launchdarkly.com/docs/home/getting-started/mcp-hosted",
+	"icon": "icons/launchdarkly.png",
+	"url": "https://mcp.launchdarkly.com/mcp/fm",
+	"namespace": "launchdarkly",
+	"publisher": "official",
+	"category": "developer-tools",
+	"tags": ["feature-flags", "releases", "experiments"],
+	"examples": [
+		"Which flags in production have been fully rolled out for 30 days?",
+		"Turn on new-checkout for 10% of users in staging"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from LaunchDarkly's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.launchdarkly.com offers CIMD and dynamic client registration."
+	}
+}

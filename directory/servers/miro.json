@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "miro",
+	"name": "Miro",
+	"tagline": "Boards, diagrams and docs",
+	"description": "Read Miro boards and create diagrams, docs and sticky notes, turning conversations into visual plans.",
+	"homepage": "https://developers.miro.com/docs/miro-mcp",
+	"icon": "icons/miro.png",
+	"url": "https://mcp.miro.com/",
+	"namespace": "miro",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["whiteboard", "diagrams", "collaboration"],
+	"examples": [
+		"Turn this user flow into a diagram on the Product board",
+		"Summarize the sticky notes from the retro board"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Miro's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.miro.com offers dynamic client registration."
+	}
+}

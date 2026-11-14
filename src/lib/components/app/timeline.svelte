@@ -22,6 +22,7 @@
 	import type { Snippet } from 'svelte';
 	import { tv } from 'tailwind-variants';
 	import { formatDuration } from '#lib/core/format.ts';
+	import type { BrandArtName } from '#lib/components/brand/brand-art.svelte';
 	import EmptyState from './empty-state.svelte';
 	import RelativeTime from './relative-time.svelte';
 	import StatusBadge from './status-badge.svelte';
@@ -33,7 +34,8 @@
 	type Props = {
 		items: TimelineItem[];
 		label: string;
-		empty?: { title: string; description?: string };
+		/** `art` swaps the icon for a brand illustration (an empty log, not a filter miss) */
+		empty?: { title: string; description?: string; art?: BrandArtName };
 		/** Below the list (a "Load more" button) */
 		footer?: Snippet;
 	};
@@ -75,7 +77,12 @@
 <div class="flex flex-col gap-2" data-slot="timeline">
 	<div class="overflow-hidden rounded-lg border bg-card">
 		{#if items.length === 0}
-			<EmptyState icon={Inbox} title={empty.title} description={empty.description} />
+			<EmptyState
+				icon={Inbox}
+				art={empty.art}
+				title={empty.title}
+				description={empty.description}
+			/>
 		{:else}
 			<ul class="divide-y" aria-label={label}>
 				{#each items as item (item.id)}

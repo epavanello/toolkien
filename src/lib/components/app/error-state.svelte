@@ -4,9 +4,9 @@
 	export const errorStateVariants = tv({
 		slots: {
 			root: 'flex flex-1 flex-col items-center justify-center px-4 text-center',
-			icon: 'flex size-10 items-center justify-center rounded-lg border bg-card text-muted-foreground shadow-xs',
-			status: 'mono text-xs font-medium tracking-wider text-muted-foreground tabular-nums',
-			title: 'font-semibold tracking-tight text-balance',
+			icon: 'flex size-10 items-center justify-center rounded-lg border bg-card text-muted-foreground shadow-plate',
+			status: 'mono text-xs font-medium tracking-wider text-primary tabular-nums',
+			title: 'font-display font-semibold tracking-tight text-balance',
 			description: 'max-w-md text-sm text-pretty text-muted-foreground',
 			detail: 'max-w-md rounded-md border bg-muted/40 px-3 py-2 text-sm text-pretty',
 			actions: 'flex flex-wrap items-center justify-center gap-2',
@@ -18,8 +18,8 @@
 			 * `section`: inside a shell that already has navigation (site header, workspace sidebar).
 			 */
 			variant: {
-				screen: { root: 'gap-5 py-16 sm:py-24', title: 'text-2xl sm:text-3xl' },
-				section: { root: 'min-h-[50vh] gap-4 py-12', title: 'text-xl' }
+				screen: { root: 'gap-5 py-16 sm:py-24', title: 'text-3xl sm:text-4xl' },
+				section: { root: 'min-h-[50vh] gap-4 py-12', title: 'text-2xl' }
 			}
 		},
 		defaultVariants: { variant: 'screen' }
@@ -46,6 +46,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { brand } from '#lib/brand.ts';
+	import BrandArt, { type BrandArtName } from '#lib/components/brand/brand-art.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { describeError, type ErrorKind } from './error-state.ts';
 	import Mono from './mono.svelte';
@@ -86,6 +87,31 @@
 		server: ServerCrash
 	};
 	const Icon = $derived(ICONS[info.kind]);
+
+	/** Illustrated kinds (the rest keep a plain icon: access and input problems stay sober) */
+	const ART: Partial<Record<ErrorKind, BrandArtName>> = {
+		not_found: 'trail',
+		server: 'crack',
+		unavailable: 'offline',
+		offline: 'offline'
+	};
+	const art = $derived(ART[info.kind]);
+
+	/** One line of brand voice above the plain-language title; never replaces it */
+	const KICKER: Record<ErrorKind, string> = {
+		offline: 'The road to the forge is out',
+		not_found: 'No tool was ever forged at this address',
+		forbidden: 'This door takes a different key',
+		unauthorized: 'Show your seal at the gate',
+		suspended: 'The forge is banked for now',
+		invalid: 'That one came off the anvil bent',
+		rate_limited: 'Easy on the hammer',
+		unavailable: 'The bellows are catching their breath',
+		server: 'Something cracked on our anvil'
+	};
+	const statusLine = $derived(
+		info.kind === 'offline' ? KICKER.offline : `Error ${status} · ${KICKER[info.kind]}`
+	);
 	const homeLink = $derived(home ?? { href: resolve('/(marketing)'), label: 'Home' });
 	const signInHref = $derived(
 		`${resolve('/(auth)/login')}?redirectTo=${encodeURIComponent(page.url.pathname)}`
@@ -100,9 +126,13 @@
 </svelte:head>
 
 <div class={styles.root()} data-slot="error-state" data-kind={info.kind}>
-	<span class={styles.icon()}><Icon class="size-5" aria-hidden="true" /></span>
+	{#if art}
+		<BrandArt name={art} />
+	{:else}
+		<span class={styles.icon()}><Icon class="size-5" aria-hidden="true" /></span>
+	{/if}
 	<div class="flex flex-col items-center gap-2">
-		{#if info.kind !== 'offline'}<p class={styles.status()}>Error {status}</p>{/if}
+		<p class={styles.status()}>{statusLine}</p>
 		<h1 class={styles.title()}>{info.title}</h1>
 		<p class={styles.description()}>{info.description}</p>
 	</div>

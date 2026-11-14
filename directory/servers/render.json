@@ -1,0 +1,30 @@
+{
+	"$schema": "../schema.json",
+	"id": "render",
+	"name": "Render",
+	"tagline": "Services, databases, deploys and logs on Render",
+	"description": "Create web services, Postgres and key-value stores, check deploys, metrics and logs on Render in plain language.",
+	"homepage": "https://render.com/docs/mcp-server",
+	"icon": "icons/render.png",
+	"url": "https://mcp.render.com/mcp",
+	"namespace": "render",
+	"publisher": "official",
+	"category": "cloud",
+	"tags": ["hosting", "deployments", "postgres", "logs"],
+	"examples": [
+		"Why is the api service on Render returning 502s?",
+		"Create a Postgres database for the staging environment"
+	],
+	"auth": {
+		"type": "token",
+		"tokenHelp": "Create an API key in your Render account settings. It has the access of your account, so use a dedicated workspace if you can.",
+		"tokenUrl": "https://dashboard.render.com/u/settings#api-keys"
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Render's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.render.com. Render's authorization server offers neither dynamic registration nor CIMD; Render documents an API key sent as a bearer token."
+	}
+}

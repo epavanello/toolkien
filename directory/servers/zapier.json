@@ -1,0 +1,32 @@
+{
+	"$schema": "../schema.json",
+	"id": "zapier",
+	"name": "Zapier",
+	"tagline": "Actions in 8,000+ apps",
+	"description": "Give agents actions in thousands of apps through Zapier: you choose which actions are exposed in your Zapier MCP settings.",
+	"homepage": "https://zapier.com/mcp",
+	"icon": "icons/zapier.png",
+	"url": "https://mcp.zapier.com/api/mcp/mcp",
+	"namespace": "zapier",
+	"publisher": "official",
+	"category": "automation",
+	"tags": ["automation", "integrations", "workflows"],
+	"popular": true,
+	"examples": [
+		"Add this lead to my Google Sheet and notify #sales",
+		"Create a Trello card from this email"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Zapier's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.zapier.com offers dynamic client registration."
+	}
+}

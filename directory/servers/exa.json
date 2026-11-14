@@ -1,15 +1,21 @@
 {
 	"$schema": "../schema.json",
 	"id": "exa",
-	"name": "Exa Search",
-	"description": "Web search and code context retrieval with Exa.",
+	"name": "Exa",
+	"tagline": "Web search built for agents",
+	"description": "Search the web and fetch pages as clean, ready-to-use text, so agents can research with fresh sources.",
 	"homepage": "https://docs.exa.ai/reference/exa-mcp",
 	"icon": "icons/exa.png",
 	"url": "https://mcp.exa.ai/mcp",
 	"namespace": "exa",
 	"publisher": "official",
 	"category": "search",
-	"tags": ["web-search"],
+	"tags": ["web-search", "research", "crawling"],
+	"popular": true,
+	"examples": [
+		"Find recent articles comparing vector databases",
+		"Read this page and summarize the pricing"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -31,6 +37,6 @@
 		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Free tier without a key (rate limited); tools/list inspected anonymously (2 read-only tools). Never put an API key in the URL query string."
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (2 tools)."
 	}
 }

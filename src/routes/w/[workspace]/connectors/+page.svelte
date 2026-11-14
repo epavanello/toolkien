@@ -226,8 +226,10 @@
 			onRowClick={open}
 			group={(row) => ({ label: row.name, logo: row.icon })}
 			empty={{
-				title: 'No connectors yet',
-				description: 'Add one from the directory, or by URL if your workspace allows it.'
+				art: 'forge',
+				title: 'Nothing on the anvil yet',
+				description:
+					'Add a server from the directory, or by URL if your workspace allows it. Its tools become typed functions your agents can call.'
 			}}
 		/>
 

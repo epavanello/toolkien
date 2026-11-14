@@ -26,7 +26,11 @@
 			{columns}
 			rowKey={(row) => row.approvalId}
 			searchable={false}
-			empty={{ title: 'Nothing to approve', description: 'New requests appear here live.' }}
+			empty={{
+				art: 'seal',
+				title: 'Nothing to approve',
+				description: 'All quiet at the gate. New requests appear here live.'
+			}}
 			onRowClick={(row) => goto(resolve('/approve/[id]', { id: row.approvalId }))}
 		/>
 	</Boundary>

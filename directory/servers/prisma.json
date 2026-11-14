@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "prisma",
+	"name": "Prisma Postgres",
+	"tagline": "Provision and manage Prisma Postgres databases",
+	"description": "Create Prisma Postgres databases, manage connection strings and backups, and run SQL, so an agent can set up the database a feature needs.",
+	"homepage": "https://www.prisma.io/docs/ai/tools/mcp-server",
+	"icon": "icons/prisma.png",
+	"url": "https://mcp.prisma.io/mcp",
+	"namespace": "prisma",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["postgres", "database", "orm"],
+	"examples": [
+		"Create a new Prisma Postgres database in eu-central for the staging app",
+		"List my databases and their regions"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Prisma Postgres's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server auth.prisma.io offers dynamic client registration."
+	}
+}

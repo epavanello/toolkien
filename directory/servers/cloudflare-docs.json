@@ -2,14 +2,19 @@
 	"$schema": "../schema.json",
 	"id": "cloudflare-docs",
 	"name": "Cloudflare Docs",
-	"description": "Search the Cloudflare developer documentation.",
+	"tagline": "Search the Cloudflare developer docs",
+	"description": "Answers from the current Cloudflare developer documentation for Workers, R2, D1, Durable Objects and the rest of the platform.",
 	"homepage": "https://github.com/cloudflare/mcp-server-cloudflare",
 	"icon": "icons/cloudflare-docs.png",
 	"url": "https://docs.mcp.cloudflare.com/mcp",
 	"namespace": "cloudflareDocs",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs"],
+	"tags": ["docs", "cloudflare", "workers"],
+	"examples": [
+		"How do I bind a D1 database to a Worker?",
+		"What are the CPU limits of Workers on the paid plan?"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -26,6 +31,6 @@
 		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Public, no authentication. tools/list inspected anonymously (2 read-only tools)."
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (2 tools)."
 	}
 }

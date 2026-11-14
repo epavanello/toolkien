@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "cloudflare-radar",
+	"name": "Cloudflare Radar",
+	"tagline": "Global internet traffic, outages and attack trends",
+	"description": "Explore Cloudflare Radar data: internet traffic trends, outages, attack activity, domain rankings and URL scans.",
+	"homepage": "https://github.com/cloudflare/mcp-server-cloudflare/tree/main/apps/radar",
+	"icon": "icons/cloudflare-radar.png",
+	"url": "https://radar.mcp.cloudflare.com/mcp",
+	"namespace": "cloudflareRadar",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["internet", "traffic", "security", "trends"],
+	"examples": [
+		"Were there internet outages in Italy last week?",
+		"What are the top domains by traffic in Brazil?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Cloudflare Radar's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server radar.mcp.cloudflare.com offers dynamic client registration."
+	}
+}

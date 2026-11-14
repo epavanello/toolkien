@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "close",
+	"name": "Close",
+	"tagline": "Leads, opportunities and activities",
+	"description": "Find leads, log activities and update opportunities in Close, the CRM for inside sales teams.",
+	"homepage": "https://help.close.com/integrations/close-mcp-server",
+	"icon": "icons/close.png",
+	"url": "https://mcp.close.com/mcp",
+	"namespace": "close",
+	"publisher": "official",
+	"category": "crm",
+	"tags": ["crm", "leads", "sales"],
+	"examples": [
+		"Which of my leads have not been contacted this week?",
+		"Log a call with Acme and move the opportunity to Proposal"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Close's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.close.com offers dynamic client registration."
+	}
+}

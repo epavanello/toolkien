@@ -2,14 +2,19 @@
 	"$schema": "../schema.json",
 	"id": "deepwiki",
 	"name": "DeepWiki",
-	"description": "Ask questions about public GitHub repositories and read their generated wikis.",
+	"tagline": "Ask questions about any public GitHub repository",
+	"description": "Read AI-generated wikis of public GitHub repositories and ask questions about how a codebase works, without cloning it.",
 	"homepage": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
 	"icon": "icons/deepwiki.png",
 	"url": "https://mcp.deepwiki.com/mcp",
 	"namespace": "deepwiki",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs", "code"],
+	"tags": ["docs", "github", "open-source"],
+	"examples": [
+		"How does the scheduler in facebook/react decide priorities?",
+		"Explain the plugin system of vitejs/vite"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -37,6 +42,6 @@
 		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Public repositories only, no authentication. tools/list inspected anonymously (3 tools, no annotations reported: treated as writes until confirmed)."
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (3 tools)."
 	}
 }

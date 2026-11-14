@@ -14,7 +14,10 @@ export const POST: RequestHandler = async ({ request, url, getClientAddress }) =
 	} catch {
 		return new Response(null, { status: 400 });
 	}
-	const body = input && typeof input === 'object' ? buildEvent(input as Record<string, unknown>, url.origin) : null;
+	const body =
+		input && typeof input === 'object'
+			? buildEvent(input as Record<string, unknown>, url.origin)
+			: null;
 	// Dropped events still answer 202: the tracker has nothing useful to do with an error
 	if (!body) return new Response(null, { status: 202 });
 	const status = await forwardEvent(body, {

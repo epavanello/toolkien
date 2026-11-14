@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "basecamp",
+	"name": "Basecamp",
+	"tagline": "Projects, to-dos and message boards",
+	"description": "Work with Basecamp projects as yourself: read and post messages, manage to-dos and check schedules.",
+	"homepage": "https://basecamp.com/ai",
+	"icon": "icons/basecamp.png",
+	"url": "https://mcp.basecamp.com/mcp",
+	"namespace": "basecamp",
+	"publisher": "official",
+	"category": "project-management",
+	"tags": ["projects", "to-dos", "messages"],
+	"examples": [
+		"What to-dos are overdue in the Website project?",
+		"Post an update on the message board about the launch"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "needs-review",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server app.basecamp.com offers CIMD and dynamic client registration. Official docs page not confirmed yet (endpoint on basecamp.com domain, listed by MCP directories)."
+	}
+}

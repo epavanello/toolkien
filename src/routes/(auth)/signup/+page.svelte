@@ -6,6 +6,12 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	/** Switching between sign-in and sign-up keeps where the user was going (OAuth consent, add a server) */
+	const withRedirect = (path: string) =>
+		data.redirectTo && data.redirectTo !== '/'
+			? `${path}?redirectTo=${encodeURIComponent(data.redirectTo)}`
+			: path;
 </script>
 
 <SeoHead
@@ -14,8 +20,8 @@
 />
 
 <AuthHeading title="Create your account">
-	No password needed: we email you a code. Already registered? <a href={resolve('/(auth)/login')}
-		>Sign in</a
+	No password needed: we email you a code. Already registered? <a
+		href={withRedirect(resolve('/(auth)/login'))}>Sign in</a
 	>
 </AuthHeading>
 <EmailSignIn redirectTo={data.redirectTo} submitLabel="Email me a code" passkey={false} />

@@ -1,12 +1,13 @@
 import { command, form, query } from '$app/server';
 import { resolve } from '$app/paths';
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
 	addAndConnect,
 	rename,
 	disconnect,
 	get,
+	getDirectoryEntry,
 	list,
 	listDirectory,
 	remove,
@@ -14,8 +15,8 @@ import {
 	startOAuth,
 	syncTools
 } from '#lib/server/connectors/index.ts';
-import { requireWorkspace } from '#lib/server/guards.ts';
-import { getPolicy, hasRole } from '#lib/server/workspaces/index.ts';
+import { requireUser, requireWorkspace } from '#lib/server/guards.ts';
+import { getPolicy, hasRole, listForUser } from '#lib/server/workspaces/index.ts';
 import type { WorkspaceActor, WorkspaceSummary } from '#lib/server/workspaces/types.ts';
 
 const slug = z.string().trim().min(1).max(200);
@@ -61,6 +62,38 @@ export const listDirectoryServers = query(slug, async (workspaceSlug) => {
 		}))
 	};
 });
+
+/**
+ * Where the signed-in user can add a directory server ("Add to Toolkien" from the public
+ * directory): their workspaces, personal first, with whether they may add it there for
+ * themselves and the instances already added.
+ */
+export const getDirectoryAddTargets = query(
+	z.string().trim().min(1).max(60),
+	async (directoryId) => {
+		const user = requireUser();
+		if (!getDirectoryEntry(directoryId)) {
+			error(404, 'This server is not in the directory.', { code: 'NOT_FOUND' });
+		}
+		const workspaces = (await listForUser(user.id))
+			.filter((workspace) => !workspace.suspended && !workspace.deleteScheduledAt)
+			.sort((a, b) => Number(b.kind === 'personal') - Number(a.kind === 'personal'));
+		return Promise.all(
+			workspaces.map(async (workspace) => {
+				const actor = { workspaceId: workspace.id, userId: user.id, role: workspace.role };
+				const rights = await addRights(workspace, actor);
+				const connectors = await list(actor);
+				return {
+					slug: workspace.slug,
+					name: workspace.name,
+					personal: workspace.kind === 'personal',
+					canAdd: rights.canAddForMe,
+					installed: connectors.filter((c) => c.directoryId === directoryId).map((c) => c.id)
+				};
+			})
+		);
+	}
+);
 
 export const addConnector = form(
 	z

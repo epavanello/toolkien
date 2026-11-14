@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "ramp",
+	"name": "Ramp",
+	"tagline": "Spend, cards, bills and approvals",
+	"description": "Analyze company spend, review cards and limits and handle expenses and bills in Ramp.",
+	"homepage": "https://docs.ramp.com/developer-api/v1/guides/ramp-mcp-remote",
+	"icon": "icons/ramp.png",
+	"url": "https://ramp-mcp-remote.ramp.com/mcp",
+	"namespace": "ramp",
+	"publisher": "official",
+	"category": "payments",
+	"tags": ["spend", "expenses", "cards"],
+	"examples": [
+		"Which vendors did we spend the most on this quarter?",
+		"Show card transactions missing receipts"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Ramp's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server ramp-mcp-remote.ramp.com offers dynamic client registration."
+	}
+}

@@ -2,25 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "supabase",
 	"name": "Supabase",
-	"description": "Manage Supabase projects: tables, SQL, migrations, edge functions, logs and docs.",
+	"tagline": "Postgres, auth, storage and edge functions",
+	"description": "Design tables, run SQL and migrations, fetch logs and manage edge functions in your Supabase projects, signed in with your account.",
 	"homepage": "https://supabase.com/docs/guides/getting-started/mcp",
 	"icon": "icons/supabase.png",
 	"url": "https://mcp.supabase.com/mcp",
 	"namespace": "supabase",
 	"publisher": "official",
 	"category": "data",
-	"tags": ["postgres", "database"],
+	"tags": ["postgres", "database", "auth", "storage"],
+	"popular": true,
+	"examples": [
+		"Create a profiles table with RLS so users only see their own row",
+		"Show the API errors in the last hour"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
 			"registration": ["dcr"]
 		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Endpoint from Supabase's docs; live check: 401 + RFC 9728 metadata. The server supports `read_only=true` and `project_ref=…` query parameters to narrow access; consider them for shared connectors."
-	},
-	"tools": {}
+		"notes": "Endpoint from Supabase's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.supabase.com offers dynamic client registration."
+	}
 }

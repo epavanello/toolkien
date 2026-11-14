@@ -178,7 +178,7 @@ export function registerDiscoveryTools(
 		name: 'tools_describe',
 		title: 'Describe tools',
 		description: [
-			'Step 2 of 3 (search → describe → execute). Returns the TypeScript declarations (.d.ts) of the given tool paths from tools_search: parameters, return type and JSDoc (with @readOnly / @destructive annotations).',
+			'Step 2 of 3 (search → describe → execute). Returns the TypeScript declarations (.d.ts) of the given tool paths from tools_search: parameters, return type and JSDoc with the full upstream descriptions, constraints (@minimum, @pattern, @default, @example, …) and annotations (@readOnly / @destructive). Shared types are declared once as `ns.TypeName`.',
 			'Read them before writing the script for execute; call the functions exactly as declared, under the namespace of the connector instance (account) you mean.',
 			'When a tool returns `unknown`, inspect the result in the script before relying on its shape.'
 		].join(' '),
@@ -204,6 +204,9 @@ export function registerDiscoveryTools(
 			});
 			const parts = [`Workspace: ${label(workspace)}`];
 			if (described.length > 0) {
+				const asking = described
+					.filter((item) => levels.get(item.path)?.level === 'ask')
+					.map((item) => item.path);
 				parts.push(
 					'```ts',
 					...described
@@ -211,6 +214,11 @@ export function registerDiscoveryTools(
 						.flatMap((item) => [`// ${instanceLabel(item)}`, item.declaration.trim()]),
 					'```'
 				);
+				if (asking.length > 0) {
+					parts.push(
+						`Calls to ${asking.join(', ')} ask the user for approval: execute pauses there until they decide (dialog or Toolkien link).`
+					);
+				}
 			}
 			if (missing.length > 0) {
 				parts.push(

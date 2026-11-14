@@ -25,6 +25,7 @@ export const LEGAL_DOCUMENTS = [
 export type LegalSlug = (typeof LEGAL_DOCUMENTS)[number]['slug'];
 
 export const headerLinks: SiteLink[] = [
+	{ label: 'Directory', href: '/directory' },
 	{ label: 'Docs', href: '/docs' },
 	{ label: 'Security', href: '/docs/security' },
 	{ label: 'Self-hosting', href: '/docs/self-hosting' },
@@ -36,6 +37,7 @@ export const footerGroups: SiteLinkGroup[] = [
 		title: 'Product',
 		links: [
 			{ label: 'Get started', href: '/signup' },
+			{ label: 'Server directory', href: '/directory' },
 			{ label: 'Sign in', href: '/login' },
 			{ label: 'Source code', href: REPO_URL, external: true }
 		]
@@ -65,6 +67,12 @@ export const publicPages = (): PublicPage[] => [
 		title: 'Toolkien',
 		description: 'One MCP server for every remote MCP server.',
 		priority: 1
+	},
+	{
+		path: '/directory',
+		title: 'MCP server directory',
+		description: 'Remote MCP servers your AI agents can use through Toolkien.',
+		priority: 0.9
 	},
 	...DOCS_PAGES.map((page) => ({
 		path: page.href,

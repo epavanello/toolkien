@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "pulumi",
+	"name": "Pulumi",
+	"tagline": "Infrastructure as code stacks and resources",
+	"description": "Search the resources of your Pulumi stacks across clouds, read the registry and get help writing and fixing infrastructure code.",
+	"homepage": "https://www.pulumi.com/docs/ai/guides/set-up-mcp-server/",
+	"icon": "icons/pulumi.png",
+	"url": "https://mcp.ai.pulumi.com/mcp",
+	"namespace": "pulumi",
+	"publisher": "official",
+	"category": "cloud",
+	"tags": ["infrastructure-as-code", "cloud", "stacks"],
+	"examples": [
+		"Which stacks contain public S3 buckets?",
+		"Show the outputs of the production stack"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Pulumi's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.ai.pulumi.com offers dynamic client registration."
+	}
+}

@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "grafana",
+	"name": "Grafana Cloud",
+	"tagline": "Dashboards, metrics, logs and alerts",
+	"description": "Query Prometheus metrics, Loki logs and traces, and manage dashboards, alert rules and incidents in Grafana Cloud.",
+	"homepage": "https://grafana.com/docs/grafana-cloud/platform/grafana-assistant/configure/mcp-servers/",
+	"icon": "icons/grafana.png",
+	"url": "https://mcp.grafana.com/mcp",
+	"namespace": "grafana",
+	"publisher": "official",
+	"category": "monitoring",
+	"tags": ["dashboards", "metrics", "logs", "alerts"],
+	"examples": [
+		"Find the dashboard for the API and summarize the last 24 hours",
+		"Which alert rules fired most this week?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Grafana Cloud's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.grafana.com offers CIMD and dynamic client registration."
+	}
+}

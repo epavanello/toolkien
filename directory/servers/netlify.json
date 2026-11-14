@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "netlify",
+	"name": "Netlify",
+	"tagline": "Create, deploy and manage Netlify sites",
+	"description": "Create projects, deploy sites, manage environment variables and forms, and read deploy logs on Netlify, straight from your agent.",
+	"homepage": "https://docs.netlify.com/build/build-with-ai/agent-setup-guides/agent-setup-overview/",
+	"icon": "icons/netlify.png",
+	"url": "https://mcp.netlify.com/mcp",
+	"namespace": "netlify",
+	"publisher": "official",
+	"category": "cloud",
+	"tags": ["deployments", "hosting", "sites"],
+	"examples": [
+		"Deploy the current build of the docs site to production",
+		"Which of my Netlify sites had a failed deploy today?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Netlify's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.netlify.com offers dynamic client registration."
+	}
+}

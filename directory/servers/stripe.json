@@ -2,22 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "stripe",
 	"name": "Stripe",
-	"description": "Work with Stripe customers, payments, invoices, subscriptions and the Stripe docs.",
+	"tagline": "Customers, payments, subscriptions and docs",
+	"description": "Look up customers, payments and subscriptions, create payment links and search Stripe’s docs, all with your account’s permissions.",
 	"homepage": "https://docs.stripe.com/mcp",
 	"icon": "icons/stripe.png",
 	"url": "https://mcp.stripe.com",
 	"namespace": "stripe",
 	"publisher": "official",
 	"category": "payments",
-	"tags": ["billing"],
+	"tags": ["payments", "billing", "subscriptions"],
+	"popular": true,
+	"examples": [
+		"How much revenue did we make last week?",
+		"Create a payment link for the Pro plan at 49 EUR per month"
+	],
 	"auth": {
-		"type": "oauth"
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Endpoint from Stripe's docs; live check: 401 + RFC 9728 metadata. Stripe also accepts a restricted API key as a bearer token: prefer a restricted key with read-only permissions when pasting a token."
-	},
-	"tools": {}
+		"notes": "Endpoint from Stripe's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server access.stripe.com offers dynamic client registration."
+	}
 }

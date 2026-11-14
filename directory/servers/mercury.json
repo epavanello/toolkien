@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "mercury",
+	"name": "Mercury",
+	"tagline": "Business banking, transactions and cash flow",
+	"description": "Understand your finances: read balances and transactions, categorize spending and prepare payments for your approval in Mercury.",
+	"homepage": "https://mercury.com/mcp",
+	"icon": "icons/mercury.png",
+	"url": "https://mcp.mercury.com/mcp",
+	"namespace": "mercury",
+	"publisher": "official",
+	"category": "payments",
+	"tags": ["banking", "transactions", "cash-flow"],
+	"examples": [
+		"What was our burn rate last month?",
+		"Which transactions over 1,000 USD are uncategorized?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Mercury's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.mercury.com offers CIMD and dynamic client registration."
+	}
+}

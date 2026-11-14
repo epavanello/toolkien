@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "resend",
+	"name": "Resend",
+	"tagline": "Send and manage transactional email",
+	"description": "Send emails, manage audiences, contacts, domains and broadcasts in Resend.",
+	"homepage": "https://resend.com/docs/mcp-server",
+	"icon": "icons/resend.png",
+	"url": "https://mcp.resend.com/mcp",
+	"namespace": "resend",
+	"publisher": "official",
+	"category": "communication",
+	"tags": ["email", "transactional", "domains"],
+	"examples": [
+		"Send a test of the welcome email to me",
+		"Is the domain mail.example.com verified?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Resend's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.resend.com offers CIMD and dynamic client registration."
+	}
+}

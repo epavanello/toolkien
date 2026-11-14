@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "amplitude",
+	"name": "Amplitude",
+	"tagline": "Product analytics, charts and experiments",
+	"description": "Search charts, dashboards and experiments and query your Amplitude product data in plain language.",
+	"homepage": "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
+	"icon": "icons/amplitude.png",
+	"url": "https://mcp.amplitude.com/mcp",
+	"namespace": "amplitude",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["product-analytics", "charts", "experiments"],
+	"examples": [
+		"What is the week-4 retention of users who signed up in September?",
+		"Which experiments are running and how are they doing?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Amplitude's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.amplitude.com offers CIMD and dynamic client registration. US data center; EU projects use mcp.eu.amplitude.com."
+	}
+}

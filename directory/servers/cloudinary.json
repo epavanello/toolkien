@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "cloudinary",
+	"name": "Cloudinary",
+	"tagline": "Upload, search and transform media assets",
+	"description": "Upload, organize, search and transform images and videos in your Cloudinary media library.",
+	"homepage": "https://cloudinary.com/documentation/cloudinary_llm_mcp",
+	"icon": "icons/cloudinary.png",
+	"url": "https://asset-management.mcp.cloudinary.com/mcp",
+	"namespace": "cloudinary",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["images", "video", "media", "assets"],
+	"examples": [
+		"Find all product photos tagged “summer” without alt text",
+		"Upload this image and give me a 400px WebP URL"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Cloudinary's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server asset-management.mcp.cloudinary.com offers dynamic client registration."
+	}
+}

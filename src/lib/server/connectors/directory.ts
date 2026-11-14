@@ -1,5 +1,6 @@
 import {
 	directoryEntrySchema,
+	isSupportedEntry,
 	isTrustedEntry,
 	normalizeServerUrl,
 	type DirectoryEntryFile
@@ -50,6 +51,10 @@ export function toDirectoryEntry(
 		annotations,
 		category: file.category,
 		tags: file.tags,
+		tagline: file.tagline,
+		examples: file.examples,
+		popular: file.popular ?? false,
+		supported: isSupportedEntry(file),
 		toolNotes,
 		tokenHelp: file.auth.tokenHelp,
 		tokenUrl: file.auth.tokenUrl,
@@ -82,3 +87,12 @@ export const getDirectoryEntry = (id: string | null | undefined): DirectoryEntry
 /** The entry whose endpoint is this URL (trailing slash and case ignored), if any */
 export const findDirectoryEntryByUrl = (url: string): DirectoryEntry | null =>
 	byUrl.get(normalizeServerUrl(url)) ?? null;
+
+/** What the landing page shows: popular servers (logo, name, tagline) and the directory size */
+export function directoryShowcase(limit = 12) {
+	const popular = entries.filter((entry) => entry.popular && entry.supported).slice(0, limit);
+	return {
+		servers: popular.map(({ id, name, icon, tagline }) => ({ id, name, icon, tagline })),
+		total: entries.length
+	};
+}

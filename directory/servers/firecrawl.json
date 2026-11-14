@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "firecrawl",
+	"name": "Firecrawl",
+	"tagline": "Scrape and search the web as clean markdown",
+	"description": "Search the web and scrape pages into clean markdown or structured data with Firecrawl.",
+	"homepage": "https://docs.firecrawl.dev/mcp-server",
+	"icon": "icons/firecrawl.png",
+	"url": "https://mcp.firecrawl.dev/v2/mcp-search",
+	"namespace": "firecrawl",
+	"publisher": "official",
+	"category": "search",
+	"tags": ["scraping", "web-search", "extraction"],
+	"examples": [
+		"Scrape the pricing pages of these three competitors into a table",
+		"Search for papers about retrieval-augmented generation"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Firecrawl's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server www.firecrawl.dev offers CIMD and dynamic client registration."
+	}
+}

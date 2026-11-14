@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "circleback",
+	"name": "Circleback",
+	"tagline": "Meeting notes and action items",
+	"description": "Search Circleback meeting notes, transcripts and action items across your calls.",
+	"homepage": "https://circleback.ai/docs/support/platform/circleback-mcp",
+	"icon": "icons/circleback.png",
+	"url": "https://app.circleback.ai/api/mcp",
+	"namespace": "circleback",
+	"publisher": "official",
+	"category": "communication",
+	"tags": ["meetings", "notes", "action-items"],
+	"examples": [
+		"What were the action items from the board meeting?",
+		"Find meetings where we discussed the migration"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Circleback's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server app.circleback.ai offers CIMD and dynamic client registration."
+	}
+}

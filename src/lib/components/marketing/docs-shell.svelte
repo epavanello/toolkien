@@ -31,13 +31,15 @@
 	>
 		{#each groups as group (group.title)}
 			<div class="flex flex-col gap-1">
-				<p class="text-xs font-medium text-muted-foreground">{group.title}</p>
+				<p class="mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+					{group.title}
+				</p>
 				{#each group.links as link (link.href)}
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved in the nav data -->
 					<a
 						href={link.href}
 						aria-current={link.href === current ? 'page' : undefined}
-						class="rounded-sm px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+						class="rounded-sm border-l-2 border-transparent px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:bg-muted aria-[current=page]:font-medium aria-[current=page]:text-foreground"
 					>
 						{link.label}
 					</a>

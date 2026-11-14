@@ -4,8 +4,7 @@
 	import { brand } from '#lib/brand.ts';
 	import JsonLd from './json-ld.svelte';
 
-	/** Rendered by `scripts/brand-images.ts` */
-	const DEFAULT_IMAGE = '/og.png';
+	import { DEFAULT_OG_IMAGE as DEFAULT_IMAGE, OG_PREFIX } from './og.ts';
 
 	/**
 	 * Every public page's head: title, description, canonical URL, Open Graph, Twitter card,
@@ -68,7 +67,7 @@
 		{#if description}<meta property="og:description" content={description} />{/if}
 		<meta property="og:image" content={absolute(image)} />
 		<meta property="og:image:alt" content={imageAlt} />
-		{#if image === DEFAULT_IMAGE}
+		{#if image === DEFAULT_IMAGE || image.startsWith(OG_PREFIX)}
 			<meta property="og:image:type" content="image/png" />
 			<meta property="og:image:width" content="1200" />
 			<meta property="og:image:height" content="630" />

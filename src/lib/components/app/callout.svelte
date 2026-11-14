@@ -9,7 +9,7 @@
 			title: 'font-medium',
 			time: 'ml-1.5 font-normal text-muted-foreground',
 			description: 'text-pretty text-muted-foreground',
-			action: 'flex items-center gap-2'
+			action: 'flex flex-wrap items-center gap-2'
 		},
 		variants: {
 			/**

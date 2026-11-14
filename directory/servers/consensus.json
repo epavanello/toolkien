@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "consensus",
+	"name": "Consensus",
+	"tagline": "Answers from peer-reviewed research",
+	"description": "Search over 200 million scientific papers and get answers grounded in peer-reviewed research.",
+	"homepage": "https://docs.consensus.app/docs/mcp",
+	"icon": "icons/consensus.png",
+	"url": "https://mcp.consensus.app/mcp",
+	"namespace": "consensus",
+	"publisher": "official",
+	"category": "knowledge",
+	"tags": ["research", "science", "papers"],
+	"examples": [
+		"What does research say about intermittent fasting and longevity?",
+		"Find meta-analyses on remote work productivity"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Consensus's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server consensus.app offers dynamic client registration."
+	}
+}

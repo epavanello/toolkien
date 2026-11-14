@@ -19,6 +19,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { brand } from '#lib/brand.ts';
+	import { docsOgImage } from '#lib/components/seo/og.ts';
 	import SeoHead from '#lib/components/seo/seo-head.svelte';
 
 	/**
@@ -51,6 +52,8 @@
 	const origin = $derived(page.url.origin);
 	const url = $derived(`${origin}${page.url.pathname}`);
 	const isDocs = $derived(page.url.pathname.startsWith('/docs'));
+	/** Docs pages have their own card (`scripts/brand-images.ts` → `static/og/docs/<slug>.png`) */
+	const image = $derived(isDocs ? docsOgImage(page.url.pathname) : undefined);
 	const pageLd = $derived<WithContext<TechArticle | WebPage>>({
 		'@context': 'https://schema.org',
 		'@type': isDocs ? 'TechArticle' : 'WebPage',
@@ -59,7 +62,7 @@
 		...(updatedDay ? { dateModified: updatedDay } : {}),
 		url,
 		inLanguage: 'en',
-		image: `${origin}/og.png`,
+		image: `${origin}${image ?? '/og.png'}`,
 		isPartOf: { '@type': 'WebSite', name: brand.name, url: `${origin}/` },
 		publisher: { '@type': 'Organization', name: brand.name, url: `${origin}/` }
 	});
@@ -85,16 +88,22 @@
 	{title}
 	{description}
 	type="article"
+	{image}
 	modified={updatedDay}
 	jsonLd={[pageLd, breadcrumbs]}
 />
 
 {#snippet article()}
 	<article
-		class="prose max-w-none prose-neutral dark:prose-invert prose-headings:scroll-mt-16 prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-2xl prose-h2:text-lg prose-h3:text-base prose-a:text-primary prose-code:mono prose-code:before:content-none prose-code:after:content-none"
+		class="prose max-w-none prose-neutral dark:prose-invert prose-headings:scroll-mt-16 prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-2xl prose-h2:text-lg prose-h3:text-base prose-a:text-primary prose-a:decoration-primary/40 prose-a:underline-offset-2 hover:prose-a:decoration-primary prose-blockquote:border-l-primary prose-blockquote:font-normal prose-blockquote:not-italic prose-code:mono prose-code:before:content-none prose-code:after:content-none"
 	>
-		<header class="not-prose mb-8 flex flex-col gap-1 border-b pb-4">
-			<h1 class="text-2xl font-semibold tracking-tight">{title}</h1>
+		<header class="not-prose mb-8 flex flex-col gap-1.5 border-b pb-5">
+			<p class="mono text-xs font-medium tracking-wider text-primary uppercase">
+				{isDocs ? 'Documentation' : 'Legal'}
+			</p>
+			<h1 class="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+				{title}
+			</h1>
 			{#if description}<p class="text-muted-foreground">{description}</p>{/if}
 			{#if updatedDay}<p class="text-xs text-muted-foreground">Last updated {updatedDay}</p>{/if}
 		</header>

@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "fireflies",
+	"name": "Fireflies",
+	"tagline": "Meeting transcripts and summaries",
+	"description": "Search and read Fireflies meeting transcripts and summaries to recall decisions and follow-ups.",
+	"homepage": "https://docs.fireflies.ai/getting-started/mcp-configuration",
+	"icon": "icons/fireflies.png",
+	"url": "https://api.fireflies.ai/mcp",
+	"namespace": "fireflies",
+	"publisher": "official",
+	"category": "communication",
+	"tags": ["meetings", "transcripts", "notes"],
+	"examples": [
+		"Summarize my calls with Acme this month",
+		"What objections came up in last week’s sales calls?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Fireflies's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.fireflies.ai offers CIMD and dynamic client registration."
+	}
+}

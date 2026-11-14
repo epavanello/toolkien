@@ -5,7 +5,7 @@ import type { TypeGenerator } from './types.ts';
 export type { SignatureInput, ToolTypeInput, TypeGenerator } from './types.ts';
 export { functionNames, isIdentifier, uniqueName } from './names.ts';
 export { canonicalJson, NO_OUTPUT_SCHEMA_NOTE, UNVERIFIED_WARNING } from './declarations.ts';
-export { sanitizeComment, schemaToType } from './schema.ts';
+export { AliasRegistry, sanitizeComment, schemaDocs, schemaToType } from './schema.ts';
 
 export const toolDeclaration: TypeGenerator['toolDeclaration'] = async (tool) =>
 	renderToolMember(tool);

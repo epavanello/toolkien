@@ -127,7 +127,11 @@ let limits: Limits;
 
 const SECRET = 'top-secret-argument-value';
 
-function makeSystem(db: Db, programs: Record<string, Program>) {
+function makeSystem(
+	db: Db,
+	programs: Record<string, Program>,
+	extra: { softWaitMs?: number } = {}
+) {
 	const audit = { record: vi.fn(async () => {}) };
 	const connectors = fakeConnectors(() => tools);
 	const { runner, runs } = mockRunner(programs);
@@ -180,7 +184,8 @@ function makeSystem(db: Db, programs: Record<string, Program>) {
 			}
 		},
 		origin: 'https://toolkien.test',
-		now
+		now,
+		...extra
 	});
 	return { service, bridge, connectors, audit, runs, permissions };
 }
@@ -286,10 +291,101 @@ const PROGRAMS: Record<string, Program> = {
 		for (let i = 0; i < 3; i++) await call('gh.listIssues', { page: i });
 		return 'ok';
 	},
-	deleteRepo: async (call) => call('gh.deleteRepo', { repo: 'a/b' })
+	deleteRepo: async (call) => call('gh.deleteRepo', { repo: 'a/b' }),
+	protoKeys: async (call) =>
+		call(
+			'gh.listIssues',
+			JSON.parse(
+				'{"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}},"repo":"a/b"}'
+			)
+		),
+	slowRead: async (call, log) => {
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		log('still here');
+		return call('gh.listIssues', { repo: 'a/b' });
+	},
+	slowFailure: async () => {
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		throw new Error('boom after a while');
+	}
 };
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
+
+describe('hostile arguments', () => {
+	it('passes __proto__ / constructor keys through as data, never polluting the app', async () => {
+		const { service, connectors } = makeSystem(t.db, PROGRAMS);
+		const outcome = await service.start({ actor: actor(), clientId: 'claude', code: 'protoKeys' });
+		expect(outcome.status).toBe('completed');
+		expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+		expect(Object.prototype).not.toHaveProperty('polluted');
+		const sent = connectors.upstream[0].args as Record<string, unknown>;
+		expect(Object.hasOwn(sent, '__proto__')).toBe(true);
+		expect(Object.getPrototypeOf(sent)).toBe(Object.prototype);
+		expect(sent.repo).toBe('a/b');
+	});
+});
+
+describe('long runs (soft wait)', () => {
+	it('answers running past the soft wait, then hands the result to execution_status', async () => {
+		const { service } = makeSystem(t.db, PROGRAMS, { softWaitMs: 20 });
+		const started = await service.start({ actor: actor(), clientId: 'claude', code: 'slowRead' });
+		expect(started).toMatchObject({ status: 'running', workspace: { id: ws, name: 'Acme' } });
+		expect(started.result).toBeUndefined();
+
+		// Still running: status waits again (briefly), then reports running
+		const meanwhile = await service.status({
+			userId: user,
+			executionId: started.executionId,
+			resume: true
+		});
+		expect(['running', 'completed']).toContain(meanwhile.status);
+
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		const done = await service.status({
+			userId: user,
+			executionId: started.executionId,
+			resume: true
+		});
+		expect(done).toMatchObject({
+			status: 'completed',
+			result: { ok: 'gh.listIssues', n: 1 },
+			logs: 'still here\n'
+		});
+		// Content is still wiped from the database: the result lived only in memory
+		expect(await contentLeft(t.db, started.executionId)).toBe(0);
+		// Other users cannot collect it
+		await expect(
+			service.status({ userId: peer, executionId: started.executionId, resume: true })
+		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('keeps the failure message of a long run for execution_status', async () => {
+		const { service } = makeSystem(t.db, PROGRAMS, { softWaitMs: 20 });
+		const started = await service.start({
+			actor: actor(),
+			clientId: 'claude',
+			code: 'slowFailure'
+		});
+		expect(started.status).toBe('running');
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		const done = await service.status({
+			userId: user,
+			executionId: started.executionId,
+			resume: false
+		});
+		expect(done).toMatchObject({
+			status: 'failed',
+			error: { code: 'runtime_error', message: 'boom after a while' }
+		});
+	});
+
+	it('returns quick runs directly', async () => {
+		const { service } = makeSystem(t.db, PROGRAMS, { softWaitMs: 5_000 });
+		const outcome = await service.start({ actor: actor(), clientId: 'claude', code: 'read' });
+		expect(outcome.status).toBe('completed');
+	});
+});
 
 describe('executions + bridge', () => {
 	it('runs read-only calls without approval and wipes content at the end', async () => {

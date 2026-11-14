@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "shortcut",
+	"name": "Shortcut",
+	"tagline": "Stories, epics and iterations",
+	"description": "Search, create and update Shortcut stories, epics and iterations for software teams.",
+	"homepage": "https://www.shortcut.com/",
+	"icon": "icons/shortcut.png",
+	"url": "https://mcp.shortcut.com/mcp",
+	"namespace": "shortcut",
+	"publisher": "official",
+	"category": "project-management",
+	"tags": ["stories", "epics", "iterations"],
+	"examples": [
+		"What stories are in progress in the current iteration?",
+		"Create a story for the CSV export bug"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "needs-review",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.app.shortcut.com offers CIMD and dynamic client registration. Official docs page not confirmed yet (endpoint on shortcut.com domain)."
+	}
+}

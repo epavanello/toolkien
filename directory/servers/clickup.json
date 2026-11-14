@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "clickup",
+	"name": "ClickUp",
+	"tagline": "Tasks, docs and time tracking",
+	"description": "Search your ClickUp workspace, create and update tasks, comment and track time, so agents keep work moving.",
+	"homepage": "https://help.clickup.com/hc/en-us/articles/33335772678423-What-is-ClickUp-MCP",
+	"icon": "icons/clickup.png",
+	"url": "https://mcp.clickup.com/mcp",
+	"namespace": "clickup",
+	"publisher": "official",
+	"category": "project-management",
+	"tags": ["tasks", "docs", "time-tracking"],
+	"examples": [
+		"Create a task in Sprint 12 for the onboarding email",
+		"What did my team close yesterday?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from ClickUp's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.clickup.com offers dynamic client registration."
+	}
+}

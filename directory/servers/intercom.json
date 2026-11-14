@@ -2,22 +2,30 @@
 	"$schema": "../schema.json",
 	"id": "intercom",
 	"name": "Intercom",
-	"description": "Search Intercom conversations and contacts.",
+	"tagline": "Customer conversations and contacts",
+	"description": "Search customer conversations and contacts in Intercom to understand issues, spot trends and prepare replies.",
 	"homepage": "https://developers.intercom.com/docs/guides/mcp",
 	"icon": "icons/intercom.png",
 	"url": "https://mcp.intercom.com/mcp",
 	"namespace": "intercom",
 	"publisher": "official",
 	"category": "communication",
-	"tags": ["support", "crm"],
+	"tags": ["support", "conversations", "customers"],
+	"examples": [
+		"What did customers complain about most this week?",
+		"Find the last conversation with jane@acme.com"
+	],
 	"auth": {
-		"type": "oauth"
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Endpoint for US-hosted workspaces, from Intercom's docs; live check: 401 + RFC 9728 metadata, dynamic client registration. EU workspaces use https://mcp.eu.intercom.com/mcp (add it by URL); AU workspaces are not supported yet. OAuth is required for the Fin Operator tools."
-	},
-	"tools": {}
+		"notes": "Endpoint from Intercom's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.intercom.com offers dynamic client registration."
+	}
 }

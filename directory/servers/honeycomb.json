@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "honeycomb",
+	"name": "Honeycomb",
+	"tagline": "Query traces, datasets and SLOs",
+	"description": "Run Honeycomb queries, explore traces and check SLOs and triggers, so agents can investigate latency and errors with real data.",
+	"homepage": "https://docs.honeycomb.io/integrations/mcp/concepts",
+	"icon": "icons/honeycomb.png",
+	"url": "https://mcp.honeycomb.io/mcp",
+	"namespace": "honeycomb",
+	"publisher": "official",
+	"category": "monitoring",
+	"tags": ["observability", "traces", "slos"],
+	"examples": [
+		"Which endpoints got slower after yesterday’s deploy?",
+		"How much error budget is left on the API SLO?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Honeycomb's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server ui.honeycomb.io offers CIMD and dynamic client registration."
+	}
+}

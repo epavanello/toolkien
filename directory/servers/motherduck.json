@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "motherduck",
+	"name": "MotherDuck",
+	"tagline": "DuckDB in the cloud for analytics",
+	"description": "Explore MotherDuck databases and run DuckDB SQL over your cloud data warehouse.",
+	"homepage": "https://motherduck.com/docs/sql-reference/mcp/",
+	"icon": "icons/motherduck.png",
+	"url": "https://api.motherduck.com/mcp",
+	"namespace": "motherduck",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["duckdb", "analytics", "sql"],
+	"examples": [
+		"Which products had the biggest revenue growth this quarter?",
+		"Show the schema of the sales database"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from MotherDuck's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp-auth.motherduck.com offers dynamic client registration."
+	}
+}

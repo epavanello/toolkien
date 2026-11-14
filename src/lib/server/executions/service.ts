@@ -58,7 +58,16 @@ export type ExecutionsDeps = {
 	now?: () => Date;
 	/** V8 heap limit passed to the runner */
 	memoryMb?: number;
+	/**
+	 * How long `start` / `status` wait for a run before answering `running` (default 45 s): MCP
+	 * clients time out tool calls (Codex: 60 s), the agent then follows with `execution_status`.
+	 */
+	softWaitMs?: number;
 };
+
+/** Outcomes of runs that outlived the soft wait, kept in memory until fetched (or this long) */
+const HANDOFF_TTL_MS = 10 * 60 * 1000;
+const HANDOFF_MAX = 500;
 
 /** Sealed `execution.state_*`: what a resume needs to re-run the script */
 type DurableState = { code: string };
@@ -92,6 +101,63 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 	>();
 
 	const record = (event: AuditEventInput) => deps.audit.record(event).catch(() => {});
+	const softWaitMs = deps.softWaitMs ?? 45_000;
+	/** Runs in this process, by execution id (a later `status` call waits on them) */
+	const inflight = new Map<string, Promise<ExecutionOutcome>>();
+	/**
+	 * Final outcomes of runs whose caller got `running`: the agent collects them with
+	 * `execution_status`. Memory only (content is never stored unsealed), single instance.
+	 */
+	const handedOff = new Map<string, { outcome: ExecutionOutcome; expires: number }>();
+
+	function keepForPickup(executionId: string, outcome: ExecutionOutcome) {
+		const now = Date.now();
+		for (const [id, entry] of handedOff) if (entry.expires <= now) handedOff.delete(id);
+		while (handedOff.size >= HANDOFF_MAX) handedOff.delete(handedOff.keys().next().value!);
+		handedOff.set(executionId, { outcome, expires: now + HANDOFF_TTL_MS });
+	}
+
+	/**
+	 * The outcome if the run settles within the soft wait, else `running` (the run goes on; its
+	 * outcome is kept for `execution_status`).
+	 */
+	async function waitBriefly(
+		row: ExecutionRow,
+		promise: Promise<ExecutionOutcome>
+	): Promise<ExecutionOutcome> {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<null>((resolve) => {
+			timer = setTimeout(() => resolve(null), softWaitMs);
+		});
+		const settled = await Promise.race([promise, timeout]);
+		clearTimeout(timer);
+		if (settled) return settled;
+		promise.then(
+			(outcome) => {
+				// Terminal outcomes only: a pause is read back from the database
+				if (outcome.status === 'completed' || outcome.status === 'failed') {
+					keepForPickup(row.id, outcome);
+				}
+			},
+			() => {}
+		);
+		return {
+			executionId: row.id,
+			workspace: await workspaceRef(row.workspaceId),
+			status: 'running'
+		};
+	}
+
+	/** Starts (or resumes) a run, tracked so `status` can wait on it */
+	function launch(row: ExecutionRow, code: string, actor: WorkspaceActor) {
+		const promise = run(row, code, actor);
+		inflight.set(row.id, promise);
+		const done = () => {
+			if (inflight.get(row.id) === promise) inflight.delete(row.id);
+		};
+		promise.then(done, done);
+		return waitBriefly(row, promise);
+	}
 
 	async function workspaceRef(workspaceId: string): Promise<WorkspaceRef> {
 		const [row] = await db
@@ -486,11 +552,17 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			clientName: clientName ?? null,
 			executionId: row.id
 		});
-		return run(row, code, { ...actor, role: workspace.role });
+		return launch(row, code, { ...actor, role: workspace.role });
 	};
 
 	const status: ExecutionsService['status'] = async ({ userId, executionId, resume }) => {
 		const row = await loadExecution(userId, executionId);
+		const pickup = handedOff.get(row.id);
+		if (pickup && pickup.expires > Date.now() && pickup.outcome.status === row.status) {
+			return pickup.outcome;
+		}
+		const live = inflight.get(row.id);
+		if (row.status === 'running' && live) return waitBriefly(row, live);
 		if (row.status !== 'paused') return currentOutcome(row.id);
 		const workspace = await workspaceRef(row.workspaceId);
 
@@ -543,7 +615,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			await terminate(current, ['running'], 'failed', 'code_mismatch');
 			return currentOutcome(row.id);
 		}
-		return run(current, state.code, {
+		return launch(current, state.code, {
 			workspaceId: row.workspaceId,
 			userId,
 			role: membership.role

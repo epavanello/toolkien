@@ -17,9 +17,37 @@ const MAX_CODE_LENGTH = 100_000;
 
 const header = (outcome: ExecutionOutcome) => `Workspace: ${label(outcome.workspace)}`;
 
+/** Short results are pretty-printed; past this size compact JSON saves the agent's context */
+const PRETTY_LIMIT = 2_000;
+
+/** What to do when a run stopped on a limit (the runner message already names the value) */
+const FAILURE_HINTS: Record<string, string> = {
+	type_error:
+		'Nothing ran. Fix the script against the declarations (tools_describe) and call execute again.',
+	timeout:
+		'Limit: execution time. Do less per run (fewer or lighter calls, paginate, filter upstream) or split the work across executions.',
+	memory: 'Limit: script memory. Keep less data in memory: process pages and return summaries.',
+	limit_tool_calls:
+		'Limit: tool calls per execution. Batch the work or split it across executions.',
+	expired: 'Start a new execution if the user still wants this done.',
+	runner_unavailable: 'Temporary: try again in a moment.'
+};
+
+function resultText(outcome: ExecutionOutcome): string[] {
+	if (outcome.result === undefined) return [];
+	const value = outcome.result;
+	if (outcome.truncated && typeof value === 'string') {
+		return ['Result (JSON text, cut at the output limit):', value];
+	}
+	if (typeof value === 'string') return ['Result (string):', value];
+	const pretty = JSON.stringify(value, null, 2) ?? 'null';
+	return ['Result:', pretty.length <= PRETTY_LIMIT ? pretty : (JSON.stringify(value) ?? 'null')];
+}
+
 /**
- * What the agent sees: the workspace first, then a JSON report. A paused execution asks the
- * human (elicitation or link); it never offers the model a way to approve.
+ * What the agent sees: the workspace, a status line, then the result, error and logs as plain
+ * text (multi-line diagnostics and logs stay readable, never JSON-escaped). A paused execution
+ * asks the human (elicitation or link); it never offers the model a way to approve.
  */
 export async function renderOutcome(
 	env: ToolEnv,
@@ -31,26 +59,28 @@ export async function renderOutcome(
 			? requestApproval(env, outcome.approval, outcome.executionId, header(outcome))
 			: approvalFallback(outcome.approval, outcome.executionId, header(outcome));
 	}
-	const report = {
-		executionId: outcome.executionId,
-		status: outcome.status,
-		...(outcome.result !== undefined ? { result: outcome.result } : {}),
-		...(outcome.logs ? { logs: outcome.logs } : {}),
-		...(outcome.truncated ? { truncated: true } : {}),
-		...(outcome.error ? { error: outcome.error } : {})
-	};
-	const next =
-		outcome.status === 'running' || outcome.status === 'paused'
-			? [`Call execution_status with executionId "${outcome.executionId}" to follow it.`]
-			: [];
+	const parts = [header(outcome)];
+	const code = outcome.error?.code;
+	parts.push(`Execution ${outcome.executionId}: ${outcome.status}${code ? ` [${code}]` : ''}`);
+	if (outcome.status === 'running') {
+		parts.push(
+			`Still running. Call execution_status with executionId "${outcome.executionId}" to wait for the result (the script keeps running meanwhile; do not start it again).`
+		);
+	} else if (outcome.status === 'paused') {
+		parts.push(
+			`Paused. Call execution_status with executionId "${outcome.executionId}" to resume it once the user has decided.`
+		);
+	}
+	if (outcome.error) {
+		parts.push(outcome.error.message);
+		const hint = code ? FAILURE_HINTS[code] : undefined;
+		if (hint) parts.push(`Hint: ${hint}`);
+	}
+	parts.push(...resultText(outcome));
+	if (outcome.logs) parts.push('Logs:', outcome.logs);
 	return {
 		...(outcome.status === 'failed' ? { isError: true } : {}),
-		content: [
-			{
-				type: 'text',
-				text: [header(outcome), JSON.stringify(report, null, 2), ...next].join('\n')
-			}
-		]
+		content: [{ type: 'text', text: parts.join('\n') }]
 	};
 }
 
@@ -103,7 +133,9 @@ export function registerExecutionTools(
 			'`code` is the BODY of an async function: use `await`, and `return` the value you want back. No import/export and no dynamic import.',
 			'Each connector instance is a global object named by its namespace, with the functions declared by tools_describe; one script can call several connectors and several instances of the same server. Example:',
 			'`const a = await posthogDevmotion.query({ query: "select count() from events" }); const b = await posthogDevpost.query({ query: "select count() from events" }); return { devmotion: a, devpost: b };`.',
-			'Type errors against the declarations come back immediately, before anything runs. The return value and console.log output come back, truncated past the output limit: filter or summarize inside the script.',
+			'Type errors against the declarations come back immediately, before anything runs, with the line, a caret and a hint. The return value and console.log output come back, truncated past the output limit: filter or summarize inside the script.',
+			'A failed tool call throws `ToolCallError` (`e.code`, `e.path`, `e.message` with the server text): catch it to continue. Runtime errors report the script line.',
+			'Long scripts answer `running` after about 45 s: then call execution_status with the executionId to get the result.',
 			'No network, filesystem or environment access: only the declared tool functions.',
 			"Some tool calls need the user's approval: the user decides in a dialog or on a Toolkien link, then call execution_status. You can never approve on the user's behalf."
 		].join(' '),
@@ -139,7 +171,7 @@ export function registerExecutionTools(
 		name: 'execution_status',
 		title: 'Execution status',
 		description:
-			'Status of an execution started by execute. When it was waiting for approval and the user has decided, it resumes and returns the result. Use it after the user approved or rejected on the Toolkien link.',
+			'Status of an execution started by execute. Waits for a running execution (up to about 45 s per call) and returns its result; when it was waiting for approval and the user has decided, it resumes and returns the result. Use it after execute answered `running`, or after the user approved or rejected on the Toolkien link.',
 		input: z.object({
 			executionId: z
 				.string()

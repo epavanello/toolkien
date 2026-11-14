@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "lucid",
+	"name": "Lucid",
+	"tagline": "Lucidchart and Lucidspark documents",
+	"description": "Search Lucid documents and generate flowcharts and diagrams in Lucidchart from a description.",
+	"homepage": "https://help.lucid.co/hc/en-us/articles/42578801807508-Integrate-Lucid-with-AI-tools-using-the-Lucid-MCP-server",
+	"icon": "icons/lucid.png",
+	"url": "https://mcp.lucid.app/mcp",
+	"namespace": "lucid",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["diagrams", "flowcharts", "whiteboard"],
+	"examples": [
+		"Create a flowchart of our refund process",
+		"Find the architecture diagram of the billing service"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Lucid's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.lucid.app offers CIMD and dynamic client registration."
+	}
+}

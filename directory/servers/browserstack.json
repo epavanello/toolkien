@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "browserstack",
+	"name": "BrowserStack",
+	"tagline": "Test management and cross-browser test runs",
+	"description": "Create test cases and runs, check accessibility issues and debug failed builds across real browsers and devices on BrowserStack.",
+	"homepage": "https://www.browserstack.com/docs/browserstack-mcp-server/overview",
+	"icon": "icons/browserstack.png",
+	"url": "https://mcp.browserstack.com/mcp",
+	"namespace": "browserstack",
+	"publisher": "official",
+	"category": "developer-tools",
+	"tags": ["testing", "accessibility", "qa"],
+	"examples": [
+		"Create a test run for the release-2.4 test plan",
+		"What accessibility issues did the last scan of the homepage find?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from BrowserStack's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.browserstack.com offers dynamic client registration."
+	}
+}

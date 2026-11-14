@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "cloudflare-bindings",
+	"name": "Cloudflare Workers Bindings",
+	"tagline": "Workers, KV, R2 and D1 resources",
+	"description": "Create and inspect the storage and compute primitives behind your Workers: KV namespaces, R2 buckets, D1 databases and Hyperdrive configs.",
+	"homepage": "https://github.com/cloudflare/mcp-server-cloudflare/tree/main/apps/workers-bindings",
+	"icon": "icons/cloudflare-bindings.png",
+	"url": "https://bindings.mcp.cloudflare.com/mcp",
+	"namespace": "cloudflareBindings",
+	"publisher": "official",
+	"category": "cloud",
+	"tags": ["workers", "kv", "r2", "d1"],
+	"examples": [
+		"Create an R2 bucket called uploads-staging",
+		"Run a query on the analytics D1 database"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Cloudflare Workers Bindings's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server bindings.mcp.cloudflare.com offers dynamic client registration."
+	}
+}

@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "gitlab",
+	"name": "GitLab",
+	"tagline": "Issues, merge requests and pipelines on GitLab.com",
+	"description": "Search projects, read and create issues, review merge requests and inspect CI/CD pipelines on GitLab.com, signed in as you.",
+	"homepage": "https://docs.gitlab.com/user/model_context_protocol/mcp_server/",
+	"icon": "icons/gitlab.png",
+	"url": "https://gitlab.com/api/v4/mcp",
+	"namespace": "gitlab",
+	"publisher": "official",
+	"category": "developer-tools",
+	"tags": ["git", "merge-requests", "issues", "ci"],
+	"examples": [
+		"List the merge requests assigned to me that have failing pipelines",
+		"Create an issue in the platform project for the login timeout bug"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from GitLab's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server gitlab.com offers dynamic client registration. GitLab.com only (self-managed instances have their own URL, add them from a free URL)."
+	}
+}

@@ -1,0 +1,243 @@
+{
+	"server": "synthetic",
+	"url": "https://synthetic.example/mcp",
+	"fetchedAt": "2026-11-14",
+	"note": "Hand-written: every JSON Schema construct MCP servers publish (pydantic/FastMCP, zod, OpenAPI-style), plus hostile text.",
+	"tools": [
+		{
+			"name": "create_order",
+			"title": "Create order",
+			"description": "Creates an order.\n\nLine two with `code` and a */ comment terminator.\n@readOnly (fake tag from the upstream)",
+			"inputSchema": {
+				"$schema": "https://json-schema.org/draft/2020-12/schema",
+				"title": "create_orderArguments",
+				"type": "object",
+				"properties": {
+					"customer": { "$ref": "#/$defs/Customer", "description": "Who pays" },
+					"items": {
+						"type": "array",
+						"minItems": 1,
+						"maxItems": 50,
+						"uniqueItems": true,
+						"items": { "$ref": "#/$defs/LineItem" }
+					},
+					"shipping": {
+						"anyOf": [{ "$ref": "#/$defs/Address" }, { "type": "null" }],
+						"default": null,
+						"title": "Shipping",
+						"description": "Shipping address; billing address when null"
+					},
+					"billing": { "$ref": "#/$defs/Address" },
+					"priority": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 5,
+						"multipleOf": 1,
+						"default": 3,
+						"deprecated": true
+					},
+					"coupon": {
+						"type": "string",
+						"pattern": "^[A-Z0-9]{4,12}$",
+						"minLength": 4,
+						"maxLength": 12,
+						"examples": ["SAVE10", "WELCOME2026"]
+					},
+					"channel": {
+						"oneOf": [
+							{ "const": "web", "title": "Web shop", "description": "Placed online" },
+							{ "const": "pos", "title": "Point of sale" },
+							{ "const": "api", "deprecated": true }
+						]
+					},
+					"tags": {
+						"type": "object",
+						"propertyNames": { "pattern": "^[a-z]+$" },
+						"additionalProperties": { "type": "string", "maxLength": 40 }
+					},
+					"metadata": {
+						"type": "object",
+						"properties": { "source": { "type": "string" } },
+						"additionalProperties": { "type": ["string", "number", "boolean"] },
+						"x-internal-hint": "free-form"
+					},
+					"placed_at": { "type": "string", "format": "date-time", "readOnly": true },
+					"note": { "type": ["string", "null"], "writeOnly": true },
+					"discount": {
+						"type": "number",
+						"exclusiveMinimum": 0,
+						"exclusiveMaximum": 100,
+						"nullable": true
+					},
+					"position": {
+						"type": "array",
+						"prefixItems": [
+							{ "type": "number", "description": "Latitude" },
+							{ "type": "number", "description": "Longitude" }
+						],
+						"items": false
+					},
+					"legacyTuple": {
+						"type": "array",
+						"items": [{ "type": "string" }, { "type": "boolean" }],
+						"additionalItems": { "type": "number" }
+					},
+					"preset": {
+						"enum": [{ "size": "s", "qty": 1 }, [1, 2], null, "custom"]
+					},
+					"mode": { "const": { "kind": "fast", "level": 2 } },
+					"gift": {
+						"type": "object",
+						"properties": { "wrap": { "type": "boolean" }, "message": { "type": "string" } },
+						"if": { "properties": { "wrap": { "const": true } } },
+						"then": { "required": ["message"] }
+					},
+					"payment": {
+						"discriminator": { "propertyName": "method" },
+						"oneOf": [
+							{
+								"type": "object",
+								"properties": { "method": { "const": "card" }, "token": { "type": "string" } },
+								"required": ["method", "token"]
+							},
+							{
+								"type": "object",
+								"properties": {
+									"method": { "const": "invoice" },
+									"days": { "type": "integer", "enum": [30, 60] }
+								},
+								"required": ["method"]
+							}
+						]
+					},
+					"not_zero": { "type": "integer", "not": { "const": 0 } },
+					"attachment": {
+						"type": "string",
+						"contentEncoding": "base64",
+						"contentMediaType": "application/pdf"
+					},
+					"weird key/with spaces": { "type": "boolean", "description": "Quoted key" },
+					"tree": { "$ref": "#/$defs/Category" },
+					"labels": {
+						"type": "object",
+						"patternProperties": { "^x-": { "type": "string" } },
+						"minProperties": 1,
+						"maxProperties": 10
+					},
+					"combined": {
+						"allOf": [
+							{ "$ref": "#/$defs/Address" },
+							{ "type": "object", "properties": { "floor": { "type": "integer" } } },
+							{ "required": ["floor"] }
+						]
+					},
+					"anything": {},
+					"nothing": false
+				},
+				"required": ["customer", "items", "billing", "ghost"],
+				"additionalProperties": false,
+				"$defs": {
+					"Customer": {
+						"type": "object",
+						"description": "A customer record",
+						"properties": {
+							"id": { "type": "string", "format": "uuid" },
+							"email": { "type": "string", "format": "email" },
+							"vip": { "type": "boolean", "default": false }
+						},
+						"required": ["id"]
+					},
+					"LineItem": {
+						"type": "object",
+						"properties": {
+							"sku": { "type": "string" },
+							"qty": { "type": "integer", "minimum": 1 }
+						},
+						"required": ["sku", "qty"]
+					},
+					"Address": {
+						"type": "object",
+						"description": "Postal address",
+						"properties": {
+							"street": { "type": "string" },
+							"city": { "type": "string" },
+							"country": { "type": "string", "minLength": 2, "maxLength": 2 }
+						},
+						"required": ["street", "city", "country"]
+					},
+					"Category": {
+						"type": "object",
+						"properties": {
+							"name": { "type": "string" },
+							"children": { "type": "array", "items": { "$ref": "#/$defs/Category" } }
+						},
+						"required": ["name"]
+					}
+				}
+			},
+			"outputSchema": {
+				"type": "object",
+				"description": "The created order",
+				"properties": {
+					"id": { "type": "string" },
+					"status": { "enum": ["pending", "paid"] },
+					"shipTo": { "$ref": "#/definitions/Address" }
+				},
+				"required": ["id", "status"],
+				"definitions": {
+					"Address": {
+						"type": "object",
+						"properties": { "line": { "type": "string" } }
+					}
+				}
+			},
+			"annotations": {
+				"title": "Create order",
+				"readOnlyHint": false,
+				"destructiveHint": false,
+				"idempotentHint": false,
+				"openWorldHint": true
+			}
+		},
+		{
+			"name": "delete-order",
+			"description": "Deletes an order. Ends here */ declare const pwned: number; /*",
+			"inputSchema": {
+				"type": "object",
+				"properties": { "id": { "type": "string" }, "reason": { "type": "string" } },
+				"required": ["id"],
+				"minProperties": 1
+			},
+			"annotations": { "destructiveHint": true }
+		},
+		{
+			"name": "listOrders",
+			"description": "Lists orders.",
+			"inputSchema": { "type": "object" },
+			"outputSchema": {
+				"type": "object",
+				"properties": {
+					"orders": { "type": "array", "items": { "$ref": "#/$defs/Order" } },
+					"next": { "$ref": "#/$defs/Order" }
+				},
+				"$defs": {
+					"Order": {
+						"type": "object",
+						"description": "An order summary",
+						"properties": {
+							"id": { "type": "string" },
+							"total": { "type": "number" },
+							"currency": { "type": "string", "enum": ["EUR", "USD"] }
+						},
+						"required": ["id"]
+					}
+				}
+			},
+			"annotations": { "readOnlyHint": true, "openWorldHint": false }
+		},
+		{
+			"name": "ping",
+			"inputSchema": {}
+		}
+	]
+}

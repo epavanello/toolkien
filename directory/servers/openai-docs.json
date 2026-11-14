@@ -1,0 +1,54 @@
+{
+	"$schema": "../schema.json",
+	"id": "openai-docs",
+	"name": "OpenAI Docs",
+	"tagline": "OpenAI platform docs and API reference",
+	"description": "Search the OpenAI developer docs and read the OpenAPI spec of any endpoint, so agents integrate the API correctly.",
+	"homepage": "https://developers.openai.com/resources/docs-mcp",
+	"icon": "icons/openai-docs.png",
+	"url": "https://developers.openai.com/mcp",
+	"namespace": "openaiDocs",
+	"publisher": "official",
+	"category": "knowledge",
+	"tags": ["docs", "openai", "api"],
+	"examples": [
+		"How do I stream responses with the Responses API?",
+		"Show the request schema of the embeddings endpoint"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"search_openai_docs": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		},
+		"list_openai_docs": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		},
+		"fetch_openai_doc": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		},
+		"list_api_endpoints": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		},
+		"get_openapi_spec": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (5 tools)."
+	}
+}

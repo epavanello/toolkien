@@ -1,0 +1,33 @@
+{
+	"$schema": "../schema.json",
+	"id": "socket",
+	"name": "Socket",
+	"tagline": "Dependency security scores before you install",
+	"description": "Check the supply-chain, vulnerability and quality scores of open-source packages before an agent adds them to your project.",
+	"homepage": "https://github.com/SocketDev/socket-mcp",
+	"icon": "icons/socket.png",
+	"url": "https://mcp.socket.dev/",
+	"namespace": "socket",
+	"publisher": "official",
+	"category": "security",
+	"tags": ["dependencies", "supply-chain", "npm"],
+	"examples": ["Is it safe to add left-pad 1.3.0?", "Compare the security scores of axios and ky"],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"depscore": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			},
+			"note": "Package score lookup."
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (7 tools). Package scoring works anonymously; organization tools (alerts, threat feed) need a Socket account."
+	}
+}

@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "zoominfo",
+	"name": "ZoomInfo",
+	"tagline": "Verified B2B contacts and intent signals",
+	"description": "Research accounts, find and enrich contacts and act on buying-intent signals from ZoomInfo’s B2B data.",
+	"homepage": "https://docs.zoominfo.com/docs/mcp",
+	"icon": "icons/zoominfo.png",
+	"url": "https://mcp.zoominfo.com/mcp",
+	"namespace": "zoominfo",
+	"publisher": "official",
+	"category": "crm",
+	"tags": ["prospecting", "enrichment", "b2b-data"],
+	"examples": [
+		"Research Acme Corp before my call: size, tech stack and recent news",
+		"Find the VP of Marketing at these five companies"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from ZoomInfo's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.zoominfo.com offers dynamic client registration."
+	}
+}

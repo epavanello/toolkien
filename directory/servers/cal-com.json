@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "cal-com",
+	"name": "Cal.com",
+	"tagline": "Open-source scheduling and bookings",
+	"description": "Manage event types, check availability and create or reschedule bookings in Cal.com.",
+	"homepage": "https://cal.com/docs/mcp",
+	"icon": "icons/cal-com.png",
+	"url": "https://mcp.cal.com/mcp",
+	"namespace": "calCom",
+	"publisher": "official",
+	"category": "productivity",
+	"tags": ["scheduling", "bookings", "calendar"],
+	"examples": [
+		"Book a 15 minute intro with jane@example.com on Thursday afternoon",
+		"Which bookings were cancelled this week?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "needs-review",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.cal.com offers CIMD and dynamic client registration. Official docs page not confirmed yet (endpoint on cal.com domain, listed by MCP directories)."
+	}
+}

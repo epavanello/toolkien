@@ -83,6 +83,17 @@ export type DirectoryEntry = {
 	/** (additive) Data-driven fields from `directory/servers/<id>.json` */
 	category: string;
 	tags: string[];
+	/** (additive) Short benefit line shown under the name on cards */
+	tagline?: string;
+	/** (additive) Example prompts an agent can run with the server */
+	examples: string[];
+	/** (additive) Featured in the "Popular" filter and the landing showcase */
+	popular: boolean;
+	/**
+	 * (additive) Toolkien can connect it today: `false` when its OAuth server only accepts
+	 * pre-registered clients (no dynamic registration, no CIMD)
+	 */
+	supported: boolean;
 	/** Reviewer notes per upstream tool name */
 	toolNotes: Record<string, string>;
 	/** `token` auth: where to create the token, shown next to the input */

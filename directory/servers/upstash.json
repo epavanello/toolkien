@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "upstash",
+	"name": "Upstash",
+	"tagline": "Serverless Redis, QStash and Vector",
+	"description": "Create and inspect Upstash Redis databases, run commands, check usage and manage QStash schedules.",
+	"homepage": "https://upstash.com/blog/upstash-has-a-remote-mcp-server-now",
+	"icon": "icons/upstash.png",
+	"url": "https://mcp.upstash.com/mcp",
+	"namespace": "upstash",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["redis", "queues", "serverless"],
+	"examples": [
+		"Create a Redis database in eu-west-1 for rate limiting",
+		"How many commands did the sessions database run today?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Upstash's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server clerk.upstash.com offers dynamic client registration."
+	}
+}

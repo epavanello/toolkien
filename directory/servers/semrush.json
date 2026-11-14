@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "semrush",
+	"name": "Semrush",
+	"tagline": "Keyword, traffic and competitor research",
+	"description": "Run keyword research, domain and backlink analysis and competitor traffic reports with Semrush data.",
+	"homepage": "https://developer.semrush.com/api/v3/introduction/semrush-mcp/",
+	"icon": "icons/semrush.png",
+	"url": "https://mcp.semrush.com/v1/mcp",
+	"namespace": "semrush",
+	"publisher": "official",
+	"category": "marketing",
+	"tags": ["seo", "keywords", "competitors", "ppc"],
+	"examples": [
+		"Give me 20 low-difficulty keywords around “invoice software”",
+		"Compare traffic of our domain with our top 3 competitors"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Semrush's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server oauth.semrush.com offers dynamic client registration."
+	}
+}

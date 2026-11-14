@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "webflow",
+	"name": "Webflow",
+	"tagline": "Sites, pages and CMS content",
+	"description": "Update CMS collections, pages and assets and publish your Webflow sites from a prompt.",
+	"homepage": "https://developers.webflow.com/mcp/reference/overview",
+	"icon": "icons/webflow.png",
+	"url": "https://mcp.webflow.com/mcp",
+	"namespace": "webflow",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["websites", "cms", "no-code"],
+	"examples": [
+		"Add a blog post draft to the CMS from this outline",
+		"Publish the marketing site to production"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Webflow's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.webflow.com offers dynamic client registration."
+	}
+}

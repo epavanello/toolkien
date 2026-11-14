@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "contentful",
+	"name": "Contentful",
+	"tagline": "Entries, assets and content models",
+	"description": "Manage Contentful entries, assets, content types and locales, and publish content from the conversation.",
+	"homepage": "https://www.contentful.com/developers/docs/tools/mcp-server/",
+	"icon": "icons/contentful.png",
+	"url": "https://mcp.contentful.com/mcp",
+	"namespace": "contentful",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["cms", "content", "localization"],
+	"examples": [
+		"Create a landing page entry with this copy in English and Italian",
+		"List entries changed this week but not published"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Contentful's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.contentful.com offers dynamic client registration."
+	}
+}

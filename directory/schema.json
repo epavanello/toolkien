@@ -15,6 +15,11 @@
 			"minLength": 1,
 			"maxLength": 60
 		},
+		"tagline": {
+			"type": "string",
+			"minLength": 3,
+			"maxLength": 80
+		},
 		"description": {
 			"type": "string",
 			"minLength": 10,
@@ -53,7 +58,14 @@
 				"monitoring",
 				"design",
 				"communication",
-				"other"
+				"other",
+				"cloud",
+				"security",
+				"productivity",
+				"automation",
+				"crm",
+				"marketing",
+				"ai"
 			]
 		},
 		"tags": {
@@ -64,6 +76,19 @@
 				"type": "string",
 				"maxLength": 30,
 				"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+			}
+		},
+		"popular": {
+			"type": "boolean"
+		},
+		"examples": {
+			"default": [],
+			"maxItems": 5,
+			"type": "array",
+			"items": {
+				"type": "string",
+				"minLength": 5,
+				"maxLength": 160
 			}
 		},
 		"auth": {

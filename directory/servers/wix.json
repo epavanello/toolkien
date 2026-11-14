@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "wix",
+	"name": "Wix",
+	"tagline": "Build and manage Wix sites and stores",
+	"description": "Create and manage Wix sites, stores, bookings and content, and search the Wix developer docs.",
+	"homepage": "https://dev.wix.com/docs/sdk/articles/use-the-wix-mcp/about-the-wix-mcp",
+	"icon": "icons/wix.png",
+	"url": "https://mcp.wix.com/mcp",
+	"namespace": "wix",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["websites", "ecommerce", "bookings"],
+	"examples": [
+		"Add a new product to my Wix store",
+		"How many bookings did the studio get this week?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Wix's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.wix.com offers dynamic client registration."
+	}
+}

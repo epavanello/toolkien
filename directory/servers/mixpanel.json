@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "mixpanel",
+	"name": "Mixpanel",
+	"tagline": "Events, funnels and retention",
+	"description": "Query events, funnels and retention in Mixpanel and explain changes in your product metrics.",
+	"homepage": "https://docs.mixpanel.com/docs/mcp",
+	"icon": "icons/mixpanel.png",
+	"url": "https://mcp.mixpanel.com/mcp",
+	"namespace": "mixpanel",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["product-analytics", "funnels", "retention"],
+	"examples": [
+		"Where do users drop off in the signup funnel?",
+		"How did daily active users change after the redesign?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Mixpanel's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server auth.mixpanel.com offers dynamic client registration."
+	}
+}

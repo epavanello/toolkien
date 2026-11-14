@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "jam",
+	"name": "Jam",
+	"tagline": "Bug reports with console logs and network requests",
+	"description": "Turn a Jam link into a fix: agents read the console logs, network requests, user events and screenshots recorded with the bug report.",
+	"homepage": "https://jam.dev/docs/jam-mcp",
+	"icon": "icons/jam.png",
+	"url": "https://mcp.jam.dev/mcp",
+	"namespace": "jam",
+	"publisher": "official",
+	"category": "developer-tools",
+	"tags": ["bug-reports", "debugging", "qa"],
+	"examples": [
+		"Look at this Jam and tell me which request failed",
+		"Summarize the user steps recorded in the latest Jam"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Jam's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.jam.dev offers dynamic client registration."
+	}
+}

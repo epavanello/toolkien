@@ -1,6 +1,7 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
+	AliasRegistry,
 	canonicalJson,
 	functionNames,
 	moduleDeclaration,
@@ -217,7 +218,79 @@ describe('schemaToType', () => {
 	it('caps depth', () => {
 		let schema: Record<string, unknown> = { type: 'string' };
 		for (let i = 0; i < 20; i++) schema = { type: 'array', items: schema };
-		expect(schemaToType(schema, 0, { maxDepth: 3 })).toBe('unknown[][][][]');
+		const type = schemaToType(schema, 0, { maxDepth: 3 });
+		// Past the limit the subschema is kept verbatim for the agent
+		expect(type).toMatch(
+			/^\/\*\* @schema \{"type":"array",.*"type":"string".*\*\/ unknown\[\]\[\]\[\]\[\]$/
+		);
+	});
+
+	it('keeps constraints, examples and unknown keywords as tags', () => {
+		const type = schemaToType({
+			type: 'object',
+			properties: {
+				n: { type: 'integer', minimum: 1, maximum: 9007199254740991, default: 3 },
+				s: { type: 'string', pattern: '^a+$', maxLength: 5, examples: ['aa'], 'x-hint': 'h' },
+				list: { type: 'array', items: { type: 'string', description: 'One tag' }, minItems: 1 }
+			}
+		});
+		expect(type).toContain('/** @integer @minimum 1 @default 3 */');
+		expect(type).not.toContain('9007199254740991');
+		expect(type).toContain(
+			'/** @maxLength 5 @pattern ^a+$ @example "aa" @schema {"x-hint":"h"} */'
+		);
+		expect(type).toContain('list?: /** One tag */ string[];');
+	});
+
+	it('types enums and consts of any JSON value and flattens nested unions', () => {
+		expect(schemaToType({ enum: [{ a: 1 }, [1, 'x'], null] })).toBe('{ "a": 1 } | [1, "x"] | null');
+		expect(schemaToType({ anyOf: [{ enum: ['a', 'b'] }, { const: false }] })).toBe(
+			'"a" | "b" | false'
+		);
+	});
+
+	it('documents union branches inline and keeps titles that add information', () => {
+		expect(
+			schemaToType({
+				oneOf: [
+					{ const: 'once', title: 'Approve once' },
+					{ const: 'all', description: 'Every call' }
+				]
+			})
+		).toBe('/** Approve once */ "once" | /** Every call */ "all"');
+		// A title repeating the property name is noise
+		expect(
+			schemaToType({ type: 'object', properties: { query: { type: 'string', title: 'Query' } } })
+		).not.toContain('Query');
+	});
+
+	it('names shared and recursive definitions with a registry', () => {
+		const aliases = new AliasRegistry('shop');
+		const schema = {
+			type: 'object',
+			properties: {
+				from: { $ref: '#/$defs/Address' },
+				to: { $ref: '#/$defs/Address' },
+				tree: { $ref: '#/$defs/Node' }
+			},
+			$defs: {
+				Address: {
+					type: 'object',
+					description: 'Postal address',
+					properties: { street: { type: 'string' }, city: { type: 'string' } }
+				},
+				Node: {
+					type: 'object',
+					properties: { children: { type: 'array', items: { $ref: '#/$defs/Node' } } }
+				}
+			}
+		};
+		const type = schemaToType(schema, 1, { aliases, rootId: 'in:x' });
+		expect(type).toContain('from?: shop.Address;');
+		expect(type).toContain('tree?: shop.Node;');
+		expect([...aliases.declarations.keys()]).toEqual(['Address', 'Node']);
+		expect(aliases.declarations.get('Node')!.type).toContain('children?: shop.Node[];');
+		expect(aliases.declarations.get('Address')!.docs).toEqual(['Postal address']);
 	});
 });
 
@@ -233,8 +306,10 @@ describe('sanitizeComment', () => {
 		expect(text).not.toContain('\u0007');
 	});
 
-	it('truncates long text', () => {
-		expect(sanitizeComment('a'.repeat(5000)).length).toBeLessThanOrEqual(2001);
+	it('keeps long descriptions whole and cuts only past the cap, saying so', () => {
+		expect(sanitizeComment('a'.repeat(40_000))).toHaveLength(40_000);
+		const cut = sanitizeComment('a'.repeat(5000), 2000);
+		expect(cut).toMatch(/^a{2000}… \[3000 more characters cut by Toolkien\]$/);
 	});
 });
 
@@ -247,7 +322,7 @@ describe('toolDeclaration', () => {
 		expect(text).toContain('limit?: number;');
 		expect(text).toContain('@default 10');
 		expect(text).toContain('}): Promise<unknown>;');
-		expect(text).toContain('@returns The server declares no output schema');
+		expect(text).toContain('@returns unknown shape (no output schema)');
 	});
 
 	it('types the result from outputSchema and drops the inspect note', async () => {
@@ -275,6 +350,10 @@ describe('toolDeclaration', () => {
 		const destructive = await toolDeclaration(tool({ annotations: { destructiveHint: true } }));
 		expect(destructive).toContain('@destructive');
 		expect(destructive).not.toContain('@readOnly');
+		const additive = await toolDeclaration(
+			tool({ annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false } })
+		);
+		expect(additive).toContain('@write @nonDestructive @closedWorld');
 	});
 
 	it('marks unverified tools', async () => {

@@ -21,6 +21,7 @@
 		type TableFilter,
 		type TableGroup
 	} from './data-table.ts';
+	import type { BrandArtName } from '#lib/components/brand/brand-art.svelte';
 	import EmptyState from './empty-state.svelte';
 	import FilterBar from './filter-bar.svelte';
 	import Mono from './mono.svelte';
@@ -45,7 +46,8 @@
 		pageSize?: number;
 		loading?: boolean;
 		error?: unknown;
-		empty?: { title: string; description?: string; action?: Snippet };
+		/** Empty list (not a search miss); `art` swaps the icon for a brand illustration */
+		empty?: { title: string; description?: string; action?: Snippet; art?: BrandArtName };
 		/** Replaces the "No results" state of a search or filter; receives the search text */
 		noResults?: Snippet<[string]>;
 		/** Extra controls at the right of the filter bar (primary action) */
@@ -166,6 +168,7 @@
 							{:else}
 								<EmptyState
 									icon={Inbox}
+									art={empty.art}
 									title={empty.title}
 									description={empty.description}
 									action={empty.action}

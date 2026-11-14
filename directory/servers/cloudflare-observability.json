@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "cloudflare-observability",
+	"name": "Cloudflare Observability",
+	"tagline": "Logs and analytics of your Workers",
+	"description": "Query Workers logs and invocation analytics to debug errors and slow requests in your Cloudflare applications.",
+	"homepage": "https://github.com/cloudflare/mcp-server-cloudflare/tree/main/apps/workers-observability",
+	"icon": "icons/cloudflare-observability.png",
+	"url": "https://observability.mcp.cloudflare.com/mcp",
+	"namespace": "cloudflareObservability",
+	"publisher": "official",
+	"category": "monitoring",
+	"tags": ["logs", "workers", "debugging"],
+	"examples": [
+		"Show the errors of the api Worker in the last hour",
+		"Which Worker routes have the highest p95 latency today?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Cloudflare Observability's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server observability.mcp.cloudflare.com offers dynamic client registration."
+	}
+}

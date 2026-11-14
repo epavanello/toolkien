@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "new-relic",
+	"name": "New Relic",
+	"tagline": "Telemetry, NRQL queries and incident triage",
+	"description": "Query observability data with NRQL, analyze errors and deployments and triage alerts in New Relic.",
+	"homepage": "https://docs.newrelic.com/docs/agentic-ai/mcp/overview/",
+	"icon": "icons/new-relic.png",
+	"url": "https://mcp.newrelic.com/mcp/",
+	"namespace": "newRelic",
+	"publisher": "official",
+	"category": "monitoring",
+	"tags": ["observability", "apm", "nrql", "incidents"],
+	"examples": [
+		"Did the last deployment of checkout increase the error rate?",
+		"Show the golden metrics of the payments service"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from New Relic's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server oauth2.service.newrelic.com offers dynamic client registration."
+	}
+}

@@ -2,24 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "github",
 	"name": "GitHub",
-	"description": "Repositories, issues, pull requests, Actions and code search through GitHub's official remote MCP server.",
+	"tagline": "Repos, issues, pull requests and Actions",
+	"description": "Let agents browse code, open and review pull requests, triage issues and check Actions runs across your repositories, with the permissions of your own access token.",
 	"homepage": "https://github.com/github/github-mcp-server",
 	"icon": "icons/github.png",
 	"url": "https://api.githubcopilot.com/mcp/",
 	"namespace": "github",
 	"publisher": "official",
 	"category": "developer-tools",
-	"tags": ["git", "code", "issues"],
+	"tags": ["git", "code", "issues", "pull-requests"],
+	"popular": true,
+	"examples": [
+		"Summarize the open pull requests on acme/web that wait for my review",
+		"Open an issue for the flaky checkout test with the failing log attached",
+		"Why did the last Actions run on main fail?"
+	],
 	"auth": {
 		"type": "token",
 		"tokenHelp": "Create a fine-grained personal access token with only the repositories and permissions you need.",
 		"tokenUrl": "https://github.com/settings/personal-access-tokens/new"
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "URL from the official github-mcp-server README; live check: 401 + RFC 9728 metadata. GitHub's authorization server needs a pre-registered GitHub App (no dynamic registration or CIMD), so the entry uses a personal access token sent as a bearer token. The server reports read-only hints on its tools."
-	},
-	"tools": {}
+		"notes": "Endpoint from GitHub's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server github.com."
+	}
 }

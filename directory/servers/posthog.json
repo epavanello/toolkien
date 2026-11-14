@@ -2,22 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "posthog",
 	"name": "PostHog",
-	"description": "Query PostHog insights, feature flags, experiments, errors and run HogQL.",
+	"tagline": "Product analytics, feature flags and experiments",
+	"description": "Ask product questions in plain language: query events and insights, manage feature flags and experiments and look into errors in PostHog.",
 	"homepage": "https://posthog.com/docs/model-context-protocol",
 	"icon": "icons/posthog.png",
 	"url": "https://mcp.posthog.com/mcp",
 	"namespace": "posthog",
 	"publisher": "official",
 	"category": "data",
-	"tags": ["analytics", "feature-flags"],
+	"tags": ["product-analytics", "feature-flags", "experiments"],
+	"popular": true,
+	"examples": [
+		"How many users completed onboarding last week?",
+		"Create a feature flag for the new pricing page at 20%"
+	],
 	"auth": {
-		"type": "oauth"
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Endpoint from PostHog's docs; live check: 401 + RFC 9728 metadata. A scoped personal API key also works as a bearer token."
-	},
-	"tools": {}
+		"notes": "Endpoint from PostHog's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server oauth.posthog.com offers CIMD and dynamic client registration."
+	}
 }

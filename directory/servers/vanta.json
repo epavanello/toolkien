@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "vanta",
+	"name": "Vanta",
+	"tagline": "Compliance tests, controls and evidence",
+	"description": "Check failing compliance tests, controls and vendor risks in Vanta, and gather evidence for SOC 2 and ISO 27001 audits.",
+	"homepage": "https://developer.vanta.com/docs/vanta-mcp",
+	"icon": "icons/vanta.png",
+	"url": "https://mcp.vanta.com/mcp",
+	"namespace": "vanta",
+	"publisher": "official",
+	"category": "security",
+	"tags": ["compliance", "soc2", "iso27001", "audits"],
+	"examples": [
+		"Which SOC 2 tests are failing and who owns them?",
+		"List vendors without a completed security review"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Vanta's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.vanta.com offers dynamic client registration."
+	}
+}

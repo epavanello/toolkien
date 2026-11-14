@@ -2,14 +2,20 @@
 	"$schema": "../schema.json",
 	"id": "context7",
 	"name": "Context7",
-	"description": "Up-to-date, version-specific library documentation and code examples.",
+	"tagline": "Up-to-date docs for any library",
+	"description": "Pull current documentation and code examples for thousands of libraries and frameworks into the conversation, so agents stop inventing outdated APIs.",
 	"homepage": "https://github.com/upstash/context7",
 	"icon": "icons/context7.png",
 	"url": "https://mcp.context7.com/mcp",
 	"namespace": "context7",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs", "libraries"],
+	"tags": ["docs", "libraries", "code-examples"],
+	"popular": true,
+	"examples": [
+		"Use Context7 to show how to define a Drizzle relation",
+		"What is the current way to configure Tailwind 4 plugins?"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -38,6 +44,6 @@
 		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Works without a key (rate limited); tools/list inspected anonymously (2 read-only tools). Context7 API keys go in a custom header, which Toolkien does not support yet."
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (2 tools)."
 	}
 }

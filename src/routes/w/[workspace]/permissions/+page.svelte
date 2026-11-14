@@ -106,6 +106,7 @@
 			rowKey={(row) => row.toolId}
 			searchPlaceholder="Search tools…"
 			empty={{
+				art: 'seal',
 				title: 'No tools yet',
 				description: 'Add a connector: its tools show up here with their default levels.'
 			}}

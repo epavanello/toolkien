@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "klaviyo",
+	"name": "Klaviyo",
+	"tagline": "Email and SMS campaigns, flows and metrics",
+	"description": "Report on campaigns and flows, explore segments and metrics and draft new campaigns with real-time Klaviyo data.",
+	"homepage": "https://developers.klaviyo.com/en/docs/klaviyo_mcp_server",
+	"icon": "icons/klaviyo.png",
+	"url": "https://mcp.klaviyo.com/mcp",
+	"namespace": "klaviyo",
+	"publisher": "official",
+	"category": "marketing",
+	"tags": ["email", "sms", "campaigns", "ecommerce"],
+	"examples": [
+		"Which campaigns had the best revenue per recipient last month?",
+		"Draft a win-back campaign for customers inactive for 90 days"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Klaviyo's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.klaviyo.com offers CIMD and dynamic client registration."
+	}
+}

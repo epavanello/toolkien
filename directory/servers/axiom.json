@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "axiom",
+	"name": "Axiom",
+	"tagline": "Logs and events queried with APL",
+	"description": "List datasets and run APL queries over your logs and events in Axiom to find errors and trends.",
+	"homepage": "https://axiom.co/docs/console/intelligence/mcp-server",
+	"icon": "icons/axiom.png",
+	"url": "https://mcp.axiom.co/mcp",
+	"namespace": "axiom",
+	"publisher": "official",
+	"category": "monitoring",
+	"tags": ["logs", "events", "apl"],
+	"examples": [
+		"Count 5xx responses per route in the last hour",
+		"What are the most common error messages today?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Axiom's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server authorization.axiom.co offers CIMD and dynamic client registration."
+	}
+}

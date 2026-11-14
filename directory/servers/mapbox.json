@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "mapbox",
+	"name": "Mapbox",
+	"tagline": "Geocoding, routing and maps",
+	"description": "Geocode addresses, search places, compute routes and travel-time isochrones and render maps with live Mapbox data.",
+	"homepage": "https://docs.mapbox.com/location-ai/mcp-servers/mcp-server/",
+	"icon": "icons/mapbox.png",
+	"url": "https://mcp.mapbox.com/mcp",
+	"namespace": "mapbox",
+	"publisher": "official",
+	"category": "other",
+	"tags": ["maps", "geocoding", "routing"],
+	"examples": [
+		"How long does it take to drive from Milan to Turin at 8am?",
+		"Find coffee shops within 10 minutes walk of the office"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Mapbox's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.mapbox.com offers dynamic client registration."
+	}
+}

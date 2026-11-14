@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "revenuecat",
+	"name": "RevenueCat",
+	"tagline": "In-app subscriptions, products and offerings",
+	"description": "Configure products, entitlements and offerings and read subscription metrics for your mobile apps in RevenueCat.",
+	"homepage": "https://www.revenuecat.com/docs/tools/mcp",
+	"icon": "icons/revenuecat.png",
+	"url": "https://mcp.revenuecat.ai/mcp",
+	"namespace": "revenuecat",
+	"publisher": "official",
+	"category": "payments",
+	"tags": ["in-app-purchases", "subscriptions", "mobile"],
+	"examples": [
+		"What is the monthly recurring revenue of the iOS app?",
+		"Create an offering with the annual and monthly products"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from RevenueCat's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.revenuecat.ai offers dynamic client registration."
+	}
+}

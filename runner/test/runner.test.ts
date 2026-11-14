@@ -40,7 +40,7 @@ Deno.test('type errors return diagnostics mapped to the script lines', async () 
 Deno.test('tool errors are thrown as ToolCallError with a code', async () => {
 	const r = await run(
 		`try { await crm.addNote({ contactId: 'x', text: 'y' }); return 'no'; }
-		catch (e) { return { name: (e as Error).name, code: (e as ToolCallError).code, message: (e as Error).message, isToolError: e instanceof ToolCallError }; }`,
+		catch (e) { return { name: (e as Error).name, code: (e as ToolCallError).code, path: (e as ToolCallError).path, message: (e as Error).message, isToolError: e instanceof ToolCallError }; }`,
 		{
 			tools: {
 				'crm.addNote': () => ({
@@ -56,7 +56,8 @@ Deno.test('tool errors are thrown as ToolCallError with a code', async () => {
 		assertEquals(r.result, {
 			name: 'ToolCallError',
 			code: 'policy_denied',
-			message: 'Blocked by policy.',
+			path: 'crm.addNote',
+			message: 'crm.addNote failed [policy_denied]: Blocked by policy.',
 			isToolError: true
 		});
 	}

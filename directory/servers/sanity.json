@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "sanity",
+	"name": "Sanity",
+	"tagline": "Structured content in Sanity",
+	"description": "Query, create and update documents, schemas and releases in your Sanity content lake.",
+	"homepage": "https://www.sanity.io/docs/ai/mcp-server",
+	"icon": "icons/sanity.png",
+	"url": "https://mcp.sanity.io/",
+	"namespace": "sanity",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["cms", "content", "structured-content"],
+	"examples": [
+		"Create draft articles for these three topics",
+		"Which documents reference the deprecated author field?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Sanity's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.sanity.io offers dynamic client registration."
+	}
+}

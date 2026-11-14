@@ -1,0 +1,99 @@
+{
+	"server": "deepwiki",
+	"url": "https://mcp.deepwiki.com/mcp",
+	"fetchedAt": "2026-11-14",
+	"tools": [
+		{
+			"name": "ask_wiki_question",
+			"title": "Ask Wiki Question",
+			"description": "Ask any question about a GitHub repository's codebase and get an AI-powered answer\ngrounded in its DeepWiki.",
+			"inputSchema": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"repoName": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							}
+						],
+						"description": "GitHub repository or list of repositories (max 10) in owner/repo format."
+					},
+					"question": {
+						"description": "The question to ask about the repository.",
+						"type": "string"
+					}
+				},
+				"required": ["repoName", "question"]
+			},
+			"outputSchema": {
+				"properties": {
+					"result": {
+						"type": "string"
+					}
+				},
+				"required": ["result"],
+				"type": "object",
+				"x-fastmcp-wrap-result": true
+			}
+		},
+		{
+			"name": "read_wiki_contents",
+			"title": "Read Wiki Contents",
+			"description": "View documentation about a GitHub repository.",
+			"inputSchema": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"repoName": {
+						"description": "GitHub repository in owner/repo format (e.g. \"facebook/react\").",
+						"type": "string"
+					}
+				},
+				"required": ["repoName"]
+			},
+			"outputSchema": {
+				"properties": {
+					"result": {
+						"type": "string"
+					}
+				},
+				"required": ["result"],
+				"type": "object",
+				"x-fastmcp-wrap-result": true
+			}
+		},
+		{
+			"name": "read_wiki_structure",
+			"title": "Read Wiki Structure",
+			"description": "Get a list of documentation topics for a GitHub repository.",
+			"inputSchema": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"repoName": {
+						"description": "GitHub repository in owner/repo format (e.g. \"facebook/react\").",
+						"type": "string"
+					}
+				},
+				"required": ["repoName"]
+			},
+			"outputSchema": {
+				"properties": {
+					"result": {
+						"type": "string"
+					}
+				},
+				"required": ["result"],
+				"type": "object",
+				"x-fastmcp-wrap-result": true
+			}
+		}
+	]
+}

@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "gamma",
+	"name": "Gamma",
+	"tagline": "Presentations, docs and sites generated with AI",
+	"description": "Generate polished presentations, documents and social posts in Gamma from an outline or notes.",
+	"homepage": "https://developers.gamma.app/",
+	"icon": "icons/gamma.png",
+	"url": "https://mcp.gamma.app/mcp",
+	"namespace": "gamma",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["presentations", "documents", "websites"],
+	"examples": [
+		"Make a 10-slide deck from this product brief",
+		"Turn these meeting notes into a one-page doc"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Gamma's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server auth.gamma.app offers dynamic client registration."
+	}
+}

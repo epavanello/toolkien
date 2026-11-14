@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "planetscale",
+	"name": "PlanetScale",
+	"tagline": "MySQL and Postgres databases, branches and insights",
+	"description": "Explore PlanetScale databases and branches, run read queries and review query insights and schema recommendations.",
+	"homepage": "https://planetscale.com/docs/mcp-server",
+	"icon": "icons/planetscale.png",
+	"url": "https://mcp.pscale.dev/mcp/planetscale",
+	"namespace": "planetscale",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["mysql", "postgres", "database"],
+	"examples": [
+		"Which queries in the main branch are missing an index?",
+		"List the deploy requests waiting for review"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from PlanetScale's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.planetscale.com offers dynamic client registration."
+	}
+}

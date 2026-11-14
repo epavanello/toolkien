@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "granola",
+	"name": "Granola",
+	"tagline": "Meeting notes and transcripts",
+	"description": "Ask about your meetings: search Granola notes and transcripts for decisions, action items and what a customer said.",
+	"homepage": "https://docs.granola.ai/help-center/sharing/integrations/mcp",
+	"icon": "icons/granola.png",
+	"url": "https://mcp.granola.ai/mcp",
+	"namespace": "granola",
+	"publisher": "official",
+	"category": "communication",
+	"tags": ["meetings", "notes", "transcripts"],
+	"examples": [
+		"What did we decide about pricing in yesterday’s call?",
+		"List my action items from this week’s meetings"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Granola's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp-auth.granola.ai offers CIMD and dynamic client registration."
+	}
+}

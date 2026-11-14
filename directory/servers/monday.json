@@ -1,0 +1,32 @@
+{
+	"$schema": "../schema.json",
+	"id": "monday",
+	"name": "monday.com",
+	"tagline": "Boards, items and workflows",
+	"description": "Create and update items, boards and dashboards, and get project status across your monday.com workspace.",
+	"homepage": "https://developer.monday.com/apps/docs/mondaycom-mcp-integration",
+	"icon": "icons/monday.png",
+	"url": "https://mcp.monday.com/mcp",
+	"namespace": "monday",
+	"publisher": "official",
+	"category": "project-management",
+	"tags": ["boards", "tasks", "workflows", "crm"],
+	"popular": true,
+	"examples": [
+		"Which items on the Marketing board are stuck?",
+		"Add an item for the newsletter redesign due next Friday"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from monday.com's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server auth.monday.com offers CIMD and dynamic client registration."
+	}
+}

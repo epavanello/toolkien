@@ -36,7 +36,15 @@ export const DIRECTORY_CATEGORIES = [
 	'monitoring',
 	'design',
 	'communication',
-	'other'
+	'other',
+	// (additive)
+	'cloud',
+	'security',
+	'productivity',
+	'automation',
+	'crm',
+	'marketing',
+	'ai'
 ] as const;
 
 /**
@@ -77,6 +85,8 @@ export const directoryEntrySchema = z
 		/** Stable slug, equal to the file name; stored in `connector.directory_id`, never renamed */
 		id: z.string().regex(ID, { error: 'Use kebab-case (a-z, 0-9, -).' }).max(60),
 		name: z.string().min(1).max(60),
+		/** (additive) Short benefit line under the name on cards, ≤ 80 characters */
+		tagline: z.string().min(3).max(80).optional(),
 		description: z.string().min(10).max(300),
 		homepage: httpsUrl.optional(),
 		/**
@@ -97,6 +107,10 @@ export const directoryEntrySchema = z
 		publisher: z.enum(DIRECTORY_PUBLISHERS),
 		category: z.enum(DIRECTORY_CATEGORIES),
 		tags: z.array(z.string().regex(ID).max(30)).max(10).default([]),
+		/** (additive) Featured in the "Popular" filter and the landing showcase */
+		popular: z.boolean().optional(),
+		/** (additive) Example prompts an agent can run with this server (shown in the details) */
+		examples: z.array(z.string().min(5).max(160)).max(5).default([]),
 		auth: z
 			.object({
 				type: z.enum(['oauth', 'token', 'none']),
@@ -170,6 +184,21 @@ export const isTrustedEntry = (entry: {
 	publisher: DirectoryPublisher;
 	verification: { status: VerificationStatus };
 }) => entry.publisher === 'official' && entry.verification.status !== 'needs-review';
+
+/**
+ * Toolkien can sign in to it today: anything but an OAuth server that only accepts
+ * pre-registered clients (Toolkien registers itself with CIMD or dynamic registration).
+ */
+export const isSupportedEntry = (entry: {
+	auth: { type: string; oauth?: { registration?: string[] } };
+}) => {
+	const registration = entry.auth.oauth?.registration;
+	return !(
+		entry.auth.type === 'oauth' &&
+		registration &&
+		registration.every((value) => value === 'preregistered')
+	);
+};
 
 /** Comparable form of an MCP endpoint: lowercase, no hash, no trailing slash */
 export function normalizeServerUrl(value: string): string | null {

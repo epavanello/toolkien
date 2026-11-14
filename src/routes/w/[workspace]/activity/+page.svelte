@@ -101,6 +101,7 @@
 			label="Activity"
 			items={toTimelineItems(feed.entries, feed.allMembers)}
 			empty={{
+				art: 'ledger',
 				title: 'No activity in this period',
 				description: 'Executions, tool calls, approvals and changes appear here.'
 			}}

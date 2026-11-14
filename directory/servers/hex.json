@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "hex",
+	"name": "Hex",
+	"tagline": "Ask your data questions with the Hex agent",
+	"description": "Search Hex projects and ask data questions answered by the Hex agent over your warehouse and semantic models.",
+	"homepage": "https://learn.hex.tech/docs/api-integrations/mcp-server",
+	"icon": "icons/hex.png",
+	"url": "https://app.hex.tech/mcp",
+	"namespace": "hex",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["notebooks", "sql", "bi"],
+	"examples": [
+		"What was revenue by region last quarter?",
+		"Find the churn analysis project and summarize it"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Hex's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server auth.app.hex.tech offers dynamic client registration."
+	}
+}

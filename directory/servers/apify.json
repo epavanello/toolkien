@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "apify",
+	"name": "Apify",
+	"tagline": "Thousands of ready-made web scrapers",
+	"description": "Run Apify Actors to scrape websites, social media, maps and e-commerce data, and get structured results back.",
+	"homepage": "https://docs.apify.com/mcp",
+	"icon": "icons/apify.png",
+	"url": "https://mcp.apify.com",
+	"namespace": "apify",
+	"publisher": "official",
+	"category": "search",
+	"tags": ["scraping", "automation", "actors"],
+	"examples": [
+		"Scrape the 50 latest Google Maps reviews of our store",
+		"Get the top posts on Hacker News about MCP"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Apify's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server console-backend.apify.com offers CIMD and dynamic client registration."
+	}
+}

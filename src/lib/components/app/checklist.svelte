@@ -31,7 +31,7 @@
 			variant: {
 				card: {
 					root: 'gap-3 p-4',
-					title: 'text-sm',
+					title: 'font-display text-lg',
 					progress: 'text-xs',
 					list: 'divide-y rounded-md border',
 					item: 'px-3 py-2.5 text-sm',
@@ -65,6 +65,7 @@
 </script>
 
 <script lang="ts">
+	import BrandArt from '#lib/components/brand/brand-art.svelte';
 	import Check from '@lucide/svelte/icons/check';
 	import X from '@lucide/svelte/icons/x';
 	import { watch } from 'runed';
@@ -131,6 +132,9 @@
 				<span class={checklistVariants({ variant, done: true }).mark()} aria-hidden="true" in:fade>
 					<Check class="size-3" />
 				</span>
+			{/if}
+			{#if variant !== 'compact' && !complete}
+				<BrandArt name="gate" class="hidden h-12 sm:block" />
 			{/if}
 			<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 				<h2 id={headingId} class={styles.title()}>{title}</h2>

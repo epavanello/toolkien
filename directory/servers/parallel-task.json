@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "parallel-task",
+	"name": "Parallel Task",
+	"tagline": "Deep research and data enrichment tasks",
+	"description": "Run Parallel deep-research and enrichment tasks that browse the web for minutes and return cited reports or tables.",
+	"homepage": "https://docs.parallel.ai/integrations/mcp/task-mcp",
+	"icon": "icons/parallel-task.png",
+	"url": "https://task-mcp.parallel.ai/mcp",
+	"namespace": "parallelTask",
+	"publisher": "official",
+	"category": "search",
+	"tags": ["deep-research", "enrichment"],
+	"examples": [
+		"Research the market size of EU payroll software with sources",
+		"Enrich this list of companies with headcount and HQ city"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Parallel Task's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server platform.parallel.ai offers dynamic client registration."
+	}
+}

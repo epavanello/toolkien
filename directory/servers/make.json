@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "make",
+	"name": "Make",
+	"tagline": "Run your Make scenarios as tools",
+	"description": "Expose your Make scenarios as tools so agents can trigger complete automations across your apps.",
+	"homepage": "https://developers.make.com/mcp-server",
+	"icon": "icons/make.png",
+	"url": "https://mcp.make.com",
+	"namespace": "make",
+	"publisher": "official",
+	"category": "automation",
+	"tags": ["automation", "scenarios", "integrations"],
+	"examples": [
+		"Run the “new customer onboarding” scenario for jane@example.com",
+		"Which scenarios failed today?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Make's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server www.make.com offers dynamic client registration."
+	}
+}

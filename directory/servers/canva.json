@@ -1,0 +1,32 @@
+{
+	"$schema": "../schema.json",
+	"id": "canva",
+	"name": "Canva",
+	"tagline": "Search, create and export Canva designs",
+	"description": "Find your Canva designs, autofill brand templates, create new designs and export them as PDF or images.",
+	"homepage": "https://www.canva.com/help/mcp-agent-setup/",
+	"icon": "icons/canva.png",
+	"url": "https://mcp.canva.com/mcp",
+	"namespace": "canva",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["design", "presentations", "social-media"],
+	"popular": true,
+	"examples": [
+		"Create an Instagram post announcing our launch from the brand template",
+		"Export the Q3 deck as PDF"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Canva's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.canva.com offers CIMD and dynamic client registration."
+	}
+}

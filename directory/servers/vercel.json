@@ -2,22 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "vercel",
 	"name": "Vercel",
-	"description": "Inspect Vercel projects, deployments and logs, and search the Vercel docs.",
+	"tagline": "Projects, deployments and build logs on Vercel",
+	"description": "Check deployment status, read build and runtime logs and search the Vercel docs, so agents can explain why a preview failed and what changed in production.",
 	"homepage": "https://vercel.com/docs/mcp/vercel-mcp",
 	"icon": "icons/vercel.png",
 	"url": "https://mcp.vercel.com",
 	"namespace": "vercel",
 	"publisher": "official",
-	"category": "developer-tools",
-	"tags": ["deployments", "hosting"],
+	"category": "cloud",
+	"tags": ["deployments", "hosting", "logs", "nextjs"],
+	"popular": true,
+	"examples": [
+		"Why did the latest preview deployment of the marketing site fail?",
+		"List my projects and their production domains"
+	],
 	"auth": {
-		"type": "oauth"
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Endpoint from Vercel's docs; live check: 401 + RFC 9728 metadata. Vercel may restrict OAuth to an allowlist of reviewed clients; if authorization fails, the client is not yet approved by Vercel."
-	},
-	"tools": {}
+		"notes": "Endpoint from Vercel's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server vercel.com offers CIMD and dynamic client registration."
+	}
 }

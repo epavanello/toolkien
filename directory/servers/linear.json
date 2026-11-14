@@ -2,25 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "linear",
 	"name": "Linear",
-	"description": "Find, create and update Linear issues, projects, cycles and comments.",
+	"tagline": "Issues, projects and cycles",
+	"description": "Find, create and update Linear issues, projects, cycles and comments, so agents can file bugs and keep your roadmap current.",
 	"homepage": "https://linear.app/docs/mcp",
 	"icon": "icons/linear.png",
 	"url": "https://mcp.linear.app/mcp",
 	"namespace": "linear",
 	"publisher": "official",
 	"category": "project-management",
-	"tags": ["issues", "tracking"],
+	"tags": ["issues", "tracking", "projects", "cycles"],
+	"popular": true,
+	"examples": [
+		"Create a bug in the Web team for the broken login redirect",
+		"What is left in the current cycle for me?"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": ["cimd", "dcr"]
 		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Streamable HTTP endpoint from Linear's docs (the older /sse endpoint is legacy); live check: 401 + RFC 9728 metadata. OAuth 2.1 with dynamic client registration."
-	},
-	"tools": {}
+		"notes": "Endpoint from Linear's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.linear.app offers CIMD and dynamic client registration."
+	}
 }

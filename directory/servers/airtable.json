@@ -1,0 +1,32 @@
+{
+	"$schema": "../schema.json",
+	"id": "airtable",
+	"name": "Airtable",
+	"tagline": "Bases, tables and records",
+	"description": "List bases, read and create records and evolve table schemas, so agents can use Airtable as a structured database.",
+	"homepage": "https://support.airtable.com/articles/9897799762-using-the-airtable-mcp-server",
+	"icon": "icons/airtable.png",
+	"url": "https://mcp.airtable.com/mcp",
+	"namespace": "airtable",
+	"publisher": "official",
+	"category": "productivity",
+	"tags": ["databases", "tables", "records"],
+	"popular": true,
+	"examples": [
+		"Add the three leads from this email to the CRM base",
+		"Which records in Content Calendar are scheduled this week?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Airtable's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server airtable.com offers CIMD and dynamic client registration."
+	}
+}

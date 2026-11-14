@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "polar",
+	"name": "Polar",
+	"tagline": "Products, subscriptions and customers",
+	"description": "Manage products, checkouts, subscriptions and customers on Polar, the merchant of record for developers.",
+	"homepage": "https://polar.sh/docs/integrate/mcp",
+	"icon": "icons/polar.png",
+	"url": "https://mcp.polar.sh/mcp/polar-mcp",
+	"namespace": "polar",
+	"publisher": "official",
+	"category": "payments",
+	"tags": ["billing", "subscriptions", "merchant-of-record"],
+	"examples": [
+		"How many active subscriptions does the Pro plan have?",
+		"Create a 20% discount code for launch week"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Polar's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.polar.sh offers dynamic client registration."
+	}
+}

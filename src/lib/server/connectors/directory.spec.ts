@@ -2,9 +2,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { addServerUrl } from '../../../routes/w/[workspace]/directory/directory.ts';
-import { findDirectoryEntryByUrl, listDirectoryEntries } from './directory.ts';
+import { directoryShowcase, findDirectoryEntryByUrl, listDirectoryEntries } from './directory.ts';
 import {
 	directoryJsonSchema,
+	isSupportedEntry,
 	isTrustedEntry,
 	iconProblem,
 	normalizeServerUrl,
@@ -76,8 +77,31 @@ describe('curated directory (CI gate for contributions)', () => {
 		expect(committed).toEqual(JSON.parse(JSON.stringify(directoryJsonSchema())));
 	});
 
-	it("lists the vendors' own servers as official", () => {
-		for (const entry of listDirectoryEntries()) expect(entry.publisher).toBe('official');
+	it('names the maintainer of every community entry', () => {
+		const entries = listDirectoryEntries();
+		expect(entries.filter((e) => e.publisher === 'official').length).toBeGreaterThan(50);
+		for (const entry of entries.filter((e) => e.publisher === 'community'))
+			expect(entry.verification.notes, entry.id).toMatch(/maintained by/i);
+	});
+
+	it('gives every entry a tagline, examples and an icon (presentable cards)', () => {
+		for (const entry of listDirectoryEntries()) {
+			expect(entry.tagline, entry.id).toBeTruthy();
+			expect(entry.examples.length, entry.id).toBeGreaterThan(0);
+			expect(entry.icon, entry.id).toBeTruthy();
+		}
+		expect(listDirectoryEntries().filter((e) => e.popular).length).toBeGreaterThanOrEqual(8);
+	});
+
+	it('marks servers that only accept pre-registered OAuth clients as not supported', () => {
+		const asana = listDirectoryEntries().find((e) => e.id === 'asana')!;
+		expect(asana.supported).toBe(false);
+		expect(isSupportedEntry({ auth: { type: 'oauth', oauth: { registration: ['dcr'] } } })).toBe(
+			true
+		);
+		expect(isSupportedEntry({ auth: { type: 'token' } })).toBe(true);
+		expect(directoryShowcase().servers.every((s) => s.icon)).toBe(true);
+		expect(directoryShowcase().total).toBe(listDirectoryEntries().length);
 	});
 
 	it('the "Add it yourself" template only needs filling in', () => {
@@ -121,7 +145,13 @@ describe('validateDirectory', () => {
 			'needs-review without notes',
 			{ verification: { status: 'needs-review', by: 'x', on: '2026-11-14' } }
 		],
-		['unknown annotation', { tools: { a: { annotations: { readOnly: true } } } }]
+		['unknown annotation', { tools: { a: { annotations: { readOnly: true } } } }],
+		['tagline too long', { tagline: 'x'.repeat(81) }],
+		[
+			'too many examples',
+			{ examples: ['a prompt', 'b prompt', 'c prompt', 'd prompt', 'e prompt', 'f prompt'] }
+		],
+		['unknown category', { category: 'games' }]
 	])('rejects %s', (_label, patch) => {
 		expect(validateDirectory([file({ ...valid, ...patch })]).issues.length).toBeGreaterThan(0);
 	});

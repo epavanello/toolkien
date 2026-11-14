@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "clickhouse",
+	"name": "ClickHouse Cloud",
+	"tagline": "Query and explore ClickHouse Cloud services",
+	"description": "List ClickHouse Cloud services, explore databases and tables and run analytical SQL over your data.",
+	"homepage": "https://clickhouse.com/docs/products/cloud/features/ai-ml/mcp/remote-mcp",
+	"icon": "icons/clickhouse.png",
+	"url": "https://mcp.clickhouse.cloud/mcp",
+	"namespace": "clickhouse",
+	"publisher": "official",
+	"category": "data",
+	"tags": ["analytics", "sql", "database"],
+	"examples": [
+		"What were the daily active users last month from the events table?",
+		"Describe the tables in the analytics database"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from ClickHouse Cloud's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.clickhouse.cloud offers dynamic client registration."
+	}
+}

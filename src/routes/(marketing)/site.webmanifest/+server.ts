@@ -1,4 +1,5 @@
 import { brand } from '#lib/brand.ts';
+import { BRAND_HEX } from '#lib/components/brand/paths.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = () =>
@@ -10,14 +11,15 @@ export const GET: RequestHandler = () =>
 			start_url: '/',
 			scope: '/',
 			display: 'standalone',
-			background_color: '#ffffff',
-			theme_color: '#ffffff',
+			background_color: BRAND_HEX.ink,
+			theme_color: BRAND_HEX.ink,
 			// PNGs rendered by scripts/brand-images.ts (installability needs 192 and 512)
 			icons: [
 				{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
 				{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
 				{ src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-				{ src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+				// Rings inside the 80% safe zone, full-bleed ink: survives any platform mask
+				{ src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
 			],
 			lang: 'en',
 			dir: 'ltr'

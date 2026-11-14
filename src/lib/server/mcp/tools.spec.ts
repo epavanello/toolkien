@@ -253,6 +253,17 @@ describe('tools_search', () => {
 });
 
 describe('tools_describe', () => {
+	it('says which described tools ask the user for approval', async () => {
+		const { call } = setup();
+		const text = textOf(
+			await call('tools_describe', { paths: ['github.listIssues', 'github.createIssue'] })
+		);
+		expect(text).toContain(
+			'Calls to github.createIssue ask the user for approval: execute pauses there until they decide'
+		);
+		expect(text).not.toMatch(/Calls to [^\n]*github\.listIssues/);
+	});
+
 	it('returns declarations of allowed paths only', async () => {
 		const { call, deps } = setup();
 		const text = textOf(
@@ -294,17 +305,61 @@ describe('execute', () => {
 			code: 'return 1'
 		});
 		expect(text.split('\n')[0]).toBe('Workspace: Acme (acme)');
-		expect(text).toContain('"status": "completed"');
-		expect(text).toContain('"logs": "hi"');
+		expect(text.split('\n')[1]).toBe('Execution exec-1: completed');
+		expect(text).toContain('Logs:\nhi');
 	});
 
-	it('marks failures as tool errors', async () => {
+	it('marks failures as tool errors and keeps diagnostics readable', async () => {
 		const { call, deps } = setup();
+		const diagnostics = "script.ts:1:5 - error TS2304: Cannot find name 'x'.\n  oops x\n      ^";
 		deps.executions.start.mockResolvedValueOnce(
-			outcome({ status: 'failed', result: undefined, error: { code: 'TYPE_ERROR', message: 'x' } })
+			outcome({
+				status: 'failed',
+				result: undefined,
+				error: { code: 'type_error', message: diagnostics }
+			})
 		);
 		const result = await call('execute', { code: 'oops' });
 		expect('isError' in result && result.isError).toBe(true);
+		const text = textOf(result);
+		expect(text).toContain('Execution exec-1: failed [type_error]');
+		// Raw text, not JSON-escaped: the caret stays under the error
+		expect(text).toContain(diagnostics);
+		expect(text).toContain('Hint: Nothing ran.');
+	});
+
+	it('prints results by size and says when they were cut', async () => {
+		const { call, deps } = setup();
+		deps.executions.start.mockResolvedValueOnce(outcome({ result: { a: 1 } }));
+		expect(textOf(await call('execute', { code: 'x' }))).toContain('Result:\n{\n  "a": 1\n}');
+		const big = Array.from({ length: 200 }, (_, i) => ({ id: i, name: `item ${i}` }));
+		deps.executions.start.mockResolvedValueOnce(outcome({ result: big }));
+		expect(textOf(await call('execute', { code: 'x' }))).toContain(
+			`Result:\n${JSON.stringify(big)}`
+		);
+		deps.executions.start.mockResolvedValueOnce(outcome({ result: '# Title\nbody' }));
+		expect(textOf(await call('execute', { code: 'x' }))).toContain(
+			'Result (string):\n# Title\nbody'
+		);
+		deps.executions.start.mockResolvedValueOnce(
+			outcome({
+				result: '{"items":[1,2',
+				truncated: true,
+				logs: '[Toolkien] Output truncated at 100 bytes. Return less data.'
+			})
+		);
+		const cut = textOf(await call('execute', { code: 'x' }));
+		expect(cut).toContain('Result (JSON text, cut at the output limit):\n{"items":[1,2');
+		expect(cut).toContain('Output truncated at 100 bytes');
+	});
+
+	it('tells the agent to follow a long run with execution_status', async () => {
+		const { call, deps } = setup();
+		deps.executions.start.mockResolvedValueOnce(outcome({ status: 'running', result: undefined }));
+		const text = textOf(await call('execute', { code: 'x' }));
+		expect(text).toContain('Execution exec-1: running');
+		expect(text).toContain('Call execution_status with executionId "exec-1"');
+		expect(text).toContain('do not start it again');
 	});
 
 	it('without elicitation returns the approval link and the pending status', async () => {
@@ -351,7 +406,7 @@ describe('execute', () => {
 			choice: 'approve_tool'
 		});
 		expect(deps.executions.start).toHaveBeenCalledTimes(1);
-		expect(textOf(second)).toContain('"status": "completed"');
+		expect(textOf(second)).toContain('Execution exec-1: completed');
 	});
 
 	it('falls back to the link when the dialog is dismissed', async () => {

@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "postman",
+	"name": "Postman",
+	"tagline": "API collections, environments and specs",
+	"description": "Give coding agents the context of your APIs: read and update Postman collections, environments and specs, and keep requests in sync with the code.",
+	"homepage": "https://learning.postman.com/docs/reference/postman-api/postman-mcp-server/overview",
+	"icon": "icons/postman.png",
+	"url": "https://mcp.postman.com/minimal",
+	"namespace": "postman",
+	"publisher": "official",
+	"category": "developer-tools",
+	"tags": ["api", "collections", "testing"],
+	"examples": [
+		"List the requests in the Payments API collection",
+		"Add a request for the new /v2/refunds endpoint to the collection"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Postman's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.postman.com offers dynamic client registration. The \"minimal\" toolset (essential collection, workspace and environment tools); Postman also documents a full endpoint at /mcp."
+	}
+}

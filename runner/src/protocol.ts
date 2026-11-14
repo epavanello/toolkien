@@ -16,7 +16,7 @@
  *   child → supervisor { t: 'call', id, path, args }
  *                      { t: 'log', text }
  *                      { t: 'done', json, size, truncated }    `json` = JSON text of the result
- *                      { t: 'error', name, message }
+ *                      { t: 'error', name, message, stack, code?, path? }
  *   supervisor → child { t: 'ret', id, ok: true, value } | { t: 'ret', id, ok: false, code, message }
  *
  * Keep the app-side copy (`src/lib/server/runner/protocol.ts`) in sync.
@@ -67,7 +67,16 @@ export type ChildToSupervisor =
 	| { t: 'call'; id: number; path: string; args: unknown }
 	| { t: 'log'; text: string }
 	| { t: 'done'; json: string; size: number; truncated: boolean }
-	| { t: 'error'; name: string; message: string };
+	| {
+			t: 'error';
+			name: string;
+			message: string;
+			/** `error.stack`, mapped to `script.ts` lines by the inline source map */
+			stack?: string;
+			/** Set for `ToolCallError` */
+			code?: string;
+			path?: string;
+	  };
 
 export type SupervisorToChild =
 	| { t: 'ret'; id: number; ok: true; value: unknown }

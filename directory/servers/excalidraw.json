@@ -1,0 +1,35 @@
+{
+	"$schema": "../schema.json",
+	"id": "excalidraw",
+	"name": "Excalidraw",
+	"tagline": "Hand-drawn diagrams from a prompt",
+	"description": "Draw hand-drawn style diagrams with Excalidraw and share them as an excalidraw.com link, no account needed.",
+	"homepage": "https://github.com/excalidraw/excalidraw-mcp",
+	"icon": "icons/excalidraw.png",
+	"url": "https://mcp.excalidraw.com/mcp",
+	"namespace": "excalidraw",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["diagrams", "whiteboard", "sketches"],
+	"examples": [
+		"Draw the architecture of a web app with a CDN, API and Postgres",
+		"Sketch the steps of our onboarding flow"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"read_me": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Format reference."
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (5 tools)."
+	}
+}

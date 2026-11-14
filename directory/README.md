@@ -24,7 +24,8 @@ Official entries that are `tested` or `documented` are trusted: agents see their
 	"$schema": "../schema.json",
 	"id": "linear", // = file name, kebab-case, never renamed
 	"name": "Linear",
-	"description": "Find, create and update Linear issues, projects, cycles and comments.",
+	"tagline": "Issues, projects and cycles", // optional, ≤ 80 chars, shown on the card
+	"description": "Find, create and update Linear issues, projects, cycles and comments, so agents can file bugs and keep your roadmap current.",
 	"homepage": "https://linear.app/docs/mcp",
 	"icon": "icons/linear.png", // optional, a file in icons/ (see below)
 	"url": "https://mcp.linear.app/mcp", // remote MCP endpoint, https only
@@ -32,6 +33,8 @@ Official entries that are `tested` or `documented` are trusted: agents see their
 	"publisher": "official", // "official" (run by the vendor) | "community" (third party)
 	"category": "project-management",
 	"tags": ["issues"],
+	"popular": true, // optional: "Popular" filter and landing showcase (maintainers decide)
+	"examples": ["Create a bug in the Web team for the broken login redirect"], // optional, ≤ 5 prompts
 	"auth": {
 		"type": "oauth", // "oauth" | "token" | "none"
 		"scopes": ["read"], // optional, minimal
@@ -49,6 +52,10 @@ Official entries that are `tested` or `documented` are trusted: agents see their
 	}
 }
 ```
+
+Categories: `developer-tools`, `cloud`, `data`, `monitoring`, `security`, `project-management`, `productivity`, `knowledge`, `communication`, `crm`, `marketing`, `design`, `payments`, `search`, `ai`, `automation`, `other`.
+
+An OAuth entry whose `auth.oauth.registration` is only `["preregistered"]` is listed but shown as **Not available yet** (Toolkien registers itself with CIMD or dynamic registration).
 
 The full schema is [`schema.json`](./schema.json), generated from the zod schema in `src/lib/server/connectors/directory-schema.ts`. Editors that understand `$schema` validate as you type.
 

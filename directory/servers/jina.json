@@ -1,0 +1,47 @@
+{
+	"$schema": "../schema.json",
+	"id": "jina",
+	"name": "Jina AI",
+	"tagline": "Read URLs, search the web and arXiv",
+	"description": "Read any URL or PDF as markdown, search the web, arXiv and images, and rerank results with Jina AI.",
+	"homepage": "https://github.com/jina-ai/MCP",
+	"icon": "icons/jina.png",
+	"url": "https://mcp.jina.ai/v1",
+	"namespace": "jina",
+	"publisher": "official",
+	"category": "search",
+	"tags": ["web-search", "reader", "arxiv", "reranking"],
+	"examples": [
+		"Read this PDF and extract the tables",
+		"Search arXiv for recent papers on speculative decoding"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"read_url": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		},
+		"search_web": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		},
+		"search_arxiv": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (12 tools). Works anonymously with rate limits; a Jina API key raises them (not needed for the entry)."
+	}
+}

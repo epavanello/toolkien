@@ -16,9 +16,11 @@
 		service: string;
 		needsReview?: boolean;
 		reviewNote?: string;
+		/** (additive) `false`: plain badges, no focusable tooltip (panel headers, where focus lands first) */
+		tooltips?: boolean;
 	};
 
-	let { publisher, service, needsReview = false, reviewNote }: Props = $props();
+	let { publisher, service, needsReview = false, reviewNote, tooltips = true }: Props = $props();
 
 	const tooltip = $derived(
 		publisher === 'official'
@@ -28,7 +30,19 @@
 </script>
 
 <span class="inline-flex items-center gap-1.5" data-slot="source-badge">
-	{#if publisher === null}
+	{#if !tooltips && publisher !== null}
+		<Badge
+			variant={publisher === 'official' ? 'success' : 'secondary'}
+			class="rounded-sm"
+			title={tooltip}
+		>
+			{#if publisher === 'official'}<BadgeCheck data-icon="inline-start" />{:else}<Users
+					data-icon="inline-start"
+				/>{/if}
+			{publisher === 'official' ? 'Official' : 'Community'}
+		</Badge>
+		{#if needsReview}<Badge variant="warning" class="rounded-sm">Needs review</Badge>{/if}
+	{:else if publisher === null}
 		<UnverifiedBadge tooltip="Not in the directory: tool descriptions are treated as untrusted." />
 	{:else}
 		<Tooltip.Root>
@@ -50,7 +64,7 @@
 			<Tooltip.Content>{tooltip}</Tooltip.Content>
 		</Tooltip.Root>
 	{/if}
-	{#if needsReview}
+	{#if needsReview && tooltips}
 		<Tooltip.Root>
 			<Tooltip.Trigger>
 				{#snippet child({ props })}

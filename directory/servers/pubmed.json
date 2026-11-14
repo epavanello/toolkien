@@ -1,0 +1,44 @@
+{
+	"$schema": "../schema.json",
+	"id": "pubmed",
+	"name": "PubMed",
+	"tagline": "Search biomedical literature",
+	"description": "Search PubMed for biomedical and life-science articles, read metadata and full text from PubMed Central.",
+	"homepage": "https://pubmed.ncbi.nlm.nih.gov/",
+	"icon": "icons/pubmed.png",
+	"url": "https://pubmed.mcp.claude.com/mcp",
+	"namespace": "pubmed",
+	"publisher": "community",
+	"category": "knowledge",
+	"tags": ["research", "biomedical", "papers"],
+	"examples": [
+		"Find recent randomized trials on GLP-1 and kidney disease",
+		"Get the full text of PMC1234567"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"search_articles": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		},
+		"get_article_metadata": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		},
+		"get_full_text_article": {
+			"annotations": {
+				"readOnlyHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (7 tools). Maintained by Anthropic, not by the NIH/NLM (PubMed’s owner)."
+	}
+}

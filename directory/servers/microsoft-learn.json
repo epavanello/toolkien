@@ -1,0 +1,47 @@
+{
+	"$schema": "../schema.json",
+	"id": "microsoft-learn",
+	"name": "Microsoft Learn",
+	"tagline": "Official Microsoft and Azure documentation",
+	"description": "Search and read the official Microsoft Learn docs and code samples for Azure, .NET, Microsoft 365 and more, always current.",
+	"homepage": "https://learn.microsoft.com/en-us/training/support/mcp",
+	"icon": "icons/microsoft-learn.png",
+	"url": "https://learn.microsoft.com/api/mcp",
+	"namespace": "microsoftLearn",
+	"publisher": "official",
+	"category": "knowledge",
+	"tags": ["docs", "azure", "dotnet", "microsoft"],
+	"examples": [
+		"How do I configure managed identity for an Azure Function?",
+		"Find a C# sample for uploading to Blob Storage"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"microsoft_docs_search": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Documentation search."
+		},
+		"microsoft_code_sample_search": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Code sample search."
+		},
+		"microsoft_docs_fetch": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Fetches a Learn page."
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (3 tools)."
+	}
+}

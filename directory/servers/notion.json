@@ -2,25 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "notion",
 	"name": "Notion",
-	"description": "Search, read and edit Notion pages and databases of the connected workspace.",
+	"tagline": "Pages, databases and wikis",
+	"description": "Search your Notion workspace, read and create pages and query databases, so agents can find what your team wrote and keep it up to date.",
 	"homepage": "https://developers.notion.com/docs/mcp",
 	"icon": "icons/notion.png",
 	"url": "https://mcp.notion.com/mcp",
 	"namespace": "notion",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs", "wiki", "databases"],
+	"tags": ["docs", "wiki", "databases", "notes"],
+	"popular": true,
+	"examples": [
+		"Find our onboarding checklist and summarize it",
+		"Create a page in Meeting notes with today’s decisions"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": ["cimd", "dcr"]
 		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Notion's hosted MCP server, from Notion's docs; live check: 401 + RFC 9728 metadata. OAuth with dynamic client registration."
-	},
-	"tools": {}
+		"notes": "Endpoint from Notion's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.notion.com offers CIMD and dynamic client registration."
+	}
 }

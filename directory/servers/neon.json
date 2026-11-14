@@ -2,25 +2,30 @@
 	"$schema": "../schema.json",
 	"id": "neon",
 	"name": "Neon",
-	"description": "Create and manage Neon Postgres projects, branches and run SQL.",
+	"tagline": "Serverless Postgres with branching",
+	"description": "Create projects and branches, run SQL and plan schema migrations on a branch before applying them to Neon Postgres.",
 	"homepage": "https://neon.com/docs/ai/neon-mcp-server",
 	"icon": "icons/neon.png",
 	"url": "https://mcp.neon.tech/mcp",
 	"namespace": "neon",
 	"publisher": "official",
 	"category": "data",
-	"tags": ["postgres", "database"],
+	"tags": ["postgres", "database", "branching"],
+	"examples": [
+		"Create a branch from main and add an index on orders.created_at",
+		"Which queries are the slowest on the production branch?"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": ["cimd", "dcr"]
 		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Neon's hosted MCP server, from Neon's docs; live check: 401 + RFC 9728 metadata. OAuth with dynamic client registration; a Neon API key is also accepted as a bearer token."
-	},
-	"tools": {}
+		"notes": "Endpoint from Neon's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.neon.tech offers CIMD and dynamic client registration."
+	}
 }

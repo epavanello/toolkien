@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "ahrefs",
+	"name": "Ahrefs",
+	"tagline": "SEO, backlinks and AI search visibility",
+	"description": "Research keywords, backlinks, organic traffic and brand mentions in AI search with Ahrefs data.",
+	"homepage": "https://docs.ahrefs.com/en/mcp/docs/introduction",
+	"icon": "icons/ahrefs.png",
+	"url": "https://api.ahrefs.com/mcp/mcp",
+	"namespace": "ahrefs",
+	"publisher": "official",
+	"category": "marketing",
+	"tags": ["seo", "backlinks", "keywords"],
+	"examples": [
+		"Which keywords does competitor.com rank for that we do not?",
+		"Show new backlinks to our domain this month"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Ahrefs's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server api.ahrefs.com offers dynamic client registration."
+	}
+}

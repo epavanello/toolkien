@@ -1,6 +1,7 @@
 /**
  * Product name and taglines, in one place so a rename touches a single file.
- * The landing must stay free of imagery, fonts or symbols from Tolkien's works: only the pun.
+ * Brand guardrails (docs/brand.md): the pun and an original ring/forge motif are ours; nothing
+ * from Tolkien's works or the films (characters, names, maps, inscriptions, rune fonts).
  */
 export const brand = {
 	name: 'Toolkien',

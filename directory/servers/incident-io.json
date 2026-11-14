@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "incident-io",
+	"name": "incident.io",
+	"tagline": "Incidents, alerts and on-call",
+	"description": "See active incidents and alerts, check who is on call, and update incidents in incident.io from the conversation.",
+	"homepage": "https://docs.incident.io/mcp",
+	"icon": "icons/incident-io.png",
+	"url": "https://mcp.incident.io/mcp",
+	"namespace": "incidentIo",
+	"publisher": "official",
+	"category": "monitoring",
+	"tags": ["incidents", "on-call", "alerts"],
+	"examples": [
+		"Who is on call for the payments team right now?",
+		"Summarize the incidents of the last week"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from incident.io's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.incident.io offers CIMD and dynamic client registration."
+	}
+}

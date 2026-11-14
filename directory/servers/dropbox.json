@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "dropbox",
+	"name": "Dropbox",
+	"tagline": "Search, read and organize your files",
+	"description": "Browse, search, read and organize your Dropbox files and create shared links, without downloading anything by hand.",
+	"homepage": "https://help.dropbox.com/integrations/connect-dropbox-mcp-server",
+	"icon": "icons/dropbox.png",
+	"url": "https://mcp.dropbox.com/mcp",
+	"namespace": "dropbox",
+	"publisher": "official",
+	"category": "productivity",
+	"tags": ["files", "storage", "sharing"],
+	"examples": [
+		"Find the signed contract with Acme and summarize the payment terms",
+		"Create a shared link for the Q3 report folder"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Dropbox's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server www.dropbox.com offers dynamic client registration."
+	}
+}

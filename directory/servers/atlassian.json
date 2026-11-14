@@ -1,26 +1,32 @@
 {
 	"$schema": "../schema.json",
 	"id": "atlassian",
-	"name": "Atlassian (Jira & Confluence)",
-	"description": "Search and edit Jira issues and Confluence pages through the Atlassian Remote MCP Server.",
+	"name": "Atlassian",
+	"tagline": "Jira issues and Confluence pages",
+	"description": "Search, create and update Jira issues and Confluence pages in your Atlassian Cloud site, with the permissions of your own account.",
 	"homepage": "https://support.atlassian.com/rovo/docs/getting-started-with-the-atlassian-remote-mcp-server/",
 	"icon": "icons/atlassian.png",
 	"url": "https://mcp.atlassian.com/v2/mcp",
 	"namespace": "atlassian",
 	"publisher": "official",
 	"category": "project-management",
-	"tags": ["jira", "confluence"],
+	"tags": ["jira", "confluence", "issues", "wiki"],
+	"popular": true,
+	"examples": [
+		"Summarize the Jira issues in the current sprint of the PAY project",
+		"Create a Confluence page with the notes of this incident"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
 			"registration": ["cimd", "dcr"]
 		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Atlassian's docs now point to the v2 endpoint (v1 clients are retired on 2027-03-01). Live check: 401 + RFC 9728 metadata; the authorization server supports CIMD and dynamic client registration. An Atlassian API token also works as a bearer token."
-	},
-	"tools": {}
+		"notes": "Endpoint from Atlassian's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server auth.atlassian.com offers CIMD and dynamic client registration."
+	}
 }

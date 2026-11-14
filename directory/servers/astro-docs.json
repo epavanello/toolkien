@@ -1,0 +1,35 @@
+{
+	"$schema": "../schema.json",
+	"id": "astro-docs",
+	"name": "Astro Docs",
+	"tagline": "Search the official Astro documentation",
+	"description": "Answers from the current Astro documentation, so agents use today’s APIs instead of guessing from old training data.",
+	"homepage": "https://docs.astro.build/en/guides/build-with-ai/",
+	"icon": "icons/astro-docs.png",
+	"url": "https://mcp.docs.astro.build/mcp",
+	"namespace": "astroDocs",
+	"publisher": "official",
+	"category": "knowledge",
+	"tags": ["docs", "astro", "frontend"],
+	"examples": [
+		"How do I add a content collection with a custom loader?",
+		"What changed in Astro’s image API?"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"search_astro_docs": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Documentation search, no side effects."
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (1 tools)."
+	}
+}

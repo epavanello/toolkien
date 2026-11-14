@@ -11,6 +11,7 @@
  * stdout: { ok: true, js, namespaces } | { ok: false, diagnostics }
  */
 import ts from 'npm:typescript@6.0.3';
+import { excerpt } from './excerpt.ts';
 
 export const SCRIPT_FILE = '/toolkien/script.ts';
 export const TOOLS_FILE = '/toolkien/tools.d.ts';
@@ -32,9 +33,14 @@ interface Console {
 	table(data: unknown): void;
 }
 declare var console: Console;
-/** Thrown when a tool call fails; \`code\` is a stable category */
+/**
+ * Thrown when a tool call fails. \`code\`: \`upstream_error\` (the tool reported an error),
+ * \`invalid_params\`, \`unknown_tool\`, \`auth_required\`, \`timeout\`, \`blocked\`,
+ * \`approval_rejected\`, \`limit_tool_calls\`, … \`path\`: the tool, e.g. \`github.createIssue\`.
+ */
 declare class ToolCallError extends Error {
 	readonly code: string;
+	readonly path: string;
 }
 declare function setTimeout(handler: (...args: unknown[]) => void, timeout?: number): number;
 declare function clearTimeout(id?: number): void;
@@ -155,8 +161,128 @@ function forbiddenSyntax(sf: ts.SourceFile): ts.Diagnostic[] {
 	return found;
 }
 
-function formatDiagnostics(diagnostics: readonly ts.Diagnostic[], codeLines: string[]): string {
+type HintContext = {
+	program: ts.Program;
+	script: ts.SourceFile;
+	namespaces: string[];
+};
+
+/** Innermost node of `sf` that contains `position` */
+function nodeAt(sf: ts.SourceFile, position: number): ts.Node {
+	let found: ts.Node = sf;
+	const visit = (node: ts.Node) => {
+		if (position >= node.getStart(sf) && position < node.end) {
+			found = node;
+			ts.forEachChild(node, visit);
+		}
+	};
+	ts.forEachChild(sf, visit);
+	return found;
+}
+
+/** `ns.fn` when `node` is (inside) a call to a tool function */
+function enclosingToolCall(node: ts.Node, namespaces: string[]): string | null {
+	for (let current: ts.Node | undefined = node; current; current = current.parent) {
+		if (
+			ts.isCallExpression(current) &&
+			ts.isPropertyAccessExpression(current.expression) &&
+			ts.isIdentifier(current.expression.expression) &&
+			namespaces.includes(current.expression.expression.text)
+		) {
+			return `${current.expression.expression.text}.${current.expression.name.text}`;
+		}
+	}
+	return null;
+}
+
+/** Closest names by edit distance (for "did you mean") */
+function closest(name: string, candidates: string[], max = 3): string[] {
+	const distance = (a: string, b: string) => {
+		const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+		for (let i = 1; i <= a.length; i++) {
+			let previous = row[0];
+			row[0] = i;
+			for (let j = 1; j <= b.length; j++) {
+				const current = row[j];
+				row[j] = Math.min(
+					row[j] + 1,
+					row[j - 1] + 1,
+					previous + (a[i - 1].toLowerCase() === b[j - 1].toLowerCase() ? 0 : 1)
+				);
+				previous = current;
+			}
+		}
+		return row[b.length];
+	};
+	return candidates
+		.map((candidate) => ({ candidate, d: distance(name, candidate) }))
+		.filter(({ d, candidate }) => d <= Math.max(2, Math.floor(candidate.length / 3)))
+		.sort((a, b) => a.d - b.d)
+		.slice(0, max)
+		.map(({ candidate }) => candidate);
+}
+
+/** One actionable line for the agent, keyed on what went wrong where */
+function hintFor(d: ts.Diagnostic, ctx: HintContext): string | null {
+	if (d.file?.fileName !== SCRIPT_FILE || d.start === undefined) return null;
+	const node = nodeAt(ctx.script, d.start);
+	const checker = ctx.program.getTypeChecker();
+	const known = ctx.namespaces.length
+		? `Tool namespaces in this workspace: ${ctx.namespaces.join(', ')}.`
+		: 'No tool namespace is available to this script (no connector, or every tool is blocked).';
+	switch (d.code) {
+		case 2304: // Cannot find name 'x'
+		case 2552: {
+			const name = ts.isIdentifier(node) ? node.text : '';
+			const near = closest(name, ctx.namespaces);
+			return `${near.length ? `Did you mean ${near.map((n) => `\`${n}\``).join(' or ')}? ` : ''}${known} Only the namespaces declared by tools_describe exist; there is no fetch, require or import.`;
+		}
+		case 2339: // Property 'x' does not exist on type …
+		case 2551: {
+			const parent = node.parent;
+			if (
+				ts.isIdentifier(node) &&
+				parent &&
+				ts.isPropertyAccessExpression(parent) &&
+				ts.isIdentifier(parent.expression) &&
+				ctx.namespaces.includes(parent.expression.text)
+			) {
+				const ns = parent.expression.text;
+				const members = checker
+					.getTypeAtLocation(parent.expression)
+					.getProperties()
+					.map((p) => p.name);
+				const near = closest(node.text, members);
+				return `\`${ns}\` has no tool \`${node.text}\`.${near.length ? ` Did you mean ${near.map((n) => `\`${ns}.${n}\``).join(' or ')}?` : ''} Its tools: ${members.slice(0, 40).join(', ')}${members.length > 40 ? ', …' : ''}. Blocked tools are not declared.`;
+			}
+			return null;
+		}
+		case 18046: // 'x' is of type 'unknown'
+		case 2571: {
+			const declaration = ts.isIdentifier(node)
+				? checker.getSymbolAtLocation(node)?.valueDeclaration
+				: undefined;
+			if (declaration && ts.isCatchClause(declaration.parent)) {
+				return '`catch (e)` gives `unknown`: use `(e as ToolCallError).code` / `.path`, or `(e as Error).message`.';
+			}
+			return 'Tool results without an output schema are typed `unknown`: log a sample first, then narrow it (`const r = (await ns.tool(args)) as { items: Item[] }`) or check fields at runtime.';
+		}
+	}
+	const call = enclosingToolCall(node, ctx.namespaces);
+	if (call) {
+		return `In the arguments of \`${call}\`: compare with its declaration (tools_describe ["${call}"]); optional members end with \`?\`, enums accept only the listed literals.`;
+	}
+	return null;
+}
+
+function formatDiagnostics(
+	diagnostics: readonly ts.Diagnostic[],
+	codeLines: string[],
+	hints?: HintContext
+): string {
 	const lines: string[] = [];
+	// The same hint under every occurrence of one mistake is noise: say it once
+	const hinted = new Set<string>();
 	for (const d of diagnostics.slice(0, MAX_DIAGNOSTICS)) {
 		const message = ts.flattenDiagnosticMessageText(d.messageText, '\n');
 		const tag = d.code ? `error TS${d.code}` : 'error';
@@ -172,8 +298,12 @@ function formatDiagnostics(diagnostics: readonly ts.Diagnostic[], codeLines: str
 				continue;
 			}
 			lines.push(`script.ts:${line}:${pos.character + 1} - ${tag}: ${message}`);
-			const source = codeLines[line - 1] ?? '';
-			if (source.length <= 300) lines.push(`  ${source}`, `  ${' '.repeat(pos.character)}^`);
+			lines.push(...excerpt(codeLines[line - 1] ?? '', pos.character));
+			const hint = hints ? hintFor(d, hints) : null;
+			if (hint && !hinted.has(hint)) {
+				hinted.add(hint);
+				lines.push(`  hint: ${hint}`);
+			}
 		} else {
 			const name = d.file.fileName === TOOLS_FILE ? 'tools.d.ts' : 'lib';
 			lines.push(`${name}:${pos.line + 1}:${pos.character + 1} - ${tag}: ${message}`);
@@ -261,14 +391,23 @@ export function check(input: CheckInput): CheckOutput {
 		...program.getSemanticDiagnostics()
 	].filter((d) => d.category === ts.DiagnosticCategory.Error);
 	if (diagnostics.length > 0) {
-		return { ok: false, diagnostics: formatDiagnostics(diagnostics, codeLines) };
+		return {
+			ok: false,
+			diagnostics: formatDiagnostics(diagnostics, codeLines, {
+				program,
+				script,
+				namespaces: tools.namespaces
+			})
+		};
 	}
 
+	// The inline source map makes Deno report runtime errors at `script.ts:<line>:<col>`
 	const js = ts.transpileModule(wrapped, {
+		fileName: 'script.ts',
 		compilerOptions: {
 			target: ts.ScriptTarget.ES2023,
 			module: ts.ModuleKind.ESNext,
-			sourceMap: false,
+			inlineSourceMap: true,
 			importHelpers: false
 		},
 		reportDiagnostics: false

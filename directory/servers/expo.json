@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "expo",
+	"name": "Expo",
+	"tagline": "Expo docs, EAS builds and app context",
+	"description": "Search the Expo and React Native docs, add libraries the right way and inspect EAS builds and submissions for your mobile apps.",
+	"homepage": "https://docs.expo.dev/mcp/",
+	"icon": "icons/expo.png",
+	"url": "https://mcp.expo.dev/mcp",
+	"namespace": "expo",
+	"publisher": "official",
+	"category": "developer-tools",
+	"tags": ["react-native", "mobile", "builds"],
+	"examples": [
+		"Why did my last EAS iOS build fail?",
+		"How do I add push notifications to this Expo app?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Expo's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.expo.dev offers CIMD and dynamic client registration."
+	}
+}

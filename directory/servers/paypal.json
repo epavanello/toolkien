@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "paypal",
+	"name": "PayPal",
+	"tagline": "Invoices, orders, disputes and products",
+	"description": "Create and send invoices, manage products and subscriptions and handle disputes in your PayPal business account.",
+	"homepage": "https://developer.paypal.com/ai-tools/mcp-server",
+	"icon": "icons/paypal.png",
+	"url": "https://mcp.paypal.com/mcp",
+	"namespace": "paypal",
+	"publisher": "official",
+	"category": "payments",
+	"tags": ["payments", "invoices", "disputes"],
+	"examples": [
+		"Send an invoice of 500 EUR to jane@example.com for the October retainer",
+		"List open disputes"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from PayPal's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.paypal.com offers dynamic client registration."
+	}
+}

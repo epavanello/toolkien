@@ -2,25 +2,31 @@
 	"$schema": "../schema.json",
 	"id": "sentry",
 	"name": "Sentry",
-	"description": "Query Sentry issues, events, releases and projects; run Seer analysis.",
+	"tagline": "Errors, stack traces and releases from Sentry",
+	"description": "Find the errors hurting your users, read full stack traces and breadcrumbs, and resolve or assign issues, so an agent can go from alert to fix without leaving the conversation.",
 	"homepage": "https://docs.sentry.io/product/sentry-mcp/",
 	"icon": "icons/sentry.png",
 	"url": "https://mcp.sentry.dev/mcp",
 	"namespace": "sentry",
 	"publisher": "official",
 	"category": "monitoring",
-	"tags": ["errors", "observability"],
+	"tags": ["errors", "performance", "issues", "debugging"],
+	"popular": true,
+	"examples": [
+		"What are the top unresolved errors in the web project this week?",
+		"Show the stack trace of the latest TypeError in checkout and suggest a fix"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": ["cimd", "dcr"]
 		}
 	},
+	"tools": {},
 	"verification": {
 		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Sentry's hosted MCP server, from Sentry's docs; live check: 401 + RFC 9728 metadata. OAuth via Sentry with dynamic client registration."
-	},
-	"tools": {}
+		"notes": "Endpoint from Sentry's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.sentry.dev offers CIMD and dynamic client registration."
+	}
 }

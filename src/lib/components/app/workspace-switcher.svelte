@@ -34,7 +34,7 @@
 						{...props}
 					>
 						<span
-							class="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground"
+							class="flex size-8 shrink-0 items-center justify-center rounded-md border bg-card text-muted-foreground"
 						>
 							{@render icon(current)}
 						</span>

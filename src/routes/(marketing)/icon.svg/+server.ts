@@ -1,9 +1,13 @@
-import { brand } from '#lib/brand.ts';
+import { BRAND_HEX, MARK_RINGS, ringsSvg } from '#lib/components/brand/paths.ts';
 import type { RequestHandler } from './$types';
 
-/** Neutral monogram icon (no Tolkien imagery), used by the web manifest */
+/**
+ * Favicon and manifest icon: the interlocking rings (paper + ember) on the ink tile. Same
+ * geometry as the in-app logo (`#lib/components/brand`), so the two never drift.
+ */
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="${BRAND_HEX.ink}"/>${ringsSvg(MARK_RINGS, { a: BRAND_HEX.paper, b: BRAND_HEX.ember }, 'tk')}</svg>`;
+
 export const GET: RequestHandler = () =>
-	new Response(
-		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#171717"/><text x="32" y="43" font-family="ui-sans-serif,system-ui,sans-serif" font-size="34" font-weight="600" text-anchor="middle" fill="#ffffff">${brand.name.charAt(0)}</text></svg>`,
-		{ headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' } }
-	);
+	new Response(svg, {
+		headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' }
+	});

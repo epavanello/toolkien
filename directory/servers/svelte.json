@@ -1,0 +1,53 @@
+{
+	"$schema": "../schema.json",
+	"id": "svelte",
+	"name": "Svelte",
+	"tagline": "Svelte 5 and SvelteKit docs plus a code autofixer",
+	"description": "Up-to-date Svelte 5 and SvelteKit documentation and an autofixer that checks components for mistakes, so agents write idiomatic, current Svelte code.",
+	"homepage": "https://svelte.dev/docs/ai/overview",
+	"icon": "icons/svelte.png",
+	"url": "https://mcp.svelte.dev/mcp",
+	"namespace": "svelte",
+	"publisher": "official",
+	"category": "knowledge",
+	"tags": ["docs", "svelte", "sveltekit", "frontend"],
+	"examples": [
+		"How do remote functions work in SvelteKit?",
+		"Check this component for Svelte 5 issues"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"list-sections": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Documentation index."
+		},
+		"get-documentation": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Documentation pages."
+		},
+		"svelte-autofixer": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Static analysis of the code passed in."
+		},
+		"playground-link": {
+			"annotations": {
+				"readOnlyHint": true
+			},
+			"note": "Builds a link, stores nothing."
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (4 tools)."
+	}
+}

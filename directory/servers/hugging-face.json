@@ -2,24 +2,30 @@
 	"$schema": "../schema.json",
 	"id": "hugging-face",
 	"name": "Hugging Face",
-	"description": "Search models, datasets, Spaces and papers on the Hugging Face Hub and call Gradio Spaces.",
+	"tagline": "Models, datasets, Spaces and papers",
+	"description": "Search models, datasets, Spaces and papers on the Hugging Face Hub and call Gradio Spaces as tools.",
 	"homepage": "https://huggingface.co/docs/hub/hf-mcp-server",
 	"icon": "icons/hugging-face.png",
 	"url": "https://huggingface.co/mcp",
 	"namespace": "huggingFace",
 	"publisher": "official",
-	"category": "search",
-	"tags": ["ml", "models"],
+	"category": "ai",
+	"tags": ["ml", "models", "datasets", "spaces"],
+	"popular": true,
+	"examples": [
+		"Find the most downloaded Italian speech-to-text models",
+		"Generate an image with the FLUX Space"
+	],
 	"auth": {
 		"type": "token",
 		"tokenHelp": "Create a read-only access token.",
 		"tokenUrl": "https://huggingface.co/settings/tokens"
 	},
+	"tools": {},
 	"verification": {
 		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Works anonymously with fewer tools (tools/list inspected: 4 read-only tools); a read token unlocks the user's settings, Spaces and private repos."
-	},
-	"tools": {}
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (4 tools)."
+	}
 }

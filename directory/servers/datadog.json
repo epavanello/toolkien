@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "datadog",
+	"name": "Datadog",
+	"tagline": "Logs, metrics, traces and monitors",
+	"description": "Search logs, query metrics, inspect traces and monitors and review incidents in Datadog to debug production issues faster.",
+	"homepage": "https://docs.datadoghq.com/mcp_server/",
+	"icon": "icons/datadog.png",
+	"url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp",
+	"namespace": "datadog",
+	"publisher": "official",
+	"category": "monitoring",
+	"tags": ["logs", "metrics", "apm", "incidents"],
+	"examples": [
+		"Which monitors are alerting right now?",
+		"Show error logs from the checkout service in the last 30 minutes"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Datadog's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.datadoghq.com offers dynamic client registration. US1 site endpoint; other Datadog sites (EU, US3…) have their own URL."
+	}
+}

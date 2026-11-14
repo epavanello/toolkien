@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "tavily",
+	"name": "Tavily",
+	"tagline": "Search, extract and crawl the web",
+	"description": "Real-time web search, content extraction, site crawling and deep research with Tavily.",
+	"homepage": "https://docs.tavily.com/documentation/mcp",
+	"icon": "icons/tavily.png",
+	"url": "https://mcp.tavily.com/mcp",
+	"namespace": "tavily",
+	"publisher": "official",
+	"category": "search",
+	"tags": ["web-search", "extraction", "crawling"],
+	"examples": [
+		"What are the latest EU AI Act deadlines?",
+		"Crawl the docs of example.com and list the API endpoints"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Tavily's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.tavily.com offers CIMD and dynamic client registration."
+	}
+}

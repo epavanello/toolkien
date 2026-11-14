@@ -213,3 +213,43 @@ Deno.test('IP policy stays identical to the app copy', async () => {
 	const egress = await Deno.readTextFile(new URL('../src/ip.ts', import.meta.url));
 	assertEquals(egress, app, 'egress/src/ip.ts must be a copy of src/lib/server/net/ip.ts');
 });
+
+Deno.test('alternative IP notations and special IPv6 forms never get dialled', async () => {
+	await withProxy(async (proxy, dialled) => {
+		for (const target of [
+			'2130706433:443', // 127.0.0.1 as a decimal integer
+			'0x7f.0.0.1:443', // hex octet
+			'0177.0.0.1:443', // octal octet
+			'127.1:443', // short form
+			'0.0.0.0:443',
+			'[::]:443',
+			'[::ffff:7f00:1]:443', // IPv4-mapped, hex form
+			'[::127.0.0.1]:443', // IPv4-compatible
+			'[2002:7f00:1::]:443', // 6to4 embedding 127.0.0.1
+			'[2001:db8::1]:443', // documentation
+			'[fe80::1]:443', // link-local
+			'[ff02::1]:443' // multicast
+		]) {
+			const status = await statusOf(proxy, connect(target));
+			assert(
+				['HTTP/1.1 403 Forbidden', 'HTTP/1.1 400 Bad Request', 'HTTP/1.1 502 Bad Gateway'].includes(
+					status
+				),
+				`${target}: ${status}`
+			);
+		}
+		assertEquals(dialled, []);
+	});
+	for (const address of [
+		'0.0.0.0',
+		'::',
+		'::ffff:7f00:1',
+		'::127.0.0.1',
+		'2002:7f00:1::',
+		'fe80::1%eth0'
+	]) {
+		assert(!isAllowedAddress(address), address);
+	}
+	assert(isAllowedAddress('2606:4700:4700::1111'));
+	assert(isAllowedAddress('1.1.1.1'));
+});

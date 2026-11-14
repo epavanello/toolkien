@@ -1,0 +1,31 @@
+{
+	"$schema": "../schema.json",
+	"id": "apollo",
+	"name": "Apollo.io",
+	"tagline": "Prospecting and contact enrichment",
+	"description": "Search Apollo’s B2B database for people and companies, enrich contacts and add them to your sequences.",
+	"homepage": "https://docs.apollo.io/docs/apollo-mcp",
+	"icon": "icons/apollo.png",
+	"url": "https://mcp.apollo.io/mcp",
+	"namespace": "apollo",
+	"publisher": "official",
+	"category": "crm",
+	"tags": ["prospecting", "enrichment", "b2b-data"],
+	"examples": [
+		"Find heads of engineering at fintechs in Berlin with 50–200 employees",
+		"Enrich this list of company domains"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["cimd", "dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Endpoint from Apollo.io's documentation; live check 2026-11-14: unauthenticated initialize answers 401 with RFC 9728 metadata; authorization server mcp.apollo.io offers CIMD and dynamic client registration."
+	}
+}

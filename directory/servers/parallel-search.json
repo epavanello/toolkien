@@ -1,0 +1,41 @@
+{
+	"$schema": "../schema.json",
+	"id": "parallel-search",
+	"name": "Parallel Search",
+	"tagline": "Free, token-efficient web search",
+	"description": "Free web search and page fetching from Parallel, returning compact excerpts that save context.",
+	"homepage": "https://docs.parallel.ai/integrations/mcp/search-mcp",
+	"icon": "icons/parallel-search.png",
+	"url": "https://search.parallel.ai/mcp",
+	"namespace": "parallelSearch",
+	"publisher": "official",
+	"category": "search",
+	"tags": ["web-search", "fetch", "free"],
+	"examples": [
+		"Search for the latest Postgres release notes",
+		"Fetch this article and pull out the key figures"
+	],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"web_search": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		},
+		"web_fetch": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "tested",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication. tools/list inspected anonymously on 2026-11-14 (3 tools)."
+	}
+}

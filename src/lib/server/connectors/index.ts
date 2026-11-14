@@ -1,4 +1,4 @@
-import { listDirectoryEntries } from './directory.ts';
+import { directoryShowcase, getDirectoryEntry, listDirectoryEntries } from './directory.ts';
 import * as discovery from './discovery.ts';
 import { abandonUpstreamOAuth, clientMetadataDocument, purgeExpiredFlows } from './oauth.ts';
 import * as service from './service.ts';
@@ -12,6 +12,8 @@ export { abandonUpstreamOAuth as abandonOAuth, clientMetadataDocument };
 export { handleOAuthCallback, OAuthCallbackError, withOAuthResult } from './callback.ts';
 /** Stored favicon of a free-URL connector, for `src/routes/connectors/icon/[id]` */
 export { connectorIcons, readConnectorIcon } from './icon.ts';
+/** Public directory pages (`/directory`, the landing showcase) */
+export { directoryShowcase, getDirectoryEntry };
 /** Job `connectors.oauth_flows` (registered in `jobs/builtin.ts`) */
 export { purgeExpiredFlows };
 
