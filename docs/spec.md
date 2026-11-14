@@ -62,7 +62,7 @@ Struttura, convenzioni e pattern vanno presi dai progetti dell'autore nella cart
 3. Copiare i componenti custom (Button con spinner e icone native e gli altri già personalizzati) invece di rigenerarli da shadcn-svelte; quelli mancanti si aggiungono con la CLI di shadcn-svelte.
 4. Non copiare segreti, `.env`, dati o logica di business specifica di quei progetti.
 
-**Remote functions e query reattive**: per i dati che devono aggiornarsi in tempo reale (stato delle esecuzioni, approvazioni in attesa, log attività) usare la tecnica di `$lib/remote/liveQuery.svelte` del progetto in `/Users/emanuele/Pack/pack/` (il file può avere estensione `.svelte.ts`). Prima di copiarla, verificare se la versione corrente di SvelteKit offre un metodo nativo più semplice per query live o aggiornamenti in streaming: se c'è, usarlo e annotare la scelta in `DECISIONS.md`.
+**Remote functions e query reattive**: per i dati che devono aggiornarsi in tempo reale (stato delle esecuzioni, approvazioni in attesa, log attività) usare una tecnica di query live (riferimento interno dell'autore). Prima di implementarla, verificare se la versione corrente di SvelteKit offre un metodo nativo più semplice per query live o aggiornamenti in streaming: se c'è, usarlo e annotare la scelta in `DECISIONS.md`.
 
 ## Design
 

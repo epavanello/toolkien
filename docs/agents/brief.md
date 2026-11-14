@@ -25,7 +25,7 @@ Content pages (legal, docs, future blog) are `+page.md` rendered by the standard
 
 ## Reference conventions
 
-Read `docs/conventions.md` (written by the foundation agent) before coding. Reference repos (read-only, never copy secrets/.env/business logic): `/Users/emanuele/sideprojects/hi-cherries` (closest: SvelteKit 3, Turso, Better Auth org plugin, `#lib`), `/Users/emanuele/sideprojects/how-much` (MCP + Better Auth OAuth), `/Users/emanuele/sideprojects/devmotion`.
+Read `docs/conventions.md` (written by the foundation agent) before coding. Reference repos: the author's other SvelteKit projects were used as read-only references during the initial build (not part of this repository).
 
 ## Module map and ownership
 
