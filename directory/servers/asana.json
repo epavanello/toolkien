@@ -6,16 +6,24 @@
 	"homepage": "https://developers.asana.com/docs/using-asanas-mcp-server",
 	"url": "https://mcp.asana.com/v2/mcp",
 	"namespace": "asana",
+	"publisher": "official",
 	"category": "project-management",
-	"tags": ["tasks"],
+	"tags": [
+		"tasks"
+	],
 	"auth": {
-		"type": "oauth"
+		"type": "oauth",
+		"oauth": {
+			"registration": [
+				"preregistered"
+			]
+		}
 	},
 	"verification": {
-		"status": "unverified",
+		"status": "needs-review",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "UNCERTAIN: v1 used the SSE endpoint https://mcp.asana.com/sse; the v2 Streamable HTTP endpoint and whether it allows dynamic client registration must be re-checked."
+		"notes": "Endpoint confirmed in Asana's docs and live (401 + RFC 9728 metadata, 2026-11-14). Asana's authorization server (app.asana.com) offers neither dynamic client registration nor CIMD, so it needs a pre-registered OAuth app: Toolkien cannot complete the sign-in yet."
 	},
 	"tools": {}
 }

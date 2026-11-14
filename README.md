@@ -80,8 +80,8 @@ The curated server directory is data: one JSON file per server in `directory/ser
 
 Placeholders that need real values:
 
-- `REPO_URL` and `SECURITY_CONTACT` in `src/routes/(marketing)/site.ts` (currently
-  `github.com/toolkien/toolkien`, `security@toolkien.example`).
+- `SECURITY_CONTACT` in `src/routes/(marketing)/site.ts` (currently `security@toolkien.example`).
+  The repository URL is `REPOSITORY_URL` in `src/lib/brand.ts`.
 - Legal drafts in `legal/*.md`: operator legal name and address, privacy / DPO / security /
   contact emails, VPS provider and region, Resend legal entity, transfer mechanism and sending
   region, liability cap, governing law, notice periods. All drafts need review by a lawyer or DPO.

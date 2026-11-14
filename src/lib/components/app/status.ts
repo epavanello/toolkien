@@ -29,9 +29,14 @@ const TONES: Record<string, Tone> = {
 	// connector auth (per viewer) and directory verification
 	connected: 'success',
 	not_connected: 'pending',
+	not_required: 'neutral',
 	verified: 'success',
 	community: 'neutral',
 	unverified: 'pending',
+	official: 'success',
+	tested: 'success',
+	documented: 'success',
+	'needs-review': 'pending',
 	// members (passkey), invite links, kill switches
 	missing: 'pending',
 	used: 'neutral',

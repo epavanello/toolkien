@@ -1,4 +1,9 @@
-import { directoryEntrySchema, type DirectoryEntryFile } from './directory-schema.ts';
+import {
+	directoryEntrySchema,
+	isTrustedEntry,
+	normalizeServerUrl,
+	type DirectoryEntryFile
+} from './directory-schema.ts';
 import type { DirectoryEntry, ToolAnnotations } from './types.ts';
 
 /**
@@ -34,6 +39,8 @@ export function toDirectoryEntry(file: DirectoryEntryFile): DirectoryEntry {
 		tokenHelp: file.auth.tokenHelp,
 		tokenUrl: file.auth.tokenUrl,
 		oauthRegistration: file.auth.oauth?.registration,
+		publisher: file.publisher,
+		trusted: isTrustedEntry(file),
 		verification: file.verification
 	};
 }
@@ -51,7 +58,12 @@ function load(): DirectoryEntry[] {
 
 const entries = load();
 const byId = new Map(entries.map((entry) => [entry.id, entry]));
+const byUrl = new Map(entries.map((entry) => [normalizeServerUrl(entry.url), entry]));
 
 export const listDirectoryEntries = (): DirectoryEntry[] => entries;
 export const getDirectoryEntry = (id: string | null | undefined): DirectoryEntry | null =>
 	(id && byId.get(id)) || null;
+
+/** The entry whose endpoint is this URL (trailing slash and case ignored), if any */
+export const findDirectoryEntryByUrl = (url: string): DirectoryEntry | null =>
+	byUrl.get(normalizeServerUrl(url)) ?? null;

@@ -15,7 +15,9 @@
 	import '@shikijs/twoslash/style-rich.css';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import type { Snippet } from 'svelte';
+	import type { BreadcrumbList, TechArticle, WebPage, WithContext } from 'schema-dts';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { brand } from '#lib/brand.ts';
 	import SeoHead from '#lib/components/seo/seo-head.svelte';
 
@@ -43,6 +45,40 @@
 
 	const embedded = getContext<boolean>(EMBEDDED) ?? false;
 	const updatedDay = $derived(updated ? new Date(updated).toISOString().slice(0, 10) : undefined);
+
+	// Structured data: docs are TechArticles, other markdown pages (legal) plain WebPages, both
+	// with a breadcrumb trail (Home › Documentation › Page) for search results and AI answers
+	const origin = $derived(page.url.origin);
+	const url = $derived(`${origin}${page.url.pathname}`);
+	const isDocs = $derived(page.url.pathname.startsWith('/docs'));
+	const pageLd = $derived<WithContext<TechArticle | WebPage>>({
+		'@context': 'https://schema.org',
+		'@type': isDocs ? 'TechArticle' : 'WebPage',
+		...(isDocs ? { headline: title } : { name: title }),
+		...(description ? { description } : {}),
+		...(updatedDay ? { dateModified: updatedDay } : {}),
+		url,
+		inLanguage: 'en',
+		image: `${origin}/og.png`,
+		isPartOf: { '@type': 'WebSite', name: brand.name, url: `${origin}/` },
+		publisher: { '@type': 'Organization', name: brand.name, url: `${origin}/` }
+	});
+	const breadcrumbs = $derived<WithContext<BreadcrumbList>>({
+		'@context': 'https://schema.org',
+		'@type': 'BreadcrumbList',
+		itemListElement: [
+			{ name: brand.name, url: `${origin}/` },
+			...(isDocs && page.url.pathname !== '/docs'
+				? [{ name: 'Documentation', url: `${origin}/docs` }]
+				: []),
+			{ name: title, url }
+		].map((crumb, index) => ({
+			'@type': 'ListItem',
+			position: index + 1,
+			name: crumb.name,
+			item: crumb.url
+		}))
+	});
 </script>
 
 <SeoHead
@@ -50,16 +86,7 @@
 	{description}
 	type="article"
 	modified={updatedDay}
-	jsonLd={[
-		{
-			'@context': 'https://schema.org',
-			'@type': 'TechArticle',
-			headline: title,
-			...(description ? { description } : {}),
-			...(updatedDay ? { dateModified: updatedDay } : {}),
-			publisher: { '@type': 'Organization', name: brand.name }
-		}
-	]}
+	jsonLd={[pageLd, breadcrumbs]}
 />
 
 {#snippet article()}

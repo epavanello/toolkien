@@ -22,7 +22,7 @@ Add one remote MCP server to your client, with the URL of your Toolkien instance
 https://<your-toolkien-host>/mcp
 ```
 
-The client opens a browser window: sign in to Toolkien, review the client asking for access and choose the workspace it starts in.
+The client opens a browser window: sign in to Toolkien, review the client asking for access and choose the workspace it starts in. Signed in, the **Connect your AI** page of the app walks you through it for your client; [Connect your AI client](/docs/connect-clients) has every client step by step.
 
 - **Claude** (desktop and web): add a custom connector with the URL above.
 - **Codex**, **VS Code** and other clients: add a remote (Streamable HTTP) MCP server with the URL above.

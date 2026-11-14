@@ -1,8 +1,14 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { listDirectoryEntries } from './directory.ts';
-import { directoryJsonSchema, validateDirectory } from './directory-schema.ts';
+import { addServerUrl } from '../../../routes/w/[workspace]/directory/directory.ts';
+import { findDirectoryEntryByUrl, listDirectoryEntries } from './directory.ts';
+import {
+	directoryJsonSchema,
+	isTrustedEntry,
+	normalizeServerUrl,
+	validateDirectory
+} from './directory-schema.ts';
 
 const root = join(process.cwd(), 'directory');
 const files = readdirSync(join(root, 'servers')).map((name) => ({
@@ -16,9 +22,10 @@ const valid = {
 	description: 'Acme tools for testing.',
 	url: 'https://mcp.acme.example/mcp',
 	namespace: 'acme',
+	publisher: 'official',
 	category: 'other',
 	auth: { type: 'none' },
-	verification: { status: 'community', by: 'someone', on: '2026-11-14' }
+	verification: { status: 'documented', by: 'someone', on: '2026-11-14' }
 };
 const file = (entry: object, name = 'acme.json') => ({ name, content: JSON.stringify(entry) });
 
@@ -32,6 +39,19 @@ describe('curated directory (CI gate for contributions)', () => {
 	it('schema.json is in sync with the zod schema', () => {
 		const committed = JSON.parse(readFileSync(join(root, 'schema.json'), 'utf8'));
 		expect(committed).toEqual(JSON.parse(JSON.stringify(directoryJsonSchema())));
+	});
+
+	it('lists the vendors\' own servers as official', () => {
+		for (const entry of listDirectoryEntries()) expect(entry.publisher).toBe('official');
+	});
+
+	it('the "Add it yourself" template only needs filling in', () => {
+		const url = new URL(addServerUrl('Acme Tools'));
+		expect(url.searchParams.get('filename')).toBe('acme-tools.json');
+		const { issues } = validateDirectory([
+			{ name: 'acme-tools.json', content: url.searchParams.get('value')! }
+		]);
+		expect(issues).toEqual([]);
 	});
 
 	it('the app bundles every file', () => {
@@ -58,7 +78,11 @@ describe('validateDirectory', () => {
 		['bad namespace', { namespace: 'Acme-Tools' }],
 		['unknown field', { logo: 'https://x' }],
 		['oauth hints without oauth', { auth: { type: 'none', scopes: ['read'] } }],
-		['bad date', { verification: { status: 'verified', by: 'x', on: 'yesterday' } }],
+		['bad date', { verification: { status: 'tested', by: 'x', on: 'yesterday' } }],
+		['legacy status', { verification: { status: 'verified', by: 'x', on: '2026-11-14' } }],
+		['missing publisher', { publisher: undefined }],
+		['unknown publisher', { publisher: 'vendor' }],
+		['needs-review without notes', { verification: { status: 'needs-review', by: 'x', on: '2026-11-14' } }],
 		['unknown annotation', { tools: { a: { annotations: { readOnly: true } } } }]
 	])('rejects %s', (_label, patch) => {
 		expect(validateDirectory([file({ ...valid, ...patch })]).issues.length).toBeGreaterThan(0);
@@ -82,5 +106,24 @@ describe('validateDirectory', () => {
 			'Invalid JSON.'
 		);
 		expect(validateDirectory([{ name: 'acme.yaml', content: '' }]).issues).toHaveLength(1);
+	});
+});
+
+describe('trust and URL matching', () => {
+	it('trusts official entries that were checked', () => {
+		const entry = (publisher: 'official' | 'community', status: 'tested' | 'needs-review') => ({
+			publisher,
+			verification: { status }
+		});
+		expect(isTrustedEntry(entry('official', 'tested'))).toBe(true);
+		expect(isTrustedEntry(entry('official', 'needs-review'))).toBe(false);
+		expect(isTrustedEntry(entry('community', 'tested'))).toBe(false);
+	});
+
+	it('matches endpoints ignoring case, trailing slash and hash', () => {
+		expect(normalizeServerUrl('https://MCP.PostHog.com/mcp/#x')).toBe('https://mcp.posthog.com/mcp');
+		expect(findDirectoryEntryByUrl('https://mcp.posthog.com/MCP/')?.id).toBe('posthog');
+		expect(findDirectoryEntryByUrl('https://mcp.posthog.com/mcp?x=1')).toBeNull();
+		expect(findDirectoryEntryByUrl('not a url')).toBeNull();
 	});
 });

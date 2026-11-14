@@ -17,6 +17,7 @@ Write calls follow your permissions: allowed, asked for your confirmation, or bl
 ## Where to go next
 
 - [Getting started](/docs/getting-started): create an account, add a connector, connect your client.
+- [Connect your AI client](/docs/connect-clients): setup in Claude Code, Claude, ChatGPT, Codex, Cursor, VS Code and more.
 - [How it works](/docs/how-it-works): the search, describe, execute loop.
 - [Connectors & directory](/docs/connectors): adding servers, authentication, refresh, contributing to the directory.
 - [Permissions & approvals](/docs/permissions): allow, ask, block, and approvals.

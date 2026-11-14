@@ -4,21 +4,28 @@
 	"name": "Atlassian (Jira & Confluence)",
 	"description": "Search and edit Jira issues and Confluence pages through the Atlassian Remote MCP Server.",
 	"homepage": "https://support.atlassian.com/rovo/docs/getting-started-with-the-atlassian-remote-mcp-server/",
-	"url": "https://mcp.atlassian.com/v1/mcp",
+	"url": "https://mcp.atlassian.com/v2/mcp",
 	"namespace": "atlassian",
+	"publisher": "official",
 	"category": "project-management",
-	"tags": ["jira", "confluence"],
+	"tags": [
+		"jira",
+		"confluence"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": [
+				"cimd",
+				"dcr"
+			]
 		}
 	},
 	"verification": {
-		"status": "unverified",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "UNCERTAIN: Atlassian first published the SSE endpoint /v1/sse; the Streamable HTTP path /v1/mcp should be re-checked against current docs before marking verified."
+		"notes": "Atlassian's docs now point to the v2 endpoint (v1 clients are retired on 2027-03-01). Live check: 401 + RFC 9728 metadata; the authorization server supports CIMD and dynamic client registration. An Atlassian API token also works as a bearer token."
 	},
 	"tools": {}
 }

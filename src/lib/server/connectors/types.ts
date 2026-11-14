@@ -64,9 +64,19 @@ export type DirectoryEntry = {
 	tokenUrl?: string;
 	/** OAuth registration the upstream supports (hint; discovery decides) */
 	oauthRegistration?: ('cimd' | 'dcr' | 'preregistered')[];
+	/**
+	 * (changed) Who runs the server: `official` (the service's vendor) or `community` (a third
+	 * party, not the service owner)
+	 */
+	publisher: 'official' | 'community';
+	/** (changed) `official` + `tested`/`documented` is trusted; anything else is handled like a free URL */
+	trusted: boolean;
 	verification: {
-		/** `unverified` entries are treated like free URLs (tools flagged unverified) */
-		status: 'verified' | 'community' | 'unverified';
+		/**
+		 * (changed) `tested` (tools/list inspected), `documented` (endpoint in the vendor's
+		 * docs), `needs-review` (uncertain, see notes)
+		 */
+		status: 'tested' | 'documented' | 'needs-review';
 		by: string;
 		on: string;
 		notes?: string;
@@ -105,6 +115,10 @@ export type ConnectorSummary = {
 	canAuthenticate: boolean;
 	/** (additive) Negotiated MCP version on the last sync */
 	protocolVersion: string | null;
+	/** (additive) Directory publisher; `null` for a free URL outside the directory */
+	publisher: 'official' | 'community' | null;
+	/** (additive) The directory entry is marked `needs-review` */
+	needsReview: boolean;
 };
 
 /** (additive) One tool of a connector, as shown in the connector detail panel */
@@ -142,6 +156,7 @@ export type AddConnectorInput = {
 	onlyForMe: boolean;
 	source: { type: 'directory'; directoryId: string } | { type: 'url'; url: string };
 	name?: string;
+	/** Omitted: detected from the server (401 challenge / OAuth metadata), see `detect.ts` */
 	authType?: ConnectorAuthType;
 	/**
 	 * (additive) Instance label: the same server may be added many times (one per account or
@@ -151,6 +166,19 @@ export type AddConnectorInput = {
 	/** (additive) Explicit namespace (camelCase identifier, unique in the workspace) */
 	namespace?: string;
 };
+
+/**
+ * (additive) What the UI does right after adding: send the browser to the upstream
+ * authorization (`authorize`), ask for a token (`token`), or open the connector (`ready`;
+ * `message` explains why sign-in could not start).
+ */
+export type AddConnectorNext =
+	| { type: 'authorize'; authorizationUrl: string }
+	| { type: 'token' }
+	| { type: 'ready'; message: string | null };
+
+/** (additive) */
+export type AddAndConnectResult = { connector: ConnectorSummary; next: AddConnectorNext };
 
 /** (additive) Rename an instance: new label and/or namespace; tool paths follow the namespace */
 export type RenameConnectorInput = { label?: string | null; namespace?: string; name?: string };
@@ -227,6 +255,16 @@ export interface ConnectorsService {
 	listDirectory(): DirectoryEntry[];
 	list(actor: WorkspaceActor): Promise<ConnectorSummary[]>;
 	add(actor: WorkspaceActor, input: AddConnectorInput): Promise<ConnectorSummary>;
+	/**
+	 * (additive) `add`, then the first step of authentication for the actor: starts upstream
+	 * OAuth (coming back to `returnTo(connectorId)`) when the connector needs it and the actor
+	 * may connect it. A failed start does not undo the add (`next.type = 'ready'` + reason).
+	 */
+	addAndConnect(
+		actor: WorkspaceActor,
+		input: AddConnectorInput,
+		returnTo: (connectorId: string) => string
+	): Promise<AddAndConnectResult>;
 	/** Deletes configuration and credentials, revoking upstream tokens where possible */
 	remove(actor: WorkspaceActor, connectorId: string): Promise<void>;
 	/** Starts upstream OAuth (PKCE); returns the URL to send the browser to */

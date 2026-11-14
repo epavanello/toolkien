@@ -3,7 +3,7 @@ import { resolve } from '$app/paths';
 import { redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
-	add,
+	addAndConnect,
 	rename,
 	disconnect,
 	get,
@@ -20,6 +20,10 @@ import type { WorkspaceActor, WorkspaceSummary } from '#lib/server/workspaces/ty
 
 const slug = z.string().trim().min(1).max(200);
 const id = z.string().trim().min(1).max(100);
+
+/** The connectors page with a connector's panel open (`connect=token` opens the token dialog) */
+const connectorPath = (workspace: string, connectorId: string, connect?: 'token') =>
+	`${resolve('/w/[workspace]/connectors', { workspace })}?connector=${encodeURIComponent(connectorId)}${connect ? `&connect=${connect}` : ''}`;
 
 /** What the viewer may add, from the workspace policy (admins are not limited by it) */
 async function addRights(workspace: WorkspaceSummary, actor: WorkspaceActor) {
@@ -81,22 +85,32 @@ export const addConnector = form(
 		}),
 	async (input) => {
 		const { actor } = await requireWorkspace(input.workspace);
-		const created = await add(actor, {
-			scope: input.audience === 'shared' ? 'shared' : 'personal',
-			onlyForMe: input.audience === 'mine',
-			source:
-				input.source === 'directory'
-					? { type: 'directory', directoryId: input.directoryId! }
-					: { type: 'url', url: input.url! },
-			name: input.name || undefined,
-			label: input.label || undefined,
-			namespace: input.namespace || undefined,
-			authType: input.authType === 'auto' ? undefined : input.authType
-		});
+		const { connector, next } = await addAndConnect(
+			actor,
+			{
+				scope: input.audience === 'shared' ? 'shared' : 'personal',
+				onlyForMe: input.audience === 'mine',
+				source:
+					input.source === 'directory'
+						? { type: 'directory', directoryId: input.directoryId! }
+						: { type: 'url', url: input.url! },
+				name: input.name || undefined,
+				label: input.label || undefined,
+				namespace: input.namespace || undefined,
+				authType: input.authType === 'auto' ? undefined : input.authType
+			},
+			// The OAuth callback lands back on the connector's panel
+			(connectorId) => connectorPath(input.workspace, connectorId)
+		);
 		void listConnectors(input.workspace).refresh();
+		// Guided setup: straight to the upstream sign-in, the token dialog, or the loaded panel
+		if (next.type === 'authorize') {
+			// Built by `startOAuth` from the server's discovered metadata (`javascript:` refused)
+			redirect(303, next.authorizationUrl, { external: true });
+		}
 		redirect(
 			303,
-			`${resolve('/w/[workspace]/connectors', { workspace: input.workspace })}?connector=${encodeURIComponent(created.id)}`
+			connectorPath(input.workspace, connector.id, next.type === 'token' ? 'token' : undefined)
 		);
 	}
 );
@@ -137,8 +151,7 @@ export const connectOAuth = command(
 	z.object({ workspace: slug, id }),
 	async ({ workspace, id }) => {
 		const { actor } = await requireWorkspace(workspace);
-		const returnTo = `${resolve('/w/[workspace]/connectors', { workspace })}?connector=${encodeURIComponent(id)}`;
-		return startOAuth(actor, id, returnTo);
+		return startOAuth(actor, id, connectorPath(workspace, id));
 	}
 );
 

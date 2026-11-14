@@ -6,8 +6,11 @@
 	"homepage": "https://github.com/cloudflare/mcp-server-cloudflare",
 	"url": "https://docs.mcp.cloudflare.com/mcp",
 	"namespace": "cloudflareDocs",
+	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs"],
+	"tags": [
+		"docs"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -21,9 +24,9 @@
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Public, no authentication."
+		"notes": "Public, no authentication. tools/list inspected anonymously (2 read-only tools)."
 	}
 }

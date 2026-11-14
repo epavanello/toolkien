@@ -1,4 +1,4 @@
-import type { Snippet } from 'svelte';
+import type { Component, Snippet } from 'svelte';
 import type { BadgeVariant } from '#lib/components/ui/badge/badge.svelte';
 import type { ActionItem } from './actions-menu.svelte';
 import type { FilterDefinition } from './filter-bar.svelte';
@@ -18,10 +18,23 @@ export type Column<T> = {
 	/** `actions` cells */
 	actions?: (row: T) => ActionItem[];
 	cell?: Snippet<[T]>;
+	/**
+	 * A small button after the cell value (e.g. "Connect" next to a pending status); `null`
+	 * hides it. Clicks do not open the row.
+	 */
+	inlineAction?: (row: T) => InlineAction | null;
 	/** Included in the built-in search (default: text and mono columns) */
 	searchable?: boolean;
 	/** Hidden below the `md` breakpoint */
 	hideOnMobile?: boolean;
+};
+
+export type InlineAction = {
+	label: string;
+	icon?: Component;
+	onSelect: () => unknown;
+	/** `primary` for the action the row is waiting for, `outline` (default) otherwise */
+	variant?: 'primary' | 'outline';
 };
 
 export type TableFilter<T> = FilterDefinition & { match: (row: T, value: string) => boolean };

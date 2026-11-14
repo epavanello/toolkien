@@ -6,8 +6,11 @@
 	"homepage": "https://docs.exa.ai/reference/exa-mcp",
 	"url": "https://mcp.exa.ai/mcp",
 	"namespace": "exa",
+	"publisher": "official",
 	"category": "search",
-	"tags": ["web-search"],
+	"tags": [
+		"web-search"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -26,9 +29,9 @@
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Free tier without a key (rate limited). Never put an API key in the URL query string."
+		"notes": "Free tier without a key (rate limited); tools/list inspected anonymously (2 read-only tools). Never put an API key in the URL query string."
 	}
 }

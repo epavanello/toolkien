@@ -6,19 +6,25 @@
 	"homepage": "https://linear.app/docs/mcp",
 	"url": "https://mcp.linear.app/mcp",
 	"namespace": "linear",
+	"publisher": "official",
 	"category": "project-management",
-	"tags": ["issues", "tracking"],
+	"tags": [
+		"issues",
+		"tracking"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": [
+				"dcr"
+			]
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Streamable HTTP endpoint from Linear docs (the older /sse endpoint is legacy). OAuth 2.1 with dynamic client registration."
+		"notes": "Streamable HTTP endpoint from Linear's docs (the older /sse endpoint is legacy); live check: 401 + RFC 9728 metadata. OAuth 2.1 with dynamic client registration."
 	},
 	"tools": {}
 }

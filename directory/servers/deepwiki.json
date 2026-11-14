@@ -6,8 +6,12 @@
 	"homepage": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
 	"url": "https://mcp.deepwiki.com/mcp",
 	"namespace": "deepwiki",
+	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs", "code"],
+	"tags": [
+		"docs",
+		"code"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -32,9 +36,9 @@
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Public repositories only, no authentication."
+		"notes": "Public repositories only, no authentication. tools/list inspected anonymously (3 tools, no annotations reported: treated as writes until confirmed)."
 	}
 }

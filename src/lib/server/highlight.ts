@@ -13,7 +13,7 @@
 import { createHighlighterCore, type HighlighterCore, type ShikiTransformer } from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
-export const HIGHLIGHT_LANGS = ['ts', 'js', 'json', 'bash', 'text'] as const;
+export const HIGHLIGHT_LANGS = ['ts', 'js', 'json', 'bash', 'toml', 'text'] as const;
 export type HighlightLang = (typeof HIGHLIGHT_LANGS)[number];
 
 /** Fence names → grammar ids; anything else renders as plain (escaped) text */
@@ -28,7 +28,8 @@ const ALIASES: Record<string, string> = {
 	sh: 'shellscript',
 	shell: 'shellscript',
 	shellscript: 'shellscript',
-	zsh: 'shellscript'
+	zsh: 'shellscript',
+	toml: 'toml'
 };
 
 const THEMES = { light: 'github-light', dark: 'github-dark' } as const;
@@ -45,7 +46,8 @@ function getHighlighter() {
 			import('shiki/langs/typescript.mjs'),
 			import('shiki/langs/javascript.mjs'),
 			import('shiki/langs/json.mjs'),
-			import('shiki/langs/shellscript.mjs')
+			import('shiki/langs/shellscript.mjs'),
+			import('shiki/langs/toml.mjs')
 		],
 		engine: createJavaScriptRegexEngine({ forgiving: true })
 	});

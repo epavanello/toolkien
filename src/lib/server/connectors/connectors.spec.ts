@@ -29,6 +29,29 @@ const roles: Record<string, 'owner' | 'admin' | 'member'> = {
 
 vi.mock('$app/env/private', () => ({ ORIGIN: 'https://toolkien.test' }));
 vi.mock('$app/env', () => ({ building: false, dev: false }));
+// Remote functions run as plain functions: `form`/`command` call the handler, queries refresh
+vi.mock('$app/server', () => {
+	type Schema = { parse: (v: unknown) => unknown };
+	const remote = (type: string, fn: (input: unknown) => unknown) =>
+		Object.assign(fn, { __: { type } });
+	const call = (type: string) => (schema: Schema, fn: (input: unknown) => unknown) =>
+		remote(type, (input) => fn(schema.parse(input)));
+	return {
+		form: call('form'),
+		command: call('command'),
+		query: () => remote('query', () => ({ refresh: async () => undefined }))
+	};
+});
+vi.mock('$app/paths', () => ({
+	resolve: (id: string, params: Record<string, string>) =>
+		id.replace(/\[(\w+)\]/g, (_, key: string) => params[key])
+}));
+vi.mock('#lib/server/guards.ts', () => ({
+	requireWorkspace: async (slug: string) => ({
+		workspace: { id: 'ws-1', slug, role: 'owner' },
+		actor: { workspaceId: 'ws-1', userId: 'alice', role: 'owner' }
+	})
+}));
 vi.mock('#lib/server/jobs/index.ts', () => ({ registerJob: () => undefined }));
 vi.mock('#lib/server/db/index.ts', async () => {
 	const { createConnectorsTestDb } = await import('./testing/db.ts');
@@ -76,6 +99,7 @@ vi.mock('#lib/server/permissions/index.ts', () => ({
 vi.mock('#lib/server/workspaces/index.ts', async () => ({
 	checkConnectorPolicy: (await import('#lib/server/workspaces/policy.ts')).checkConnectorPolicy,
 	getPolicy: async (workspaceId: string) => ({ workspaceId, permissionFloor: null, ...policy }),
+	hasRole: () => true,
 	getById: async (userId: string, workspaceId: string) =>
 		roles[userId]
 			? {
@@ -753,5 +777,207 @@ describe('several instances of one server', () => {
 		expect(await connectors.declarationsFor(alice, [after.toolId])).toContain(
 			'declare const posthogDevpostEu'
 		);
+	});
+});
+
+describe('authentication detection and guided setup', () => {
+	const oauth = createFakeServer({
+		host: 'mcp.detect-oauth.example',
+		tools: issuesTools,
+		auth: { kind: 'oauth' }
+	});
+	// Protected resource metadata only behind the 401 challenge (the production bug)
+	const challengeOnly = createFakeServer({
+		host: 'challenge.example',
+		tools: issuesTools,
+		auth: { kind: 'oauth' },
+		prmPath: '/api/auth/.well-known/oauth-protected-resource'
+	});
+	const open = createFakeServer({ host: 'mcp.detect-open.example', tools: issuesTools });
+	const token = createFakeServer({
+		host: 'mcp.detect-token.example',
+		tools: issuesTools,
+		auth: { kind: 'token', token: 'secret' }
+	});
+	const slow = createFakeServer({ host: 'mcp.slow.example', tools: [], hang: true });
+
+	beforeAll(() => {
+		servers.push(oauth, challengeOnly, open, token, slow);
+	});
+
+	it('detects OAuth from a 401 with WWW-Authenticate', async () => {
+		expect(await connectors.detectAuth(oauth.url)).toEqual({
+			authType: 'oauth',
+			via: 'challenge',
+			note: null
+		});
+		// Metadata reachable only through the challenge's resource_metadata
+		expect(await connectors.detectAuth(challengeOnly.url)).toMatchObject({ authType: 'oauth' });
+	});
+
+	it('detects open servers, token servers and timeouts', async () => {
+		expect(await connectors.detectAuth(open.url)).toEqual({
+			authType: 'none',
+			via: 'open',
+			note: null
+		});
+		expect(await connectors.detectAuth(token.url)).toMatchObject({ authType: 'token' });
+		const started = Date.now();
+		const timedOut = await connectors.detectAuth(slow.url, { timeoutMs: 50 });
+		expect(Date.now() - started).toBeLessThan(2000);
+		expect(timedOut).toMatchObject({ authType: 'none', via: 'timeout' });
+		expect(timedOut.note).toMatch(/did not answer in time/);
+	});
+
+	it('switches a connector added as "none" to OAuth when the server asks for sign-in', async () => {
+		const added = await connectors.add(alice, {
+			scope: 'personal',
+			onlyForMe: true,
+			source: { type: 'url', url: challengeOnly.url },
+			label: 'Forced none',
+			authType: 'none'
+		});
+		expect(added).toMatchObject({
+			authType: 'oauth',
+			status: 'pending_auth',
+			authenticated: false,
+			canAuthenticate: true
+		});
+		// OAuth discovery follows the challenge's metadata (resource = the server's origin)
+		const { authorizationUrl } = await connectors.startOAuth(alice, added.id, '/w/ws-1');
+		challengeOnly.visitAuthorize(authorizationUrl);
+		expect(challengeOnly.oauth.lastAuthorize?.get('resource')).toBe('https://challenge.example');
+	});
+
+	it('heals rows stuck on "none" + pending_auth when they are read', async () => {
+		const [row] = await db
+			.insert(schema.connector)
+			.values({
+				workspaceId: 'ws-1',
+				scope: 'personal',
+				ownerUserId: 'alice',
+				source: 'url',
+				url: oauth.url,
+				name: 'stuck',
+				namespace: 'stuckOauth',
+				unverified: true,
+				authType: 'none',
+				status: 'pending_auth',
+				statusMessage: 'The server rejected the credentials (401).',
+				createdBy: 'alice'
+			})
+			.returning();
+		const summary = (await connectors.list(alice)).find((c) => c.id === row.id)!;
+		expect(summary).toMatchObject({ authType: 'oauth', status: 'pending_auth', authenticated: false });
+		expect((await connectors.get(alice, row.id)).authType).toBe('oauth');
+	});
+
+	it('returns the next setup step after add', async () => {
+		const viaOAuth = await connectors.addAndConnect(
+			alice,
+			{ scope: 'personal', onlyForMe: true, source: { type: 'url', url: oauth.url } },
+			(id) => `/w/ws-1/connectors?connector=${id}`
+		);
+		expect(viaOAuth.next.type).toBe('authorize');
+		const url = viaOAuth.next.type === 'authorize' ? viaOAuth.next.authorizationUrl : '';
+		expect(url).toMatch(/^https:\/\/mcp\.detect-oauth\.example\/authorize\?/);
+
+		// Consent at the upstream → callback lands on the connector's panel with the tools loaded
+		oauth.visitAuthorize(url);
+		const { code, state } = oauth.oauth.approve();
+		const done = await connectors.completeOAuth(state, code, { userId: 'alice' });
+		expect(done.returnTo).toBe(`/w/ws-1/connectors?connector=${viaOAuth.connector.id}`);
+		expect(await connectors.get(alice, viaOAuth.connector.id)).toMatchObject({
+			authenticated: true,
+			status: 'active',
+			toolCount: 2
+		});
+
+		const viaToken = await connectors.addAndConnect(
+			alice,
+			{ scope: 'personal', onlyForMe: true, source: { type: 'url', url: token.url } },
+			() => '/'
+		);
+		expect(viaToken.next).toEqual({ type: 'token' });
+		expect(viaToken.connector).toMatchObject({ authType: 'token', authenticated: false });
+
+		const ready = await connectors.addAndConnect(
+			alice,
+			{ scope: 'personal', onlyForMe: true, source: { type: 'url', url: open.url } },
+			() => '/'
+		);
+		expect(ready.next).toEqual({ type: 'ready', message: null });
+		expect(ready.connector).toMatchObject({ authType: 'none', authenticated: true, toolCount: 2 });
+	});
+
+	it('addConnector (remote form) redirects to the upstream authorization', async () => {
+		const { addConnector } = await import('#lib/functions/connectors.remote.ts');
+		const submit = addConnector as unknown as (input: Record<string, string>) => Promise<never>;
+		const redirect = await submit({
+			workspace: 'ws-1',
+			source: 'url',
+			url: oauth.url,
+			label: 'Remote',
+			authType: 'auto',
+			audience: 'mine'
+		}).catch((thrown: unknown) => thrown as { status: number; location: string });
+		expect(redirect.status).toBe(303);
+		expect(redirect.location).toMatch(/^https:\/\/mcp\.detect-oauth\.example\/authorize\?/);
+		const params = new URL(redirect.location).searchParams;
+		expect(params.get('redirect_uri')).toBe('https://toolkien.test/connectors/oauth/callback');
+
+		const viaToken = await submit({
+			workspace: 'ws-1',
+			source: 'url',
+			url: token.url,
+			label: 'Remote token',
+			audience: 'mine'
+		}).catch((thrown: unknown) => thrown as { status: number; location: string });
+		expect(viaToken.location).toMatch(/^\/w\/ws-1\/connectors\?connector=[\w-]+&connect=token$/);
+	});
+});
+
+describe('free URLs of directory servers', () => {
+	it('links a URL that is a directory endpoint to its entry', async () => {
+		const added = await connectors.add(alice, {
+			scope: 'personal',
+			onlyForMe: true,
+			source: { type: 'url', url: 'https://MCP.posthog.com/mcp/' },
+			label: 'By URL'
+		});
+		expect(added).toMatchObject({
+			source: 'directory',
+			directoryId: 'posthog',
+			publisher: 'official',
+			unverified: false,
+			authType: 'oauth'
+		});
+	});
+
+	it('links existing free-URL rows when they are read', async () => {
+		const [row] = await db
+			.insert(schema.connector)
+			.values({
+				workspaceId: 'ws-1',
+				scope: 'personal',
+				ownerUserId: 'alice',
+				source: 'url',
+				url: 'https://mcp.posthog.com/mcp',
+				name: 'mcp.posthog.com',
+				namespace: 'posthogLegacy',
+				unverified: true,
+				authType: 'oauth',
+				status: 'pending_auth',
+				createdBy: 'alice'
+			})
+			.returning();
+		const summary = (await connectors.list(alice)).find((c) => c.id === row.id)!;
+		expect(summary).toMatchObject({
+			source: 'directory',
+			directoryId: 'posthog',
+			publisher: 'official',
+			needsReview: false,
+			unverified: false
+		});
 	});
 });

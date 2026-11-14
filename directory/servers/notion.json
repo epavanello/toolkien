@@ -6,19 +6,26 @@
 	"homepage": "https://developers.notion.com/docs/mcp",
 	"url": "https://mcp.notion.com/mcp",
 	"namespace": "notion",
+	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs", "wiki", "databases"],
+	"tags": [
+		"docs",
+		"wiki",
+		"databases"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": [
+				"dcr"
+			]
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Notion hosted MCP server, OAuth with dynamic client registration."
+		"notes": "Notion's hosted MCP server, from Notion's docs; live check: 401 + RFC 9728 metadata. OAuth with dynamic client registration."
 	},
 	"tools": {}
 }

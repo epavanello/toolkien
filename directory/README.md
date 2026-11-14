@@ -7,9 +7,14 @@ What an entry gives Toolkien:
 - the Streamable HTTP endpoint (`https` only) and how to authenticate (OAuth, pasted token, or none);
 - the minimal OAuth scopes to request, when the server needs them;
 - **verified tool annotations** (`readOnlyHint`, `destructiveHint`, …). Toolkien's default permissions depend on them: read-only tools of a directory server are allowed without asking, everything else asks for confirmation. Wrong annotations weaken that protection, so reviewers check them carefully;
-- reviewer notes shown next to the tools, and who verified the entry and when.
+- reviewer notes shown next to the tools, and who checked the entry and when.
 
-Servers added from a free URL (not in this directory) are marked **unverified**: their descriptions are flagged as untrusted and their permissions start from a proposal the user confirms. Entries with `verification.status: "unverified"` are treated the same way until someone verifies them.
+Two separate facts describe an entry:
+
+- **`publisher`** — who runs the server. `official`: the service's own vendor, on its own domain and documented by it (Linear's server for Linear). `community`: a third party serving a service it does not own. The app shows **Official** or **Community** ("maintained by a third party, not by <service>").
+- **`verification.status`** — how far we checked it. `tested`: someone connected and inspected `tools/list`. `documented`: the endpoint matches the vendor's current docs and answers as expected (e.g. 401 with RFC 9728 metadata for OAuth servers). `needs-review`: something is uncertain, explained in `notes` (shown as a small **Needs review** badge).
+
+Official entries that are `tested` or `documented` are trusted: agents see their descriptions as is, and read-only tools are allowed by default. Community and `needs-review` entries are handled like servers added from a free URL: their descriptions are flagged as untrusted and their permissions start from a proposal the user confirms. Servers added from a free URL that is not in this directory are marked **Unverified**; a URL that is exactly a directory endpoint (case and trailing slash ignored) is linked to its entry instead.
 
 ## Format
 
@@ -22,6 +27,7 @@ Servers added from a free URL (not in this directory) are marked **unverified**:
 	"homepage": "https://linear.app/docs/mcp",
 	"url": "https://mcp.linear.app/mcp", // remote MCP endpoint, https only
 	"namespace": "linear", // scripts call `linear.listIssues(...)`
+	"publisher": "official", // "official" (run by the vendor) | "community" (third party)
 	"category": "project-management",
 	"tags": ["issues"],
 	"auth": {
@@ -34,10 +40,10 @@ Servers added from a free URL (not in this directory) are marked **unverified**:
 		"list_issues": { "annotations": { "readOnlyHint": true }, "note": "Read only." }
 	},
 	"verification": {
-		"status": "verified", // "verified" | "community" | "unverified"
+		"status": "tested", // "tested" | "documented" | "needs-review"
 		"by": "your-github-handle",
 		"on": "2026-11-14",
-		"notes": "How it was checked."
+		"notes": "How it was checked (required for needs-review)."
 	}
 }
 ```

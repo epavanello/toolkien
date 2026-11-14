@@ -3,7 +3,7 @@
 
 	export const sectionVariants = tv({
 		slots: {
-			root: 'flex flex-col',
+			root: 'flex scroll-mt-14 flex-col',
 			header: 'flex flex-wrap items-start justify-between gap-2',
 			title: 'text-sm font-semibold',
 			description: 'text-sm text-muted-foreground',
@@ -30,6 +30,8 @@
 	import type { Snippet } from 'svelte';
 
 	type Props = {
+		/** Anchor id, for links to this section (`#setup`) */
+		id?: string;
 		title?: string;
 		description?: string;
 		variant?: SectionVariant;
@@ -38,12 +40,12 @@
 		children: Snippet;
 	};
 
-	let { title, description, variant, tone, actions, children }: Props = $props();
+	let { id, title, description, variant, tone, actions, children }: Props = $props();
 
 	const styles = $derived(sectionVariants({ variant, tone }));
 </script>
 
-<section class={styles.root()} data-slot="section">
+<section {id} class={styles.root()} data-slot="section">
 	{#if title || actions}
 		<header class={styles.header()}>
 			<div class="flex flex-col gap-0.5">

@@ -25,6 +25,14 @@ export type FakeServerOptions = {
 	auth?: { kind: 'token'; token: string | string[] } | { kind: 'oauth' };
 	/** Only serve 2025-era traffic (no `server/discover`) */
 	legacyOnly?: boolean;
+	/**
+	 * OAuth: serve the protected resource metadata only at this path (named by the 401
+	 * challenge; the well-known paths 404) with `resource` = the origin, like servers built on
+	 * Better Auth's MCP plugin
+	 */
+	prmPath?: string;
+	/** Never answer `/mcp` (detection timeouts) */
+	hang?: boolean;
 };
 
 export type FakeServer = {
@@ -131,7 +139,10 @@ export function createFakeServer(options: FakeServerOptions): FakeServer {
 	async function route(request: Request): Promise<Response> {
 		const path = new URL(request.url).pathname;
 		if (options.auth?.kind === 'oauth') {
-			if (path.startsWith('/.well-known/oauth-protected-resource')) {
+			if (options.prmPath && path === options.prmPath) {
+				return json({ resource: origin, authorization_servers: [origin], scopes_supported: ['read'] });
+			}
+			if (!options.prmPath && path.startsWith('/.well-known/oauth-protected-resource')) {
 				return json({
 					resource: url,
 					authorization_servers: [origin],
@@ -186,9 +197,11 @@ export function createFakeServer(options: FakeServerOptions): FakeServer {
 			}
 		}
 		if (path === '/mcp') {
+			if (options.hang) return new Promise<Response>(() => undefined);
 			if (!authorized(request)) {
+				const metadata = options.prmPath ?? '/.well-known/oauth-protected-resource/mcp';
 				return json({ error: 'unauthorized' }, 401, {
-					'www-authenticate': `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp", scope="read"`
+					'www-authenticate': `Bearer resource_metadata="${origin}${metadata}", scope="read"`
 				});
 			}
 			if (options.legacyOnly && request.method === 'POST') {

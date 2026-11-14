@@ -1,3 +1,4 @@
+import { REPOSITORY_URL } from '#lib/brand.ts';
 import type { SiteLink, SiteLinkGroup } from '#lib/components/marketing/index.ts';
 import { DOCS_PAGES } from './docs/nav.ts';
 
@@ -6,8 +7,8 @@ import { DOCS_PAGES } from './docs/nav.ts';
  * pages that feeds the sitemap and llms.txt.
  */
 
-/** Source repository (placeholder until the public repo exists) */
-export const REPO_URL = 'https://github.com/toolkien/toolkien';
+/** Source repository (single value in `#lib/brand.ts`, shared with the app shell) */
+export const REPO_URL = REPOSITORY_URL;
 export const LICENSE = 'AGPL-3.0';
 export const SECURITY_CONTACT = 'security@toolkien.example';
 
@@ -17,7 +18,7 @@ export const LEGAL_DOCUMENTS = [
 	{ slug: 'dpa', label: 'Data processing agreement' },
 	{ slug: 'sub-processors', label: 'Sub-processors' },
 	{ slug: 'retention', label: 'Data retention' },
-	{ slug: 'security', label: 'Security' },
+	{ slug: 'security', label: 'Service security' },
 	{ slug: 'cookies', label: 'Cookie policy' }
 ] as const;
 
@@ -43,6 +44,7 @@ export const footerGroups: SiteLinkGroup[] = [
 		title: 'Docs',
 		links: [
 			{ label: 'Getting started', href: '/docs/getting-started' },
+			{ label: 'Connect your AI client', href: '/docs/connect-clients' },
 			{ label: 'How it works', href: '/docs/how-it-works' },
 			{ label: 'Security', href: '/docs/security' },
 			{ label: 'Self-hosting', href: '/docs/self-hosting' }

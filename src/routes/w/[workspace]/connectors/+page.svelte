@@ -1,6 +1,9 @@
 <script lang="ts">
 	import LibraryBig from '@lucide/svelte/icons/library-big';
 	import Plus from '@lucide/svelte/icons/plus';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import {
@@ -11,6 +14,7 @@
 		FormDialog,
 		FormField,
 		Page,
+		SourceBadge,
 		ToolPath,
 		type Column,
 		type TableFilter
@@ -29,15 +33,22 @@
 	} from '#lib/functions/connectors.remote.ts';
 	import type { ConnectorSummary } from '#lib/server/connectors/types.ts';
 	import ConnectorPanel from './connector-panel.svelte';
-	import { audienceLabel, describeSync } from './connectors.ts';
+	import {
+		accessStatus,
+		audienceLabel,
+		describeSync,
+		needsSignIn,
+		signInLabel
+	} from './connectors.ts';
 
 	const workspace = $derived(page.params.workspace!);
-	const oauthResult = $derived(page.url.searchParams.get('oauth'));
+	/** Back from the upstream authorization (`connected` / `denied`), read once */
+	const oauthResult = page.url.searchParams.get('oauth');
 
 	let selected = $state<string | null>(page.url.searchParams.get('connector'));
 	let panelOpen = $state(page.url.searchParams.has('connector'));
 	let urlOpen = $state(false);
-	let tokenFor = $state<ConnectorSummary | null>(null);
+	let tokenFor = $state<Pick<ConnectorSummary, 'id' | 'name'> | null>(null);
 	let removing = $state<ConnectorSummary | null>(null);
 	let disconnecting = $state<ConnectorSummary | null>(null);
 	let tokenOpen = $state(false);
@@ -75,8 +86,26 @@
 		disconnecting = row;
 		disconnectOpen = true;
 	};
-	const refresh = (row: ConnectorSummary) =>
+	const refresh = (row: Pick<ConnectorSummary, 'id'>) =>
 		attempt(refreshConnector({ workspace, id: row.id }).then(describeSync));
+
+	// Guided setup: after adding (`connect=token`) or signing in (`oauth=…`), act once and drop
+	// the one-shot parameters so a reload does not repeat it
+	onMount(() => {
+		const params = page.url.searchParams;
+		if (!params.has('connect') && !params.has('oauth')) return;
+		const id = params.get('connector');
+		if (params.get('connect') === 'token' && id) {
+			void listConnectors(workspace).then(({ connectors }) => {
+				const row = connectors.find((c) => c.id === id);
+				if (row && needsSignIn(row)) connect(row);
+			});
+		}
+		if (oauthResult === 'connected') toast.success('Connected: tools loaded');
+		const query = id ? `?connector=${encodeURIComponent(id)}` : '';
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved path + query
+		replaceState(`${resolve('/w/[workspace]/connectors', { workspace })}${query}`, page.state);
+	});
 
 	const columns: Column<ConnectorSummary>[] = [
 		{
@@ -86,18 +115,21 @@
 			searchable: true
 		},
 		{ key: 'namespace', header: 'Namespace', cell: namespaceCell, searchable: true },
+		{ key: 'source', header: 'Source', cell: sourceCell, hideOnMobile: true },
 		{ key: 'scope', header: 'Used by', type: 'badge', value: audienceLabel, hideOnMobile: true },
-		{
-			key: 'authenticated',
-			header: 'Your access',
-			type: 'status',
-			value: (row) => (row.authenticated ? 'connected' : 'not_connected')
-		},
+		{ key: 'authenticated', header: 'Your access', type: 'status', value: accessStatus },
 		{
 			key: 'status',
 			header: 'Status',
 			type: 'status',
-			value: (row) => (row.suspended ? 'suspended' : row.status)
+			value: (row) => (row.suspended ? 'suspended' : row.status),
+			// The step the row is waiting for, right in the table
+			inlineAction: (row) =>
+				needsSignIn(row)
+					? { label: signInLabel(row), variant: 'primary', onSelect: () => connect(row) }
+					: row.status === 'error' && row.authenticated && !row.suspended
+						? { label: 'Retry', onSelect: () => refresh(row) }
+						: null
 		},
 		{ key: 'toolCount', header: 'Tools', type: 'number', hideOnMobile: true },
 		{ key: 'lastSyncedAt', header: 'Last sync', type: 'datetime', hideOnMobile: true },
@@ -114,7 +146,7 @@
 					onSelect: () => refresh(row)
 				},
 				{
-					label: row.authenticated ? 'Reconnect' : 'Connect',
+					label: signInLabel(row),
 					hidden: !row.canAuthenticate || row.authType === 'none',
 					onSelect: () => connect(row)
 				},
@@ -147,7 +179,11 @@
 </script>
 
 {#snippet namespaceCell(row: ConnectorSummary)}
-	<ToolPath path={row.namespace} unverified={row.unverified} />
+	<ToolPath path={row.namespace} />
+{/snippet}
+
+{#snippet sourceCell(row: ConnectorSummary)}
+	<SourceBadge publisher={row.publisher} service={row.name} needsReview={row.needsReview} />
 {/snippet}
 
 <Page title="Connectors" description="Remote MCP servers your agents can use in this workspace.">
@@ -161,9 +197,16 @@
 	{/snippet}
 
 	{#if oauthResult === 'connected'}
-		<Callout title="Connected" description="The account is connected and the tools were loaded." />
+		<Callout
+			title="Connected"
+			description="You are signed in and the tool list was loaded. Agents can use it now."
+		/>
 	{:else if oauthResult === 'denied'}
-		<Callout tone="warning" title="Authorization cancelled" description="Nothing was connected." />
+		<Callout
+			tone="warning"
+			title="Sign-in cancelled"
+			description="Nothing was connected. Use Connect on the connector to try again."
+		/>
 	{/if}
 
 	<Boundary>
@@ -185,7 +228,7 @@
 		<FormDialog
 			bind:open={urlOpen}
 			title="Add a server by URL"
-			description="A remote MCP server (Streamable HTTP, https). Servers outside the directory are marked unverified."
+			description="A remote MCP server (Streamable HTTP, https). A URL that is a directory server's endpoint is linked to its entry; others are marked unverified."
 			submitLabel="Add"
 			form={addConnector}
 		>
@@ -229,8 +272,10 @@
 				field={addConnector.fields.authType}
 				type="select"
 				label="Authentication"
+				description="Auto-detect asks the server: OAuth servers take you straight to their sign-in."
+				value="auto"
 				options={[
-					{ value: 'auto', label: 'Detect (OAuth if the server supports it)' },
+					{ value: 'auto', label: 'Auto-detect (recommended)' },
 					{ value: 'oauth', label: 'OAuth' },
 					{ value: 'token', label: 'Token / API key' },
 					{ value: 'none', label: 'None' }

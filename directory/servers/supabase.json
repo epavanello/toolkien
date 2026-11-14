@@ -6,19 +6,25 @@
 	"homepage": "https://supabase.com/docs/guides/getting-started/mcp",
 	"url": "https://mcp.supabase.com/mcp",
 	"namespace": "supabase",
+	"publisher": "official",
 	"category": "data",
-	"tags": ["postgres", "database"],
+	"tags": [
+		"postgres",
+		"database"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": [
+				"dcr"
+			]
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "The server supports `read_only=true` and `project_ref=…` query parameters to narrow access; consider them for shared connectors."
+		"notes": "Endpoint from Supabase's docs; live check: 401 + RFC 9728 metadata. The server supports `read_only=true` and `project_ref=…` query parameters to narrow access; consider them for shared connectors."
 	},
 	"tools": {}
 }

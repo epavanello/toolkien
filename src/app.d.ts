@@ -7,6 +7,8 @@ declare global {
 		interface Error {
 			code: ErrorCode;
 			message: string;
+			/** Reference of an unexpected (5xx) error, logged server side with the same id */
+			id?: string;
 		}
 		interface Locals {
 			/** Cookie session user; always null on `/mcp` (bearer tokens only) and when suspended */

@@ -6,6 +6,7 @@ import type { ConnectorsService } from './types.ts';
 
 export type * from './types.ts';
 export { toScriptValue } from './upstream.ts';
+export { detectAuth, type AuthDetection } from './detect.ts';
 /** Callback helpers for `src/routes/connectors/oauth/**` (not part of the service contract) */
 export { abandonUpstreamOAuth as abandonOAuth, clientMetadataDocument };
 /** Job `connectors.oauth_flows` (registered in `jobs/builtin.ts`) */
@@ -15,6 +16,7 @@ export const listDirectory: ConnectorsService['listDirectory'] = listDirectoryEn
 export const list: ConnectorsService['list'] = service.list;
 export const get: ConnectorsService['get'] = service.get;
 export const add: ConnectorsService['add'] = service.add;
+export const addAndConnect: ConnectorsService['addAndConnect'] = service.addAndConnect;
 export const remove: ConnectorsService['remove'] = service.remove;
 export const rename: ConnectorsService['rename'] = service.rename;
 export const disconnect: ConnectorsService['disconnect'] = service.disconnect;

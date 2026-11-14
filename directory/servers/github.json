@@ -6,18 +6,23 @@
 	"homepage": "https://github.com/github/github-mcp-server",
 	"url": "https://api.githubcopilot.com/mcp/",
 	"namespace": "github",
+	"publisher": "official",
 	"category": "developer-tools",
-	"tags": ["git", "code", "issues"],
+	"tags": [
+		"git",
+		"code",
+		"issues"
+	],
 	"auth": {
 		"type": "token",
 		"tokenHelp": "Create a fine-grained personal access token with only the repositories and permissions you need.",
 		"tokenUrl": "https://github.com/settings/personal-access-tokens/new"
 	},
 	"verification": {
-		"status": "community",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "URL from the official github-mcp-server README. GitHub OAuth needs a pre-registered GitHub App (no DCR/CIMD), so the entry uses a personal access token sent as a bearer token. The server reports read-only hints on its tools."
+		"notes": "URL from the official github-mcp-server README; live check: 401 + RFC 9728 metadata. GitHub's authorization server needs a pre-registered GitHub App (no dynamic registration or CIMD), so the entry uses a personal access token sent as a bearer token. The server reports read-only hints on its tools."
 	},
 	"tools": {}
 }

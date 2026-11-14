@@ -5,6 +5,7 @@ import { db, type Tx } from '#lib/server/db/index.ts';
 import { connector, tool, toolSearchText, toolVersion } from '#lib/server/db/schema/index.ts';
 import { signatureHash, toCamelCase, uniqueName } from '#lib/server/typegen/index.ts';
 import type { ConnectorRow } from './access.ts';
+import { detectAuth } from './detect.ts';
 import { getDirectoryEntry } from './directory.ts';
 import { searchText } from './search.ts';
 import { upstreamCredential } from './session.ts';
@@ -206,6 +207,38 @@ export async function rebuildSearch(
 	);
 }
 
+/**
+ * Self-healing of a connector saved with `authType = 'none'` whose server answers 401 (wrong
+ * guess, or the server started requiring sign-in): re-detects the authentication (OAuth when
+ * the server publishes metadata, else a token; the directory's type when it names one) and
+ * moves the connector to `pending_auth`. Returns the new type.
+ */
+export async function requireAuthentication(
+	conn: ConnectorRow,
+	actorUserId: string | null
+): Promise<Exclude<ConnectorRow['authType'], 'none'>> {
+	const entry = conn.source === 'directory' ? getDirectoryEntry(conn.directoryId) : null;
+	const detected = await detectAuth(conn.url, { fallback: 'token' });
+	const authType =
+		detected.authType === 'oauth' ? 'oauth' : entry?.authType === 'oauth' ? 'oauth' : 'token';
+	const updated = await db
+		.update(connector)
+		.set({ authType, status: 'pending_auth', statusMessage: null })
+		.where(and(eq(connector.id, conn.id), eq(connector.authType, 'none')))
+		.returning({ id: connector.id });
+	if (updated.length > 0) {
+		await record({
+			type: 'connector.synced',
+			outcome: 'success',
+			workspaceId: conn.workspaceId,
+			userId: actorUserId,
+			connectorId: conn.id,
+			metadata: { reason: 'auth_detected', authType, via: detected.via }
+		});
+	}
+	return authType;
+}
+
 const inflight = new Map<string, Promise<SyncResult>>();
 
 /** Reloads the connector's tools with the credential of `credentialUserId` (`null` = shared) */
@@ -255,8 +288,14 @@ async function runSync(
 			cause instanceof UpstreamError
 				? cause
 				: new UpstreamError('unreachable', 'Could not talk to the MCP server.');
+		// Added without authentication but the server wants it: switch to the detected type so
+		// the user gets a Connect button instead of a stuck connector
+		const required =
+			upstream.code === 'auth_required' && conn.authType === 'none'
+				? await requireAuthentication(conn, actorUserId)
+				: null;
 		// Personal credentials fail per user: only shared failures change the connector status
-		if (credentialUserId === null || conn.authType === 'none') {
+		if (!required && (credentialUserId === null || conn.authType === 'none')) {
 			await db
 				.update(connector)
 				.set({
@@ -275,12 +314,12 @@ async function runSync(
 		});
 		error(
 			424,
-			upstream.code === 'auth_required'
-				? `${conn.name}: connect your account first.`
-				: `${conn.name}: ${upstream.message}`,
-			{
-				code: 'GENERIC'
-			}
+			required
+				? `${conn.name} needs you to sign in${required === 'token' ? ' with a token or API key' : ''} before its tools can load.`
+				: upstream.code === 'auth_required'
+					? `${conn.name}: connect your account first.`
+					: `${conn.name}: ${upstream.message}`,
+			{ code: 'GENERIC' }
 		);
 	}
 

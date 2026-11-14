@@ -30,6 +30,7 @@
 <script lang="ts">
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import type { Snippet } from 'svelte';
+	import { brand } from '#lib/brand.ts';
 
 	type Props = {
 		title: string;
@@ -51,7 +52,7 @@
 
 <!-- App pages (workspace, approvals, invitations, admin) never belong in search results -->
 <svelte:head>
-	<title>{title}</title>
+	<title>{title} · {brand.name}</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 

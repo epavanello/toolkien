@@ -6,19 +6,25 @@
 	"homepage": "https://docs.sentry.io/product/sentry-mcp/",
 	"url": "https://mcp.sentry.dev/mcp",
 	"namespace": "sentry",
+	"publisher": "official",
 	"category": "monitoring",
-	"tags": ["errors", "observability"],
+	"tags": [
+		"errors",
+		"observability"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": [
+				"dcr"
+			]
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Sentry hosted MCP server; OAuth via Sentry with dynamic client registration."
+		"notes": "Sentry's hosted MCP server, from Sentry's docs; live check: 401 + RFC 9728 metadata. OAuth via Sentry with dynamic client registration."
 	},
 	"tools": {}
 }

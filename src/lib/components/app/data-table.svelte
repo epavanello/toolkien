@@ -43,6 +43,8 @@
 		loading?: boolean;
 		error?: unknown;
 		empty?: { title: string; description?: string; action?: Snippet };
+		/** Replaces the "No results" state of a search or filter; receives the search text */
+		noResults?: Snippet<[string]>;
 		/** Extra controls at the right of the filter bar (primary action) */
 		toolbar?: Snippet;
 		onRowClick?: (row: T) => void;
@@ -66,6 +68,7 @@
 		loading = false,
 		error,
 		empty = { title: 'Nothing here yet' },
+		noResults,
 		toolbar,
 		onRowClick,
 		group,
@@ -152,7 +155,9 @@
 				{:else if current.rows.length === 0}
 					<Table.Row>
 						<Table.Cell colspan={columns.length}>
-							{#if narrowed}
+							{#if narrowed && noResults}
+								{@render noResults(search.trim())}
+							{:else if narrowed}
 								<EmptyState title="No results" description="Try a different search or filter." />
 							{:else}
 								<EmptyState
@@ -185,6 +190,7 @@
 						>
 							{#each columns as column (column.key)}
 								{@const value = cellValue(column, row)}
+								{@const inline = column.inlineAction?.(row) ?? null}
 								<Table.Cell
 									class={cellClass({
 										type: column.type ?? 'text',
@@ -215,6 +221,18 @@
 										{formatNumber(Number(value))}
 									{:else}
 										{value}
+									{/if}
+									{#if inline}
+										<!-- The button must not open the row -->
+										<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+										<span class="ml-2 inline-block" onclick={(event) => event.stopPropagation()}>
+											<Button
+												size="xs"
+												variant={inline.variant === 'primary' ? 'default' : 'outline'}
+												icon={inline.icon}
+												onclick={() => inline.onSelect()}>{inline.label}</Button
+											>
+										</span>
 									{/if}
 								</Table.Cell>
 							{/each}

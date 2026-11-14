@@ -4,6 +4,9 @@
 	import { brand } from '#lib/brand.ts';
 	import JsonLd from './json-ld.svelte';
 
+	/** Rendered by `scripts/brand-images.ts` */
+	const DEFAULT_IMAGE = '/og.png';
+
 	/**
 	 * Every public page's head: title, description, canonical URL, Open Graph, Twitter card,
 	 * robots and optional JSON-LD (`schema-dts` types). App pages pass `noindex`.
@@ -15,8 +18,9 @@
 		exactTitle?: boolean;
 		/** Path or absolute URL; default: the current path without query or hash */
 		canonical?: string;
-		/** Absolute or root-relative image (1200×630); omitted when not set */
+		/** Absolute or root-relative image (1200×630); default: the brand card `static/og.png` */
 		image?: string;
+		imageAlt?: string;
 		type?: 'website' | 'article';
 		noindex?: boolean;
 		/** `YYYY-MM-DD`, for articles (docs, legal) */
@@ -29,7 +33,8 @@
 		description,
 		exactTitle = false,
 		canonical,
-		image,
+		image = DEFAULT_IMAGE,
+		imageAlt = `${brand.name}: ${brand.tagline}`,
 		type = 'website',
 		noindex = false,
 		modified,
@@ -61,12 +66,19 @@
 		<meta property="og:locale" content="en_US" />
 		<meta property="og:title" content={fullTitle} />
 		{#if description}<meta property="og:description" content={description} />{/if}
-		{#if image}<meta property="og:image" content={absolute(image)} />{/if}
+		<meta property="og:image" content={absolute(image)} />
+		<meta property="og:image:alt" content={imageAlt} />
+		{#if image === DEFAULT_IMAGE}
+			<meta property="og:image:type" content="image/png" />
+			<meta property="og:image:width" content="1200" />
+			<meta property="og:image:height" content="630" />
+		{/if}
 		{#if modified}<meta property="article:modified_time" content={modified} />{/if}
-		<meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content={fullTitle} />
 		{#if description}<meta name="twitter:description" content={description} />{/if}
-		{#if image}<meta name="twitter:image" content={absolute(image)} />{/if}
+		<meta name="twitter:image" content={absolute(image)} />
+		<meta name="twitter:image:alt" content={imageAlt} />
 	{/if}
 </svelte:head>
 

@@ -6,19 +6,25 @@
 	"homepage": "https://neon.com/docs/ai/neon-mcp-server",
 	"url": "https://mcp.neon.tech/mcp",
 	"namespace": "neon",
+	"publisher": "official",
 	"category": "data",
-	"tags": ["postgres", "database"],
+	"tags": [
+		"postgres",
+		"database"
+	],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": ["dcr"]
+			"registration": [
+				"dcr"
+			]
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Neon hosted MCP server; OAuth with dynamic client registration, API key also accepted as bearer token."
+		"notes": "Neon's hosted MCP server, from Neon's docs; live check: 401 + RFC 9728 metadata. OAuth with dynamic client registration; a Neon API key is also accepted as a bearer token."
 	},
 	"tools": {}
 }

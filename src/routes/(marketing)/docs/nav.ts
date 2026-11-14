@@ -21,6 +21,12 @@ export const DOCS: { title: string; pages: DocsPage[] }[] = [
 				description: 'Create an account, add a connector and connect Claude, Codex or Cursor.'
 			},
 			{
+				label: 'Connect your AI client',
+				href: '/docs/connect-clients',
+				description:
+					'Step-by-step setup in Claude Code, Claude, ChatGPT, Codex, Cursor, VS Code and other MCP clients.'
+			},
+			{
 				label: 'How it works',
 				href: '/docs/how-it-works',
 				description: 'Code mode: search, describe, then execute a TypeScript script.'

@@ -1,5 +1,6 @@
 import type { Component } from 'svelte';
 import Activity from '@lucide/svelte/icons/activity';
+import Cable from '@lucide/svelte/icons/cable';
 import LibraryBig from '@lucide/svelte/icons/library-big';
 import Plug from '@lucide/svelte/icons/plug';
 import Settings from '@lucide/svelte/icons/settings';
@@ -19,6 +20,11 @@ export function workspaceNavigation(workspace: string): NavGroup[] {
 		{
 			title: 'Tools',
 			items: [
+				{
+					title: 'Connect your AI',
+					href: resolve('/w/[workspace]/connect', { workspace }),
+					icon: Cable
+				},
 				{
 					title: 'Connectors',
 					href: resolve('/w/[workspace]/connectors', { workspace }),

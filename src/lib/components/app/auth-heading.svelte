@@ -1,11 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { brand } from '#lib/brand.ts';
 
 	/** Title and one line (with links) at the top of an auth card */
 	let { title, children }: { title: string; children?: Snippet } = $props();
 </script>
 
-<svelte:head><title>{title}</title></svelte:head>
+<svelte:head><title>{title} · {brand.name}</title></svelte:head>
 
 <div class="mb-5 flex flex-col gap-1">
 	<h1 class="text-lg font-semibold">{title}</h1>

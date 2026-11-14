@@ -134,7 +134,8 @@ await slack.postMessage({
 			applicationCategory: 'DeveloperApplication',
 			operatingSystem: 'Web',
 			description,
-			url: origin,
+			url: `${origin}/`,
+			image: `${origin}/og.png`,
 			offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
 			license: `https://spdx.org/licenses/${LICENSE}.html`
 		},
@@ -142,8 +143,9 @@ await slack.postMessage({
 			'@context': 'https://schema.org',
 			'@type': 'WebSite',
 			name: brand.name,
-			url: origin,
-			description
+			url: `${origin}/`,
+			description,
+			inLanguage: 'en'
 		}
 	]}
 />

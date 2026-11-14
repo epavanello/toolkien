@@ -1,0 +1,58 @@
+name: Server request
+description: Ask for a remote MCP server to be added to the Toolkien directory.
+title: 'Server request: <name>'
+labels: ['directory', 'server-request']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! The directory lists **remote** MCP servers (Streamable HTTP over https). Prefer to add it yourself? See [directory/CONTRIBUTING.md](../blob/main/directory/CONTRIBUTING.md).
+  - type: input
+    id: name
+    attributes:
+      label: Service name
+      placeholder: Linear
+    validations:
+      required: true
+  - type: input
+    id: homepage
+    attributes:
+      label: Documentation page of the MCP server
+      placeholder: https://linear.app/docs/mcp
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: MCP endpoint URL
+      description: The remote Streamable HTTP endpoint (https). Never include API keys or tokens.
+      placeholder: https://mcp.linear.app/mcp
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication
+      options:
+        - OAuth
+        - Token / API key
+        - None (public)
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: publisher
+    attributes:
+      label: Who runs the server?
+      description: Official = the service's own vendor, on its own domain. Community = a third party.
+      options:
+        - Official (the service's vendor)
+        - Community (a third party)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Regions, scopes, known limits, why it would be useful.

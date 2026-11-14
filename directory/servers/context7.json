@@ -6,8 +6,12 @@
 	"homepage": "https://github.com/upstash/context7",
 	"url": "https://mcp.context7.com/mcp",
 	"namespace": "context7",
+	"publisher": "official",
 	"category": "knowledge",
-	"tags": ["docs", "libraries"],
+	"tags": [
+		"docs",
+		"libraries"
+	],
 	"auth": {
 		"type": "none"
 	},
@@ -33,9 +37,9 @@
 		}
 	},
 	"verification": {
-		"status": "community",
+		"status": "tested",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "Works without a key (rate limited). Context7 API keys go in a custom header, which Toolkien does not support yet."
+		"notes": "Works without a key (rate limited); tools/list inspected anonymously (2 read-only tools). Context7 API keys go in a custom header, which Toolkien does not support yet."
 	}
 }

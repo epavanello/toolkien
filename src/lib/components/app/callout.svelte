@@ -5,15 +5,21 @@
 		slots: {
 			root: 'flex flex-wrap items-start gap-3 rounded-lg border px-4 py-3 text-sm',
 			icon: 'mt-0.5 size-4 shrink-0',
-			body: 'flex min-w-0 flex-1 flex-col gap-0.5',
+			body: 'flex min-w-0 flex-1 basis-56 flex-col gap-0.5',
 			title: 'font-medium',
 			description: 'text-pretty text-muted-foreground',
 			action: 'flex items-center gap-2'
 		},
 		variants: {
-			/** `info` neutral notes, `warning` something needs attention, `danger` blocked/suspended */
+			/**
+			 * `info` neutral notes, `warning` something needs attention, `danger` blocked/suspended,
+			 * `success` something completed (a client connected), `pending` waiting on something
+			 * happening elsewhere (spinner)
+			 */
 			tone: {
 				info: { root: 'bg-card', icon: 'text-primary' },
+				success: { root: 'border-success/40 bg-success/5', icon: 'text-success' },
+				pending: { root: 'bg-card', icon: 'animate-spin text-muted-foreground' },
 				warning: { root: 'border-warning/40 bg-warning/5', icon: 'text-warning' },
 				danger: { root: 'border-destructive/40 bg-destructive/5', icon: 'text-destructive' }
 			}
@@ -26,6 +32,8 @@
 
 <script lang="ts">
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import Info from '@lucide/svelte/icons/info';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import type { Snippet } from 'svelte';
@@ -45,12 +53,22 @@
 	let { title, description, tone = 'info', action, children }: Props = $props();
 
 	const styles = $derived(calloutVariants({ tone }));
-	const Icon = $derived(
-		tone === 'danger' ? CircleAlert : tone === 'warning' ? TriangleAlert : Info
-	);
+	const ICONS = {
+		info: Info,
+		warning: TriangleAlert,
+		danger: CircleAlert,
+		success: CircleCheck,
+		pending: LoaderCircle
+	};
+	const Icon = $derived(ICONS[tone ?? 'info']);
 </script>
 
-<div class={styles.root()} role={tone === 'info' ? 'note' : 'status'} data-slot="callout">
+<div
+	class={styles.root()}
+	role={tone === 'info' ? 'note' : 'status'}
+	aria-live={tone === 'success' || tone === 'pending' ? 'polite' : undefined}
+	data-slot="callout"
+>
 	<Icon class={styles.icon()} aria-hidden="true" />
 	<div class={styles.body()}>
 		<p class={styles.title()}>{title}</p>

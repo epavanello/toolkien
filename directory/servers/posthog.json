@@ -6,16 +6,20 @@
 	"homepage": "https://posthog.com/docs/model-context-protocol",
 	"url": "https://mcp.posthog.com/mcp",
 	"namespace": "posthog",
+	"publisher": "official",
 	"category": "data",
-	"tags": ["analytics", "feature-flags"],
+	"tags": [
+		"analytics",
+		"feature-flags"
+	],
 	"auth": {
 		"type": "oauth"
 	},
 	"verification": {
-		"status": "community",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "A personal API key (scoped) also works as a bearer token."
+		"notes": "Endpoint from PostHog's docs; live check: 401 + RFC 9728 metadata. A scoped personal API key also works as a bearer token."
 	},
 	"tools": {}
 }

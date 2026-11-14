@@ -5,7 +5,6 @@ import {
 	checkResourceAllowed,
 	discoverOAuthServerInfo,
 	exchangeAuthorization,
-	extractWWWAuthenticateParams,
 	refreshAuthorization,
 	registerClient,
 	startAuthorization,
@@ -22,6 +21,7 @@ import { upstreamOAuthClient, upstreamOAuthFlow } from '#lib/server/db/schema/in
 import { safeFetch } from '#lib/server/net/index.ts';
 import type { ConnectorRow } from './access.ts';
 import { fromSealedColumns, type OAuthSecret } from './credentials.ts';
+import { readChallenge } from './detect.ts';
 import type { DirectoryEntry } from './types.ts';
 
 /**
@@ -76,35 +76,6 @@ async function clientInformation(row: ClientRow): Promise<OAuthClientInformation
 		? new TextDecoder().decode(await decryptForWorkspace(row.workspaceId, sealed))
 		: undefined;
 	return { client_id: row.clientId, ...(secret ? { client_secret: secret } : {}) };
-}
-
-/** Scope from an unauthenticated probe's `WWW-Authenticate` challenge (best effort) */
-async function challengeScope(url: string): Promise<string | undefined> {
-	try {
-		const response = await safeFetch(url, {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				accept: 'application/json, text/event-stream'
-			},
-			body: JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'ping' }),
-			timeoutMs: 10_000
-		});
-		await response.body?.cancel().catch(() => undefined);
-		return response.status === 401 ? extractWWWAuthenticateParams(response).scope : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-/** Whether the server publishes protected resource metadata (used to guess the auth type) */
-export async function supportsOAuth(url: string): Promise<boolean> {
-	try {
-		const info = await discoverOAuthServerInfo(url, { fetchFn: oauthFetch });
-		return !!info.resourceMetadata && !!info.authorizationServerMetadata;
-	} catch {
-		return false;
-	}
 }
 
 async function ensureClient(
@@ -186,9 +157,15 @@ export async function startUpstreamOAuth(input: {
 	returnTo: string;
 }): Promise<{ authorizationUrl: string }> {
 	const { conn } = input;
+	// The challenge's `resource_metadata` (RFC 9728 §5.1) wins over the well-known paths: some
+	// servers publish their metadata only there
+	const challenge = await readChallenge(conn.url);
 	let info: Awaited<ReturnType<typeof discoverOAuthServerInfo>>;
 	try {
-		info = await discoverOAuthServerInfo(conn.url, { fetchFn: oauthFetch });
+		info = await discoverOAuthServerInfo(conn.url, {
+			resourceMetadataUrl: challenge.resourceMetadataUrl,
+			fetchFn: oauthFetch
+		});
 	} catch {
 		failure('Could not discover the authorization server of this MCP server.');
 	}
@@ -204,7 +181,7 @@ export async function startUpstreamOAuth(input: {
 
 	const scope =
 		input.entry?.scopes?.join(' ') ||
-		(await challengeScope(conn.url)) ||
+		challenge.scope ||
 		info.resourceMetadata?.scopes_supported?.join(' ') ||
 		undefined;
 	const client = await ensureClient(conn, metadata.issuer, metadata, scope);

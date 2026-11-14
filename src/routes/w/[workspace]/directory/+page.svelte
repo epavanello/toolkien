@@ -10,13 +10,18 @@
 		RemoteForm,
 		Section,
 		SidePanel,
+		SourceBadge,
+		EmptyState,
 		humanize,
 		type Column,
 		type TableFilter
 	} from '#lib/components/app/index.ts';
 	import { addConnector, listDirectoryServers } from '#lib/functions/connectors.remote.ts';
 	import type { DirectoryEntry } from '#lib/server/connectors/types.ts';
-	import { authLabel } from '../connectors/connectors.ts';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { authLabel, checkLabel } from '../connectors/connectors.ts';
+	import { addServerUrl, contributingUrl, requestServerUrl } from './directory.ts';
 
 	type Server = DirectoryEntry & { installed: string[] };
 
@@ -36,10 +41,11 @@
 		},
 		{ key: 'authType', header: 'Auth', type: 'badge', value: (row) => authLabel(row.authType) },
 		{
-			key: 'verification',
-			header: 'Review',
-			type: 'status',
-			value: (row) => row.verification.status
+			key: 'publisher',
+			header: 'Source',
+			cell: sourceCell,
+			value: (row) => row.publisher,
+			searchable: false
 		},
 		{
 			key: 'installed',
@@ -59,6 +65,15 @@
 			match: (row, value) => row.category === value
 		},
 		{
+			key: 'publisher',
+			label: 'Source',
+			options: [
+				{ value: 'official', label: 'Official' },
+				{ value: 'community', label: 'Community' }
+			],
+			match: (row, value) => row.publisher === value
+		},
+		{
 			key: 'auth',
 			label: 'Auth',
 			options: (['oauth', 'token', 'none'] as const).map((value) => ({
@@ -70,9 +85,43 @@
 	];
 </script>
 
+{#snippet sourceCell(row: Server)}
+	<SourceBadge
+		publisher={row.publisher}
+		service={row.name}
+		needsReview={row.verification.status === 'needs-review'}
+		reviewNote={row.verification.notes}
+	/>
+{/snippet}
+
+{#snippet missingActions(name: string)}
+	<Button size="sm" icon={ExternalLink} href={requestServerUrl(name)} target="_blank" rel="noopener"
+		>Request a server</Button
+	>
+	<Button
+		size="sm"
+		variant="outline"
+		icon={ExternalLink}
+		href={addServerUrl(name)}
+		target="_blank"
+		rel="noopener">Add it yourself</Button
+	>
+{/snippet}
+
+{#snippet noResults(search: string)}
+	<EmptyState
+		title={search ? `No server matches "${search}"` : 'No server matches these filters'}
+		description="Request it, or add it to the directory with a pull request."
+	>
+		{#snippet action()}
+			<div class="flex flex-wrap justify-center gap-2">{@render missingActions(search)}</div>
+		{/snippet}
+	</EmptyState>
+{/snippet}
+
 <Page
 	title="Directory"
-	description="Community-reviewed remote MCP servers, preconfigured with verified tool annotations. Propose new ones with a pull request to the directory/ folder of the repository."
+	description="Remote MCP servers, preconfigured and checked. Official servers are run by the service itself; community servers by a third party, and their tools are treated as untrusted."
 >
 	<Boundary>
 		{@const data = await listDirectoryServers(workspace)}
@@ -82,6 +131,7 @@
 			{columns}
 			filters={filters(data.servers)}
 			rowKey={(row) => row.id}
+			{noResults}
 			onRowClick={(row) => {
 				selected = row;
 				panelOpen = true;
@@ -98,14 +148,21 @@
 						{ label: 'Authentication', value: authLabel(s.authType) },
 						{ label: 'Scopes', value: s.scopes?.join(' ') ?? null, type: 'mono' },
 						{ label: 'Homepage', value: s.homepage ?? null },
-						{ label: 'Review', value: s.verification.status, type: 'status' },
-						{ label: 'Reviewed by', value: `${s.verification.by}, ${s.verification.on}` },
+						{
+							label: 'Publisher',
+							value:
+								s.publisher === 'official'
+									? `Official (run by ${s.name})`
+									: `Community (not maintained by ${s.name})`
+						},
+						{ label: 'Checked', value: checkLabel(s.verification.status) },
+						{ label: 'Checked by', value: `${s.verification.by}, ${s.verification.on}` },
 						{ label: 'Tags', value: s.tags.join(', ') }
 					]}
 				/>
 				{#if s.verification.notes}
 					<Callout
-						tone={s.verification.status === 'unverified' ? 'warning' : 'info'}
+						tone={s.verification.status === 'needs-review' ? 'warning' : 'info'}
 						title="Reviewer notes"
 						description={s.verification.notes}
 					/>
@@ -176,4 +233,16 @@
 			</SidePanel>
 		{/if}
 	</Boundary>
+
+	<Callout
+		title="Missing a server?"
+		description="Ask for it with a prefilled request, or add its entry yourself: GitHub opens a ready-to-fill file for a pull request."
+	>
+		{#snippet action()}
+			{@render missingActions('')}
+			<Button size="sm" variant="link" href={contributingUrl} target="_blank" rel="noopener"
+				>Contributing guide</Button
+			>
+		{/snippet}
+	</Callout>
 </Page>

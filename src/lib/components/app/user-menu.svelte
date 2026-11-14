@@ -1,5 +1,9 @@
 <script lang="ts">
+	import BookOpen from '@lucide/svelte/icons/book-open';
+	import Cable from '@lucide/svelte/icons/cable';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import ShieldCheck from '@lucide/svelte/icons/shield-check';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import UserCog from '@lucide/svelte/icons/user-cog';
 	import Monitor from '@lucide/svelte/icons/monitor';
@@ -8,6 +12,7 @@
 	import { setMode, userPrefersMode } from 'mode-watcher';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { REPOSITORY_URL } from '#lib/brand.ts';
 	import { attempt } from '#lib/core/attempt.ts';
 	import * as Avatar from '#lib/components/ui/avatar/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
@@ -31,6 +36,15 @@
 			.slice(0, 2)
 			.toUpperCase()
 	);
+	const help = $derived([
+		{
+			label: 'Connect your AI',
+			href: resolve('/w/[workspace]/connect', { workspace }),
+			icon: Cable
+		},
+		{ label: 'Documentation', href: resolve('/(marketing)/docs'), icon: BookOpen },
+		{ label: 'Security', href: resolve('/(marketing)/docs/security'), icon: ShieldCheck }
+	]);
 	const modes = [
 		{ value: 'light', label: 'Light', icon: Sun },
 		{ value: 'dark', label: 'Dark', icon: Moon },
@@ -71,6 +85,26 @@
 						<a href={resolve('/w/[workspace]/settings/account', { workspace })} {...props}>
 							<UserCog />
 							Account
+						</a>
+					{/snippet}
+				</DropdownMenu.Item>
+				<DropdownMenu.Separator />
+				<DropdownMenu.Label class="text-xs text-muted-foreground">Help</DropdownMenu.Label>
+				{#each help as item (item.href)}
+					<DropdownMenu.Item>
+						{#snippet child({ props })}
+							<a href={item.href} {...props}>
+								<item.icon />
+								{item.label}
+							</a>
+						{/snippet}
+					</DropdownMenu.Item>
+				{/each}
+				<DropdownMenu.Item>
+					{#snippet child({ props })}
+						<a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer" {...props}>
+							<ExternalLink />
+							Source code
 						</a>
 					{/snippet}
 				</DropdownMenu.Item>

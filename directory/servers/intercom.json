@@ -6,16 +6,20 @@
 	"homepage": "https://developers.intercom.com/docs/guides/mcp",
 	"url": "https://mcp.intercom.com/mcp",
 	"namespace": "intercom",
+	"publisher": "official",
 	"category": "communication",
-	"tags": ["support", "crm"],
+	"tags": [
+		"support",
+		"crm"
+	],
 	"auth": {
 		"type": "oauth"
 	},
 	"verification": {
-		"status": "unverified",
+		"status": "documented",
 		"by": "toolkien-maintainers",
 		"on": "2026-11-14",
-		"notes": "UNCERTAIN: US-hosted workspaces only at launch; re-check the endpoint and region support."
+		"notes": "Endpoint for US-hosted workspaces, from Intercom's docs; live check: 401 + RFC 9728 metadata, dynamic client registration. EU workspaces use https://mcp.eu.intercom.com/mcp (add it by URL); AU workspaces are not supported yet. OAuth is required for the Fin Operator tools."
 	},
 	"tools": {}
 }

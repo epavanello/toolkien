@@ -1,5 +1,5 @@
 ---
-title: Security
+title: Service security
 description: How the managed Toolkien service protects your accounts and data, and how to report a vulnerability.
 updated: 2026-11-14
 ---

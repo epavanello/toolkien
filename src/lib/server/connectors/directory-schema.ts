@@ -33,6 +33,19 @@ export const DIRECTORY_CATEGORIES = [
 	'other'
 ] as const;
 
+/**
+ * Who runs the server: `official` = the service's own vendor, on its own domain and documented
+ * by it; `community` = a third party serving a service it does not own.
+ */
+export const DIRECTORY_PUBLISHERS = ['official', 'community'] as const;
+
+/**
+ * How far the entry was checked: `tested` = someone connected and inspected `tools/list`;
+ * `documented` = the endpoint matches the vendor's current docs (and answers as expected);
+ * `needs-review` = something is uncertain, explained in `notes`.
+ */
+export const VERIFICATION_STATUSES = ['tested', 'documented', 'needs-review'] as const;
+
 export const toolAnnotationsSchema = z
 	.object({
 		title: z.string().max(100).optional(),
@@ -67,6 +80,7 @@ export const directoryEntrySchema = z
 			.string()
 			.regex(NAMESPACE, { error: 'Use camelCase starting with a lowercase letter.' })
 			.max(40),
+		publisher: z.enum(DIRECTORY_PUBLISHERS),
 		category: z.enum(DIRECTORY_CATEGORIES),
 		tags: z.array(z.string().regex(ID).max(30)).max(10).default([]),
 		auth: z
@@ -96,7 +110,7 @@ export const directoryEntrySchema = z
 		tools: z.record(z.string().min(1).max(128), directoryToolSchema).default({}),
 		verification: z
 			.object({
-				status: z.enum(['verified', 'community', 'unverified']),
+				status: z.enum(VERIFICATION_STATUSES),
 				/** GitHub handle (without @) of who checked the entry */
 				by: z.string().min(1).max(60),
 				on: isoDate,
@@ -113,6 +127,13 @@ export const directoryEntrySchema = z
 				message: 'OAuth hints need auth.type "oauth".'
 			});
 		}
+		if (entry.verification.status === 'needs-review' && !entry.verification.notes) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['verification', 'notes'],
+				message: 'Explain in notes what needs review.'
+			});
+		}
 		if (entry.auth.type !== 'token' && (entry.auth.tokenHelp || entry.auth.tokenUrl)) {
 			ctx.addIssue({
 				code: 'custom',
@@ -123,6 +144,28 @@ export const directoryEntrySchema = z
 	});
 
 export type DirectoryEntryFile = z.infer<typeof directoryEntrySchema>;
+export type DirectoryPublisher = (typeof DIRECTORY_PUBLISHERS)[number];
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+
+/**
+ * Trusted like Toolkien's own curation: an official server whose endpoint was checked. Other
+ * entries (community, needs review) are handled like free URLs: descriptions flagged as
+ * untrusted, permissions proposed for confirmation.
+ */
+export const isTrustedEntry = (entry: {
+	publisher: DirectoryPublisher;
+	verification: { status: VerificationStatus };
+}) => entry.publisher === 'official' && entry.verification.status !== 'needs-review';
+
+/** Comparable form of an MCP endpoint: lowercase, no hash, no trailing slash */
+export function normalizeServerUrl(value: string): string | null {
+	try {
+		const url = new URL(value.trim());
+		return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, '')}${url.search}`.toLowerCase();
+	} catch {
+		return null;
+	}
+}
 
 export type DirectoryIssue = { file: string; message: string };
 
@@ -170,7 +213,7 @@ export function validateDirectory(files: { name: string; content: string }[]): {
 		for (const [key, value] of [
 			['id', entry.id],
 			['namespace', entry.namespace],
-			['url', entry.url.replace(/\/+$/, '')]
+			['url', normalizeServerUrl(entry.url) ?? entry.url]
 		] as const) {
 			const other = seen[key].get(value);
 			if (other)

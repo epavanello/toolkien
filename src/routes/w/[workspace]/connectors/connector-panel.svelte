@@ -7,14 +7,23 @@
 		KeyValueList,
 		Section,
 		SidePanel,
-		ToolDefinition,
-		UnverifiedBadge
+		SourceBadge,
+		ToolDefinition
 	} from '#lib/components/app/index.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { attempt } from '#lib/core/attempt.ts';
 	import { getConnector, refreshConnector } from '#lib/functions/connectors.remote.ts';
 	import type { ConnectorSummary } from '#lib/server/connectors/types.ts';
-	import { audienceLabel, authLabel, describeSync } from './connectors.ts';
+	import {
+		accessStatus,
+		audienceLabel,
+		authLabel,
+		checkLabel,
+		describeSync,
+		needsSignIn,
+		signInLabel,
+		untrustedReason
+	} from './connectors.ts';
 
 	/** Details of one connector: status, auth, and every tool with its TypeScript signature */
 	type Props = {
@@ -46,13 +55,18 @@
 		{@const c = await getConnector({ workspace, id })}
 		<Section variant="plain" title={c.displayName} description={c.directory?.description}>
 			{#snippet actions()}
-				{#if c.unverified}<UnverifiedBadge />{/if}
+				<SourceBadge
+					publisher={c.publisher}
+					service={c.directory?.name ?? c.name}
+					needsReview={c.needsReview}
+					reviewNote={c.directory?.verification.notes}
+				/>
 				{#if c.canAuthenticate && c.authType !== 'none'}
 					{#if c.authenticated}
 						<Button size="sm" variant="outline" onclick={() => onDisconnect(c)}>Disconnect</Button>
 					{/if}
 					<Button size="sm" variant="outline" onclick={() => onConnect(c)}
-						>{c.authenticated ? 'Reconnect' : 'Connect'}</Button
+						>{signInLabel(c)}</Button
 					>
 				{/if}
 				{#if c.canManage}
@@ -68,11 +82,7 @@
 					{ label: 'Instance', value: c.label },
 					{ label: 'Used by', value: audienceLabel(c) },
 					{ label: 'Authentication', value: authLabel(c.authType) },
-					{
-						label: 'Your access',
-						value: c.authenticated ? 'connected' : 'not_connected',
-						type: 'status'
-					},
+					{ label: 'Your access', value: accessStatus(c), type: 'status' },
 					{ label: 'Status', value: c.suspended ? 'suspended' : c.status, type: 'status' },
 					{ label: 'MCP version', value: c.protocolVersion, type: 'mono' },
 					{
@@ -83,10 +93,8 @@
 					{
 						label: 'Directory',
 						value: c.directory
-							? `${c.directory.verification.status} · ${c.directory.verification.by}, ${c.directory.verification.on}`
-							: c.unverified
-								? 'Free URL (unverified)'
-								: null
+							? `${checkLabel(c.directory.verification.status)} · ${c.directory.verification.by}, ${c.directory.verification.on}`
+							: 'Not in the directory'
 					}
 				]}
 			/>
@@ -98,28 +106,42 @@
 				title="Suspended"
 				description="This connector is suspended: its tools cannot be called until an admin lifts the suspension."
 			/>
+		{:else if needsSignIn(c)}
+			<Callout
+				tone="warning"
+				title="This server needs you to sign in"
+				description={c.statusMessage ??
+					(c.authType === 'token'
+						? 'Paste a token or API key from the server so agents can use its tools.'
+						: `Sign in with your ${c.name} account so agents can use its tools.`)}
+			>
+				{#snippet action()}
+					<Button size="sm" onclick={() => onConnect(c)}>{signInLabel(c)}</Button>
+				{/snippet}
+			</Callout>
 		{:else if !c.authenticated}
 			<Callout
 				tone="warning"
 				title="Not connected"
-				description={c.canAuthenticate
-					? 'Connect your account so agents can use these tools.'
-					: 'An admin must connect this shared connector.'}
+				description="An admin must connect this shared connector before agents can use it."
+			/>
+		{:else if c.status === 'error'}
+			<Callout
+				tone="danger"
+				title="Could not load the tools"
+				description={c.statusMessage ?? 'The server did not answer as expected.'}
 			>
 				{#snippet action()}
-					{#if c.canAuthenticate}<Button size="sm" onclick={() => onConnect(c)}>Connect</Button
-						>{/if}
+					<Button size="sm" variant="outline" icon={RefreshCw} onclick={refresh}
+						>Retry</Button
+					>
 				{/snippet}
 			</Callout>
-		{:else if c.status === 'error' && c.statusMessage}
-			<Callout tone="danger" title="Last sync failed" description={c.statusMessage} />
+		{:else if c.statusMessage}
+			<Callout title="Note" description={c.statusMessage} />
 		{/if}
 		{#if c.unverified}
-			<Callout
-				tone="warning"
-				title="Unverified server"
-				description="Its tool descriptions come from a server outside the curated directory: agents see them flagged as untrusted, and you confirm each tool's permission."
-			/>
+			<Callout tone="warning" title="Untrusted tool descriptions" description={untrustedReason(c)} />
 		{/if}
 		{#if c.directory?.tokenHelp && !c.authenticated}
 			<Callout title="Token" description={c.directory.tokenHelp} />
@@ -132,7 +154,9 @@
 			{#if c.tools.length === 0}
 				<EmptyState
 					title="No tools yet"
-					description={c.authenticated ? 'Refresh to load the tool list.' : 'Connect first.'}
+					description={c.authenticated
+						? 'Refresh to load the tool list.'
+						: 'Sign in first: the tools load right after.'}
 				/>
 			{:else}
 				{#each c.tools as tool (tool.id)}

@@ -1,5 +1,5 @@
 import { dev } from '$app/env';
-import { error } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import { and, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { record } from '#lib/server/audit/index.ts';
 import { db } from '#lib/server/db/index.ts';
@@ -37,17 +37,19 @@ import {
 	openCredential,
 	saveCredential
 } from './credentials.ts';
-import { getDirectoryEntry } from './directory.ts';
+import { detectAuth } from './detect.ts';
+import { findDirectoryEntryByUrl, getDirectoryEntry } from './directory.ts';
 import { resolveTool, summaryOf, toTypeInput, type ToolRecord } from './discovery.ts';
 import {
 	completeUpstreamOAuth,
 	revokeUpstreamTokens,
-	startUpstreamOAuth,
-	supportsOAuth
+	startUpstreamOAuth
 } from './oauth.ts';
 import { upstreamCredential } from './session.ts';
-import { rebuildSearch, syncConnector } from './sync.ts';
+import { rebuildSearch, requireAuthentication, syncConnector } from './sync.ts';
 import type {
+	AddAndConnectResult,
+	AddConnectorInput,
 	ConnectorDetail,
 	ConnectorsService,
 	ConnectorSummary,
@@ -82,6 +84,7 @@ async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<C
 	const toolCount = new Map(counts.map((c) => [c.connectorId, c.n]));
 	return rows.map((row) => {
 		const owner = credentialUserId(actor, row);
+		const entry = row.source === 'directory' ? getDirectoryEntry(row.directoryId) : null;
 		return {
 			id: row.id,
 			workspaceId: row.workspaceId,
@@ -99,25 +102,63 @@ async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<C
 			status: row.status,
 			statusMessage: row.statusMessage,
 			suspended: row.suspendedAt !== null,
+			// `none` is only usable while the server does not ask for sign-in
 			authenticated:
-				row.authType === 'none' ||
-				credentials.some((c) => c.connectorId === row.id && c.userId === owner),
+				row.authType === 'none'
+					? row.status !== 'pending_auth'
+					: credentials.some((c) => c.connectorId === row.id && c.userId === owner),
 			toolCount: toolCount.get(row.id) ?? 0,
 			lastSyncedAt: row.lastSyncedAt,
 			canManage: canManage(actor, row),
 			canAuthenticate: canAuthenticate(actor, row),
-			protocolVersion: row.protocolVersion
+			protocolVersion: row.protocolVersion,
+			publisher: entry?.publisher ?? null,
+			needsReview: entry?.verification.status === 'needs-review'
 		};
 	});
 }
 
+/**
+ * Lazy fixes on read, no data migration:
+ * - free-URL connectors whose endpoint is a directory server are linked to that entry (source,
+ *   directory id, trust), so they get its publisher, annotations and notes;
+ * - connectors stuck on `authType = 'none'` + `pending_auth` (saved before detection existed,
+ *   or the server started asking for sign-in) are re-detected and switched.
+ */
+async function reconcile(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<ConnectorRow[]> {
+	const fixed = new Map<string, ConnectorRow>();
+	for (const row of rows) {
+		const entry = row.source === 'url' ? findDirectoryEntryByUrl(row.url) : null;
+		if (!entry) continue;
+		const linked = await db.transaction(async (tx) => {
+			const [updated] = await tx
+				.update(connector)
+				.set({ source: 'directory', directoryId: entry.id, unverified: !entry.trusted })
+				.where(and(eq(connector.id, row.id), eq(connector.source, 'url')))
+				.returning();
+			if (updated) await rebuildSearch(tx, updated);
+			return updated;
+		});
+		if (linked) fixed.set(row.id, linked);
+	}
+	const current = rows.map((row) => fixed.get(row.id) ?? row);
+	const stuck = current.filter((r) => r.authType === 'none' && r.status === 'pending_auth');
+	await Promise.all(
+		stuck.map(async (row) => {
+			const authType = await requireAuthentication(row, actor.userId).catch(() => null);
+			if (authType) fixed.set(row.id, { ...row, authType, statusMessage: null });
+		})
+	);
+	return current.map((row) => fixed.get(row.id) ?? row);
+}
+
 export const list: ConnectorsService['list'] = async (actor) => {
 	const rows = await db.select().from(connector).where(visibleTo(actor)).orderBy(connector.name);
-	return summaries(actor, rows);
+	return summaries(actor, await reconcile(actor, rows));
 };
 
 export const get: ConnectorsService['get'] = async (actor, connectorId) => {
-	const row = await getVisible(actor, connectorId);
+	const [row] = await reconcile(actor, [await getVisible(actor, connectorId)]);
 	const [summary] = await summaries(actor, [row]);
 	const entry = row.source === 'directory' ? getDirectoryEntry(row.directoryId) : null;
 	const rows = await db
@@ -232,14 +273,20 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 	if (!onlyForMe && !isAdmin(actor)) {
 		error(403, 'Only workspace admins can add connectors for everyone.', { code: 'FORBIDDEN' });
 	}
+	// A URL that is a directory server's endpoint is that directory server (publisher, trust,
+	// annotations), not a free URL
+	const match = input.source.type === 'url' ? findDirectoryEntryByUrl(input.source.url) : null;
+	const source: AddConnectorInput['source'] = match
+		? { type: 'directory', directoryId: match.id }
+		: input.source;
 	const policy = await getPolicy(actor.workspaceId);
 	// Admin policy (org-ops, single source): personal connectors, free URLs, allowed servers
 	const check = checkConnectorPolicy(policy, actor.role, {
 		onlyForMe,
 		source:
-			input.source.type === 'directory'
-				? { type: 'directory', directoryId: input.source.directoryId }
-				: { type: 'url', url: input.source.url.trim() }
+			source.type === 'directory'
+				? { type: 'directory', directoryId: source.directoryId }
+				: { type: 'url', url: source.url.trim() }
 	});
 	if (!check.allowed) deny(check.reason);
 
@@ -249,19 +296,21 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 	let authType: ConnectorRow['authType'];
 	let unverified: boolean;
 	let directoryId: string | null = null;
-	if (input.source.type === 'directory') {
-		const entry = getDirectoryEntry(input.source.directoryId);
+	/** Shown in the connector status when the authentication could not be detected */
+	let note: string | null = null;
+	if (source.type === 'directory') {
+		const entry = getDirectoryEntry(source.directoryId);
 		if (!entry) error(404, 'Directory server not found.', { code: 'NOT_FOUND' });
 		url = entry.url;
 		name = input.name?.trim() || entry.name;
 		desired = entry.namespace;
 		authType = input.authType ?? entry.authType;
-		unverified = entry.verification.status === 'unverified';
+		unverified = !entry.trusted;
 		directoryId = entry.id;
 	} else {
 		let safe: URL;
 		try {
-			safe = await assertSafeUrl(input.source.url.trim());
+			safe = await assertSafeUrl(source.url.trim());
 		} catch (cause) {
 			const reason = cause instanceof UnsafeUrlError ? cause.reason : 'invalid_url';
 			error(400, `This URL cannot be used (${reason.replace(/_/g, ' ')}).`, {
@@ -276,7 +325,13 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 		url = safe.href;
 		name = input.name?.trim() || safe.hostname;
 		desired = toNamespace(input.name?.trim() || hostPrefix(url));
-		authType = input.authType ?? ((await supportsOAuth(url)) ? 'oauth' : 'none');
+		if (input.authType) {
+			authType = input.authType;
+		} else {
+			const detected = await detectAuth(url);
+			authType = detected.authType;
+			note = detected.note;
+		}
 		unverified = true;
 	}
 	if (!serverAllowed(policy.allowedServers, url, directoryId)) {
@@ -305,7 +360,7 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 				workspaceId: actor.workspaceId,
 				scope: onlyForMe ? 'personal' : input.scope,
 				ownerUserId: onlyForMe ? actor.userId : null,
-				source: input.source.type,
+				source: source.type,
 				directoryId,
 				url,
 				name: name.slice(0, 80),
@@ -314,6 +369,7 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 				unverified,
 				authType,
 				status: authType === 'none' ? 'active' : 'pending_auth',
+				statusMessage: note,
 				createdBy: actor.userId
 			})
 			.returning();
@@ -333,6 +389,35 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 	}
 	const [summary] = await summaries(actor, [await getVisible(actor, row.id)]);
 	return summary;
+};
+
+export const addAndConnect: ConnectorsService['addAndConnect'] = async (
+	actor,
+	input,
+	returnTo
+) => {
+	const added = await add(actor, input);
+	if (added.authenticated || !added.canAuthenticate || added.suspended) {
+		return { connector: added, next: { type: 'ready', message: null } };
+	}
+	if (added.authType === 'token') return { connector: added, next: { type: 'token' } };
+	if (added.authType !== 'oauth') {
+		return { connector: added, next: { type: 'ready', message: null } };
+	}
+	try {
+		const { authorizationUrl } = await startOAuth(actor, added.id, returnTo(added.id));
+		return { connector: added, next: { type: 'authorize', authorizationUrl } };
+	} catch (cause) {
+		// The connector is added either way: the panel offers Connect again with the reason
+		const message = isHttpError(cause)
+			? cause.body.message
+			: 'Could not start the sign-in with this server.';
+		await db.update(connector).set({ statusMessage: message }).where(eq(connector.id, added.id));
+		return {
+			connector: { ...added, statusMessage: message },
+			next: { type: 'ready', message }
+		} satisfies AddAndConnectResult;
+	}
 };
 
 export const rename: ConnectorsService['rename'] = async (actor, connectorId, input) => {
