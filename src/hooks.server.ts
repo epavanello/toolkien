@@ -7,6 +7,7 @@ import {
 } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { isErrorCode } from '#lib/core/errors.ts';
+import { analyticsEnabled, trackerTag } from '#lib/server/analytics.ts';
 import { auth } from '#lib/server/auth.ts';
 import { startJobs } from '#lib/server/jobs/index.ts';
 import { isMachinePath, robotsTag } from '#lib/server/robots.ts';
@@ -23,7 +24,13 @@ const handleSecurity: Handle = async ({ event, resolve }) => {
 	if (isCrossSiteFormRequest(event.request, event.url)) {
 		return new Response('Cross-site form submissions are not allowed', { status: 403 });
 	}
-	const response = await resolve(event);
+	const tracker = analyticsEnabled() ? trackerTag() : null;
+	const response = await resolve(
+		event,
+		tracker
+			? { transformPageChunk: ({ html }) => html.replace('</head>', `${tracker}</head>`) }
+			: undefined
+	);
 	for (const [name, value] of Object.entries(headers)) {
 		if (!response.headers.has(name)) response.headers.set(name, value);
 	}

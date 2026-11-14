@@ -6,7 +6,7 @@ updated: 2026-11-14
 
 > **Draft generated automatically: to be reviewed by a lawyer or DPO before publication.** This text is not legal advice.
 
-Toolkien sets only cookies that are strictly necessary for the service to work. They need no consent, which is why there is no cookie banner. We use no analytics, advertising or third-party tracking cookies.
+Toolkien sets only cookies that are strictly necessary for the service to work. They need no consent, which is why there is no cookie banner. We use no analytics, advertising or third-party tracking cookies: our page analytics (self-hosted Plausible) works without cookies or local storage.
 
 | Cookie                      | Purpose                                                                               | Duration                                  |
 | --------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------- |

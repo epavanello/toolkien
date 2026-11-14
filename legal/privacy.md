@@ -26,7 +26,7 @@ Toolkien is a gateway between your AI clients (Claude, Codex, Cursor…) and the
 | Technical logs          | request ids, errors, no personal data beyond ids        | Operating and debugging the service                    |
 | Usage counters          | executions and tool calls per workspace and day         | Capacity planning and future pricing                   |
 
-Sign-in codes, sign-in links and workspace invitations are sent by email through our email provider (see [sub-processors](/legal/sub-processors)); the codes and links are stored only hashed and expire after 10 minutes. We do not use third-party analytics, advertising or tracking. We only set technical cookies (see the [cookie policy](/legal/cookies)).
+Sign-in codes, sign-in links and workspace invitations are sent by email through our email provider (see [sub-processors](/legal/sub-processors)); the codes and links are stored only hashed and expire after 10 minutes. We measure page visits with a cookieless, self-hosted instance of Plausible Analytics operated by us: no cookies, no cross-site tracking, no personal profiles. Before an event leaves our servers we strip query strings and replace workspace names, invite tokens and other identifiers in page addresses with placeholders; your IP address and browser user agent are used only to compute a daily-rotating anonymous visitor count and are not stored by Plausible. We use no advertising or third-party tracking. We only set technical cookies (see the [cookie policy](/legal/cookies)).
 
 ## Legal bases (GDPR)
 

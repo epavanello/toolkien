@@ -67,6 +67,21 @@ export const variables = defineEnvVars({
 				.filter(Boolean)
 	},
 
+	// ─── Analytics (optional) ───────────────────────────────────────────────
+	PLAUSIBLE_URL: {
+		description:
+			'Base URL of a Plausible instance (e.g. `https://plausible.example.com`). With `PLAUSIBLE_DOMAIN`, enables cookieless page analytics proxied first-party through `/a/*`, with redacted URLs.',
+		schema: (value) => optional(value)?.replace(/\/+$/, '')
+	},
+	PLAUSIBLE_DOMAIN: {
+		description: 'Site domain registered in Plausible (e.g. `toolkien.example.com`).',
+		schema: (value) => {
+			const domain = optional(value);
+			if (domain && !/^[a-z0-9.-]+$/i.test(domain)) throw new Error('Expected a domain name');
+			return domain;
+		}
+	},
+
 	// ─── Secrets (OpenBao transit) ──────────────────────────────────────────
 	OPENBAO_ADDR: {
 		description:
