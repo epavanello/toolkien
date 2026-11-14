@@ -6,6 +6,7 @@
 		EmptyState,
 		KeyValueList,
 		Section,
+		ServiceLogo,
 		SidePanel,
 		SourceBadge,
 		ToolDefinition
@@ -54,6 +55,9 @@
 	<Boundary>
 		{@const c = await getConnector({ workspace, id })}
 		<Section variant="plain" title={c.displayName} description={c.directory?.description}>
+			{#snippet media()}
+				<ServiceLogo name={c.name} src={c.icon} size="lg" />
+			{/snippet}
 			{#snippet actions()}
 				<SourceBadge
 					publisher={c.publisher}
@@ -91,8 +95,13 @@
 					{
 						label: 'Directory',
 						value: c.directory
-							? `${checkLabel(c.directory.verification.status)} · ${c.directory.verification.by}, ${c.directory.verification.on}`
+							? `${checkLabel(c.directory.verification.status)} by ${c.directory.verification.by}`
 							: 'Not in the directory'
+					},
+					{
+						label: 'Checked',
+						value: c.directory ? c.directory.verification.on : null,
+						type: 'datetime'
 					}
 				]}
 			/>

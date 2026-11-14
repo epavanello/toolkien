@@ -4,20 +4,16 @@
 	"name": "Linear",
 	"description": "Find, create and update Linear issues, projects, cycles and comments.",
 	"homepage": "https://linear.app/docs/mcp",
+	"icon": "icons/linear.png",
 	"url": "https://mcp.linear.app/mcp",
 	"namespace": "linear",
 	"publisher": "official",
 	"category": "project-management",
-	"tags": [
-		"issues",
-		"tracking"
-	],
+	"tags": ["issues", "tracking"],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": [
-				"dcr"
-			]
+			"registration": ["dcr"]
 		}
 	},
 	"verification": {

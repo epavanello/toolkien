@@ -117,7 +117,7 @@ Once a connector exists in your workspace, ask your agent something that needs i
 - _Use toolkien to list my PostHog insights._
 - _Use toolkien to find my open GitHub issues labelled bug and summarise them._
 
-The agent searches, describes and executes. Calls to tools set to **ask** wait for your approval; everything that happened is in **Activity**.
+The agent searches, describes and executes. Calls to tools set to **ask** wait for your approval; everything that happened is in **Activity** (searches and descriptions are logged as counts, never the query). The **Connect your AI** page ticks the last step as soon as the first call arrives.
 
 ## Troubleshooting
 

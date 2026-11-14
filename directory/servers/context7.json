@@ -4,14 +4,12 @@
 	"name": "Context7",
 	"description": "Up-to-date, version-specific library documentation and code examples.",
 	"homepage": "https://github.com/upstash/context7",
+	"icon": "icons/context7.png",
 	"url": "https://mcp.context7.com/mcp",
 	"namespace": "context7",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": [
-		"docs",
-		"libraries"
-	],
+	"tags": ["docs", "libraries"],
 	"auth": {
 		"type": "none"
 	},

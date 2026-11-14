@@ -4,13 +4,12 @@
 	"name": "Cloudflare Docs",
 	"description": "Search the Cloudflare developer documentation.",
 	"homepage": "https://github.com/cloudflare/mcp-server-cloudflare",
+	"icon": "icons/cloudflare-docs.png",
 	"url": "https://docs.mcp.cloudflare.com/mcp",
 	"namespace": "cloudflareDocs",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": [
-		"docs"
-	],
+	"tags": ["docs"],
 	"auth": {
 		"type": "none"
 	},

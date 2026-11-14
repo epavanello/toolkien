@@ -56,16 +56,19 @@
 	/**
 	 * Tiles to pick one option, in one or more groups (main choices, then secondary ones). Tiles
 	 * are links (`href(value)`), so the choice lives in the URL and can be shared; the selected
-	 * tile is marked with `aria-current`.
+	 * tile is marked with `aria-current`. With `replaceState={false}` the tiles are plain
+	 * navigation links (next steps to other pages).
 	 */
 	type Props = {
 		label: string;
 		groups: ChoiceGroup[];
 		value?: string | null;
 		href: (value: string) => string;
+		/** Picking a tile replaces the history entry (default), instead of adding one */
+		replaceState?: boolean;
 	};
 
-	let { label, groups, value = null, href }: Props = $props();
+	let { label, groups, value = null, href, replaceState = true }: Props = $props();
 </script>
 
 <nav aria-label={label} class="flex flex-col gap-4" data-slot="choice-grid">
@@ -82,7 +85,7 @@
 							href={href(item.value)}
 							class={styles.tile()}
 							aria-current={selected ? 'true' : undefined}
-							data-sveltekit-replacestate
+							data-sveltekit-replacestate={replaceState ? '' : 'off'}
 						>
 							{#if item.icon}
 								<span class={styles.icon()} aria-hidden="true"><item.icon /></span>

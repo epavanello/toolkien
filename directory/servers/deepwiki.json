@@ -4,14 +4,12 @@
 	"name": "DeepWiki",
 	"description": "Ask questions about public GitHub repositories and read their generated wikis.",
 	"homepage": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
+	"icon": "icons/deepwiki.png",
 	"url": "https://mcp.deepwiki.com/mcp",
 	"namespace": "deepwiki",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": [
-		"docs",
-		"code"
-	],
+	"tags": ["docs", "code"],
 	"auth": {
 		"type": "none"
 	},

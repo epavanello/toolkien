@@ -11,7 +11,8 @@ Not ready to write the entry? [Request a server](../../../issues/new?template=se
 3. Add `tools` entries only for tools whose behaviour you checked. For each, set the annotations you are sure about and a short `note` when useful. Leave a tool out rather than guess: Toolkien then uses what the server reports, and treats tools without annotations as writes.
 4. Set `publisher`: `official` when the service's vendor runs the server on its own domain and documents it, `community` for a third-party server (say who maintains it in `notes`).
 5. Set `verification`: your GitHub handle, today's date, and how you checked. `tested` if you connected and inspected `tools/list` (public servers can be tested anonymously), `documented` if the endpoint matches the vendor's current docs and a probe answers as expected (an unauthenticated `initialize` gets 401 with `WWW-Authenticate` / resource metadata for OAuth servers, 200 for public ones), `needs-review` if something is still uncertain (say what in `notes`).
-6. Run `pnpm directory:validate` and open the pull request.
+6. Optional: add the service's logo. Download the vendor's own favicon or `apple-touch-icon` from its website, run `node scripts/directory-icon.ts <id> <downloaded file>` (it writes `icons/<id>.png`) and set `"icon": "icons/<id>.png"`.
+7. Run `pnpm directory:validate` and open the pull request.
 
 ## What reviewers check
 
@@ -20,6 +21,6 @@ Not ready to write the entry? [Request a server](../../../issues/new?template=se
 - **Annotation accuracy.** `readOnlyHint: true` only for tools that cannot change anything (no writes, sends, payments, deletes, side effects). `destructiveHint` for deletions and irreversible actions. When in doubt, no annotation: a wrong read-only hint lets a write run without confirmation.
 - **Minimal scopes.** `auth.scopes` requests only what the tools need; prefer read-only scopes or omit scopes when the server's challenge selects them. For `token` servers, `tokenHelp` tells users to create a narrowly scoped (ideally read-only) token.
 - **Honest verification.** Notes describe what was checked and anything uncertain; uncertain entries stay `needs-review`.
-- **No tracking, logos or marketing copy.** Descriptions are one plain sentence about what the tools do.
+- **No tracking or marketing copy.** Descriptions are one plain sentence about what the tools do. The only logo is the vendor's own icon, committed as a small PNG in `icons/` (no remote image URLs).
 
 Changes to an existing entry (URL moved, tools renamed, annotations corrected) follow the same checks; update `verification` with your handle and date.

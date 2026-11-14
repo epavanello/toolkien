@@ -4,13 +4,12 @@
 	"name": "Stripe",
 	"description": "Work with Stripe customers, payments, invoices, subscriptions and the Stripe docs.",
 	"homepage": "https://docs.stripe.com/mcp",
+	"icon": "icons/stripe.png",
 	"url": "https://mcp.stripe.com",
 	"namespace": "stripe",
 	"publisher": "official",
 	"category": "payments",
-	"tags": [
-		"billing"
-	],
+	"tags": ["billing"],
 	"auth": {
 		"type": "oauth"
 	},

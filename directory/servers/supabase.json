@@ -4,20 +4,16 @@
 	"name": "Supabase",
 	"description": "Manage Supabase projects: tables, SQL, migrations, edge functions, logs and docs.",
 	"homepage": "https://supabase.com/docs/guides/getting-started/mcp",
+	"icon": "icons/supabase.png",
 	"url": "https://mcp.supabase.com/mcp",
 	"namespace": "supabase",
 	"publisher": "official",
 	"category": "data",
-	"tags": [
-		"postgres",
-		"database"
-	],
+	"tags": ["postgres", "database"],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": [
-				"dcr"
-			]
+			"registration": ["dcr"]
 		}
 	},
 	"verification": {

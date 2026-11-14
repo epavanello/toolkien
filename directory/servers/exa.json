@@ -4,13 +4,12 @@
 	"name": "Exa Search",
 	"description": "Web search and code context retrieval with Exa.",
 	"homepage": "https://docs.exa.ai/reference/exa-mcp",
+	"icon": "icons/exa.png",
 	"url": "https://mcp.exa.ai/mcp",
 	"namespace": "exa",
 	"publisher": "official",
 	"category": "search",
-	"tags": [
-		"web-search"
-	],
+	"tags": ["web-search"],
 	"auth": {
 		"type": "none"
 	},

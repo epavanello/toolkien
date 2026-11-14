@@ -4,14 +4,12 @@
 	"name": "Vercel",
 	"description": "Inspect Vercel projects, deployments and logs, and search the Vercel docs.",
 	"homepage": "https://vercel.com/docs/mcp/vercel-mcp",
+	"icon": "icons/vercel.png",
 	"url": "https://mcp.vercel.com",
 	"namespace": "vercel",
 	"publisher": "official",
 	"category": "developer-tools",
-	"tags": [
-		"deployments",
-		"hosting"
-	],
+	"tags": ["deployments", "hosting"],
 	"auth": {
 		"type": "oauth"
 	},

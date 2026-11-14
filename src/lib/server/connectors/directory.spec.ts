@@ -6,6 +6,7 @@ import { findDirectoryEntryByUrl, listDirectoryEntries } from './directory.ts';
 import {
 	directoryJsonSchema,
 	isTrustedEntry,
+	iconProblem,
 	normalizeServerUrl,
 	validateDirectory
 } from './directory-schema.ts';
@@ -15,6 +16,13 @@ const files = readdirSync(join(root, 'servers')).map((name) => ({
 	name,
 	content: readFileSync(join(root, 'servers', name), 'utf8')
 }));
+
+const icons = new Map(
+	readdirSync(join(root, 'icons')).map((name) => [
+		name,
+		new Uint8Array(readFileSync(join(root, 'icons', name)))
+	])
+);
 
 const valid = {
 	id: 'acme',
@@ -31,9 +39,36 @@ const file = (entry: object, name = 'acme.json') => ({ name, content: JSON.strin
 
 describe('curated directory (CI gate for contributions)', () => {
 	it('every entry is valid', () => {
-		const { entries, issues } = validateDirectory(files);
+		const { entries, issues } = validateDirectory(files, icons);
 		expect(issues).toEqual([]);
 		expect(entries.length).toBeGreaterThanOrEqual(10);
+	});
+
+	it('icons are committed square PNGs, referenced by path, never remote URLs', () => {
+		const png = icons.get('linear.png')!;
+		expect(iconProblem(png)).toBeNull();
+		expect(iconProblem(new TextEncoder().encode('<svg/>'))).toBe('Not a PNG file.');
+		expect(iconProblem(new Uint8Array(40 * 1024))).toMatch(/Larger than/);
+		const wide = png.slice();
+		new DataView(wide.buffer).setUint32(16, 200);
+		expect(iconProblem(wide)).toMatch(/Not square/);
+
+		const check = (icon: string, available = icons) =>
+			validateDirectory([file({ ...valid, icon })], available).issues.map((i) => i.message);
+		expect(check('https://acme.example/logo.png')[0]).toMatch(/icons\/<id>\.png/);
+		expect(check('icons/acme.svg')[0]).toMatch(/icons\/<id>\.png/);
+		expect(check('icons/acme.png', new Map())).toEqual([
+			'icon: File not found in directory/icons/.'
+		]);
+		expect(validateDirectory([file(valid)], new Map([['orphan.png', png]])).issues).toEqual([
+			{ file: 'icons/orphan.png', message: 'Not used by any entry.' }
+		]);
+	});
+
+	it('bundles every icon as a URL served by Toolkien', () => {
+		for (const entry of listDirectoryEntries()) {
+			expect(entry.icon).toMatch(/^(data:image\/png;base64,|\/.*\.png$)/);
+		}
 	});
 
 	it('schema.json is in sync with the zod schema', () => {
@@ -41,7 +76,7 @@ describe('curated directory (CI gate for contributions)', () => {
 		expect(committed).toEqual(JSON.parse(JSON.stringify(directoryJsonSchema())));
 	});
 
-	it('lists the vendors\' own servers as official', () => {
+	it("lists the vendors' own servers as official", () => {
 		for (const entry of listDirectoryEntries()) expect(entry.publisher).toBe('official');
 	});
 
@@ -82,7 +117,10 @@ describe('validateDirectory', () => {
 		['legacy status', { verification: { status: 'verified', by: 'x', on: '2026-11-14' } }],
 		['missing publisher', { publisher: undefined }],
 		['unknown publisher', { publisher: 'vendor' }],
-		['needs-review without notes', { verification: { status: 'needs-review', by: 'x', on: '2026-11-14' } }],
+		[
+			'needs-review without notes',
+			{ verification: { status: 'needs-review', by: 'x', on: '2026-11-14' } }
+		],
 		['unknown annotation', { tools: { a: { annotations: { readOnly: true } } } }]
 	])('rejects %s', (_label, patch) => {
 		expect(validateDirectory([file({ ...valid, ...patch })]).issues.length).toBeGreaterThan(0);
@@ -121,7 +159,9 @@ describe('trust and URL matching', () => {
 	});
 
 	it('matches endpoints ignoring case, trailing slash and hash', () => {
-		expect(normalizeServerUrl('https://MCP.PostHog.com/mcp/#x')).toBe('https://mcp.posthog.com/mcp');
+		expect(normalizeServerUrl('https://MCP.PostHog.com/mcp/#x')).toBe(
+			'https://mcp.posthog.com/mcp'
+		);
 		expect(findDirectoryEntryByUrl('https://mcp.posthog.com/MCP/')?.id).toBe('posthog');
 		expect(findDirectoryEntryByUrl('https://mcp.posthog.com/mcp?x=1')).toBeNull();
 		expect(findDirectoryEntryByUrl('not a url')).toBeNull();

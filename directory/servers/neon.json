@@ -4,20 +4,16 @@
 	"name": "Neon",
 	"description": "Create and manage Neon Postgres projects, branches and run SQL.",
 	"homepage": "https://neon.com/docs/ai/neon-mcp-server",
+	"icon": "icons/neon.png",
 	"url": "https://mcp.neon.tech/mcp",
 	"namespace": "neon",
 	"publisher": "official",
 	"category": "data",
-	"tags": [
-		"postgres",
-		"database"
-	],
+	"tags": ["postgres", "database"],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": [
-				"dcr"
-			]
+			"registration": ["dcr"]
 		}
 	},
 	"verification": {

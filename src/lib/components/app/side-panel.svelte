@@ -27,6 +27,8 @@
 		title: string;
 		description?: string;
 		size?: SidePanelSize;
+		/** Before the title: a service logo, an avatar */
+		media?: Snippet;
 		meta?: Snippet;
 		footer?: Snippet;
 		children: Snippet;
@@ -37,6 +39,7 @@
 		title,
 		description,
 		size,
+		media,
 		meta,
 		footer,
 		children
@@ -47,6 +50,7 @@
 	<Sheet.Content class={sidePanelVariants({ size })}>
 		<Sheet.Header class="border-b px-4 py-3 pr-12">
 			<div class="flex flex-wrap items-center gap-2">
+				{#if media}{@render media()}{/if}
 				<Sheet.Title>{title}</Sheet.Title>
 				{#if meta}{@render meta()}{/if}
 			</div>

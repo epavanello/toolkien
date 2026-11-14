@@ -224,7 +224,7 @@
 			{filters}
 			rowKey={(row) => row.id}
 			onRowClick={open}
-			group={(row) => row.name}
+			group={(row) => ({ label: row.name, logo: row.icon })}
 			empty={{
 				title: 'No connectors yet',
 				description: 'Add one from the directory, or by URL if your workspace allows it.'

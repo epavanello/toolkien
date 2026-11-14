@@ -7,8 +7,8 @@
 
 	/**
 	 * First-run checklist of a workspace (add a server, connect an AI client, try a prompt). Steps
-	 * tick from real data (live); hidden once complete or dismissed (dismissal is remembered in
-	 * this browser, per workspace).
+	 * tick from real data (live). When the last one ticks, it says so for a few seconds and hides
+	 * itself; complete or dismissed, it stays hidden (remembered in this browser, per workspace).
 	 */
 	type Props = { workspace: string; variant?: ChecklistVariant };
 
@@ -42,21 +42,23 @@
 			},
 			{
 				label: 'Try a prompt',
-				description: 'Ask your agent to use toolkien.',
+				description: status.firstCall
+					? `First call: ${status.firstCall.tool}${status.firstCall.clientName ? ` via ${status.firstCall.clientName}` : ''}.`
+					: 'Ask your agent to use toolkien.',
 				done: status.triedPrompt,
 				href: client ? `${connect}?client=${matchClient(client.name) ?? 'other'}#try` : connect,
 				action: 'See prompts'
 			}
 		]}
-		{#if items.some((item) => !item.done)}
-			<Checklist
-				title="Get started"
-				description="Three steps to your first tool call through Toolkien."
-				{items}
-				{variant}
-				onDismiss={() => (dismissed.current = true)}
-			/>
-		{/if}
+		<Checklist
+			title="Get started"
+			description="Three steps to your first tool call through Toolkien."
+			completeMessage="You're all set: your agents now reach every server through Toolkien."
+			{items}
+			{variant}
+			onDismiss={() => (dismissed.current = true)}
+			onComplete={() => (dismissed.current = true)}
+		/>
 		{#snippet pending()}{/snippet}
 		{#snippet failed()}{/snippet}
 	</svelte:boundary>

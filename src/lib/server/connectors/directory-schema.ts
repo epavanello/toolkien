@@ -10,6 +10,12 @@ import { z } from 'zod';
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NAMESPACE = /^[a-z][A-Za-z0-9]*$/;
 const SCOPE = /^[\x21\x23-\x5b\x5d-\x7e]+$/;
+const ICON = /^icons\/[a-z0-9]+(?:-[a-z0-9]+)*\.png$/;
+
+/** Directory icons: square PNG, small (`node scripts/directory-icon.ts` makes them) */
+export const ICON_MAX_BYTES = 32 * 1024;
+const ICON_MIN_SIZE = 32;
+const ICON_MAX_SIZE = 512;
 
 const httpsUrl = z
 	.url({ error: 'Must be an absolute URL.' })
@@ -73,6 +79,14 @@ export const directoryEntrySchema = z
 		name: z.string().min(1).max(60),
 		description: z.string().min(10).max(300),
 		homepage: httpsUrl.optional(),
+		/**
+		 * The service's logo, a file committed next to the entry: `icons/<id>.png` (square PNG,
+		 * ≤ 32 KB). Never a remote URL: the app does not hotlink third-party images.
+		 */
+		icon: z
+			.string()
+			.regex(ICON, { error: 'Use "icons/<id>.png" (a file in directory/icons/).' })
+			.optional(),
 		/** Remote MCP endpoint (Streamable HTTP), https only */
 		url: httpsUrl,
 		/** Suggested namespace in the generated TypeScript (`linear.listIssues`) */
@@ -169,11 +183,33 @@ export function normalizeServerUrl(value: string): string | null {
 
 export type DirectoryIssue = { file: string; message: string };
 
+const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+
+/** Why an icon file is not acceptable (`null` = valid): PNG, square, 32 to 512 px, ≤ 32 KB */
+export function iconProblem(bytes: Uint8Array): string | null {
+	if (bytes.byteLength > ICON_MAX_BYTES) return `Larger than ${ICON_MAX_BYTES / 1024} KB.`;
+	if (bytes.byteLength < 24 || PNG_SIGNATURE.some((value, i) => bytes[i] !== value)) {
+		return 'Not a PNG file.';
+	}
+	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+	const [width, height] = [view.getUint32(16), view.getUint32(20)];
+	if (width !== height) return `Not square (${width}×${height}).`;
+	if (width < ICON_MIN_SIZE || width > ICON_MAX_SIZE) {
+		return `Use ${ICON_MIN_SIZE} to ${ICON_MAX_SIZE} px (got ${width}).`;
+	}
+	return null;
+}
+
 /**
  * Validates every file of the directory: schema, `id` = file name, unique ids, namespaces and
- * URLs. Returns the parsed entries and the issues (empty = valid).
+ * URLs. With `icons` (file name → bytes of `directory/icons/*`), also that every referenced icon
+ * exists and is valid, and that no icon is left unreferenced. Returns the parsed entries and the
+ * issues (empty = valid).
  */
-export function validateDirectory(files: { name: string; content: string }[]): {
+export function validateDirectory(
+	files: { name: string; content: string }[],
+	icons?: Map<string, Uint8Array>
+): {
 	entries: DirectoryEntryFile[];
 	issues: DirectoryIssue[];
 } {
@@ -223,7 +259,19 @@ export function validateDirectory(files: { name: string; content: string }[]): {
 				});
 			else seen[key].set(value, file.name);
 		}
+		if (entry.icon && icons) {
+			const bytes = icons.get(entry.icon.slice('icons/'.length));
+			const problem = bytes ? iconProblem(bytes) : 'File not found in directory/icons/.';
+			if (problem) issues.push({ file: file.name, message: `icon: ${problem}` });
+		}
 		entries.push(entry);
+	}
+	if (icons) {
+		const used = new Set(entries.map((entry) => entry.icon?.slice('icons/'.length)));
+		for (const name of icons.keys()) {
+			if (!used.has(name))
+				issues.push({ file: `icons/${name}`, message: 'Not used by any entry.' });
+		}
 	}
 	return { entries, issues };
 }

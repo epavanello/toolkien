@@ -4,21 +4,16 @@
 	"name": "Atlassian (Jira & Confluence)",
 	"description": "Search and edit Jira issues and Confluence pages through the Atlassian Remote MCP Server.",
 	"homepage": "https://support.atlassian.com/rovo/docs/getting-started-with-the-atlassian-remote-mcp-server/",
+	"icon": "icons/atlassian.png",
 	"url": "https://mcp.atlassian.com/v2/mcp",
 	"namespace": "atlassian",
 	"publisher": "official",
 	"category": "project-management",
-	"tags": [
-		"jira",
-		"confluence"
-	],
+	"tags": ["jira", "confluence"],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": [
-				"cimd",
-				"dcr"
-			]
+			"registration": ["cimd", "dcr"]
 		}
 	},
 	"verification": {

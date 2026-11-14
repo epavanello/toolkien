@@ -19,6 +19,11 @@ export type Column<T> = {
 	actions?: (row: T) => ActionItem[];
 	cell?: Snippet<[T]>;
 	/**
+	 * A service logo before the value of a text cell (`ServiceLogo`): the icon URL Toolkien
+	 * serves, `null` for the monogram of the value
+	 */
+	logo?: (row: T) => string | null | undefined;
+	/**
 	 * A small button after the cell value (e.g. "Connect" next to a pending status); `null`
 	 * hides it. Clicks do not open the row.
 	 */
@@ -36,6 +41,9 @@ export type InlineAction = {
 	/** `primary` for the action the row is waiting for, `outline` (default) otherwise */
 	variant?: 'primary' | 'outline';
 };
+
+/** Group header of a grouped `DataTable`: a label, optionally with the service logo */
+export type TableGroup = { label: string; logo?: string | null };
 
 export type TableFilter<T> = FilterDefinition & { match: (row: T, value: string) => boolean };
 
@@ -84,23 +92,30 @@ export function paginate<T>(rows: T[], page: number, pageSize: number) {
  * Stable sort by group label (empty labels last), so a grouped table shows each group's rows
  * together; `withHeaders` marks the first row of every group on the current page.
  */
-export function sortByGroup<T>(rows: T[], group: ((row: T) => string) | undefined): T[] {
+export function sortByGroup<T>(
+	rows: T[],
+	group: ((row: T) => string | TableGroup) | undefined
+): T[] {
 	if (!group) return rows;
 	return rows
-		.map((row, index) => ({ row, index, key: group(row) }))
+		.map((row, index) => ({ row, index, key: groupLabel(group(row)) }))
 		.sort((a, b) =>
 			a.key === b.key ? a.index - b.index : !a.key ? 1 : !b.key ? -1 : a.key.localeCompare(b.key)
 		)
 		.map((entry) => entry.row);
 }
 
-/** Group label to render above `rows[index]`, or `null` when it continues the previous group */
+const groupLabel = (group: string | TableGroup) =>
+	typeof group === 'string' ? group : group.label;
+
+/** Group header to render above `rows[index]`, or `null` when it continues the previous group */
 export function groupHeaderAt<T>(
 	rows: T[],
 	index: number,
-	group: ((row: T) => string) | undefined
-): string | null {
+	group: ((row: T) => string | TableGroup) | undefined
+): TableGroup | null {
 	if (!group) return null;
-	const key = group(rows[index]);
-	return index === 0 || group(rows[index - 1]) !== key ? key : null;
+	const value = group(rows[index]);
+	const header = typeof value === 'string' ? { label: value } : value;
+	return index === 0 || groupLabel(group(rows[index - 1])) !== header.label ? header : null;
 }

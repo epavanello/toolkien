@@ -229,8 +229,10 @@ describe('onboarding status', () => {
 		expect(status).toEqual({
 			mcpUrl: 'https://toolkien.test/mcp',
 			connectors: [],
+			servers: [],
 			clients: [],
-			triedPrompt: false
+			triedPrompt: false,
+			firstCall: null
 		});
 		expect(await needsGuide(actorOf(me), NOW)).toBe(true);
 	});
@@ -260,6 +262,7 @@ describe('onboarding status', () => {
 		});
 		let status = await onboardingStatus(actorOf(me), NOW);
 		expect(status.connectors).toEqual(['PostHog']);
+		expect(status.servers).toEqual([{ name: 'PostHog', icon: null }]);
 		expect(status.clients.map((c) => c.name)).toEqual(['Codex']);
 		expect(status.triedPrompt).toBe(false);
 
@@ -271,5 +274,61 @@ describe('onboarding status', () => {
 		});
 		status = await onboardingStatus(actorOf(me), NOW);
 		expect(status.triedPrompt).toBe(true);
+	});
+
+	it('a tool search through a client is enough: the first call names tool, client and time', async () => {
+		const me = await seedUser(db);
+		const other = await seedUser(db);
+		const event = (values: Partial<typeof auditEvent.$inferInsert>) =>
+			db.insert(auditEvent).values({
+				outcome: 'success',
+				userId: me.id,
+				workspaceId: me.personalWorkspaceId,
+				type: 'tools.searched',
+				...values
+			});
+		// Another member's call and an unrelated event do not count
+		await event({ userId: other.id, clientName: 'Cursor', occurredAt: minutes(-30) });
+		await event({ type: 'connector.added', occurredAt: minutes(-20) });
+		expect((await onboardingStatus(actorOf(me), NOW)).firstCall).toBeNull();
+
+		await event({ type: 'tools.described', clientName: 'Codex', occurredAt: minutes(-5) });
+		await event({ clientName: ' Claude Code ', occurredAt: minutes(-10) });
+		const status = await onboardingStatus(actorOf(me), NOW);
+		expect(status.triedPrompt).toBe(true);
+		expect(status.firstCall).toEqual({
+			tool: 'tools_search',
+			clientName: 'Claude Code',
+			at: minutes(-10)
+		});
+	});
+
+	it('names the upstream tool of a direct call and executions as execute', async () => {
+		const me = await seedUser(db);
+		const base = {
+			outcome: 'success' as const,
+			userId: me.id,
+			workspaceId: me.personalWorkspaceId
+		};
+		await db.insert(auditEvent).values({
+			...base,
+			type: 'tool.called',
+			toolPath: 'github.listIssues',
+			occurredAt: minutes(-3)
+		});
+		expect((await onboardingStatus(actorOf(me), NOW)).firstCall).toMatchObject({
+			tool: 'github.listIssues',
+			clientName: null
+		});
+		await db.insert(auditEvent).values({
+			...base,
+			type: 'execution.started',
+			clientName: 'Codex',
+			occurredAt: minutes(-4)
+		});
+		expect((await onboardingStatus(actorOf(me), NOW)).firstCall).toMatchObject({
+			tool: 'execute',
+			clientName: 'Codex'
+		});
 	});
 });

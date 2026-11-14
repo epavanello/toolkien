@@ -65,10 +65,21 @@ describe('grouping', () => {
 	it('marks the first row of each group', () => {
 		const sorted = sortByGroup(rows, group);
 		expect(sorted.map((_, i) => groupHeaderAt(sorted, i, group))).toEqual([
-			'Linear',
-			'PostHog',
+			{ label: 'Linear' },
+			{ label: 'PostHog' },
 			null,
-			''
+			{ label: '' }
 		]);
+	});
+
+	it('carries the group logo in the header', () => {
+		const withLogo = (row: { g: string }) => ({
+			label: row.g,
+			logo: row.g ? `/${row.g}.png` : null
+		});
+		const sorted = sortByGroup(rows, withLogo);
+		expect(sorted.map((r) => r.id)).toEqual(['c', 'a', 'd', 'b']);
+		expect(groupHeaderAt(sorted, 0, withLogo)).toEqual({ label: 'Linear', logo: '/Linear.png' });
+		expect(groupHeaderAt(sorted, 2, withLogo)).toBeNull();
 	});
 });

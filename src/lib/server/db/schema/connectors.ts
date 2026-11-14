@@ -7,7 +7,7 @@
  * depends on the connector name, label and the current version's description).
  */
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { blob, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { organization, user } from './auth.ts';
 import { createdAt, id, json, sealed, timestamp, updatedAt } from './columns.ts';
 
@@ -248,6 +248,22 @@ export const toolVersion = sqliteTable(
 	},
 	(t) => [uniqueIndex('tool_version_uq').on(t.toolId, t.version)]
 );
+
+/**
+ * Favicon of a free-URL connector's server, fetched from its origin through `safeFetch` when the
+ * connector is added or synced (directory connectors use the committed directory icon). Raster
+ * only (PNG, ICO, WebP, JPEG, GIF: detected from the bytes, never SVG), at most 64 KB. A row
+ * with `data = null` remembers that no icon was found, so syncs do not retry before
+ * `fetchedAt` gets old. Served by `/connectors/icon/[id]` with `nosniff`.
+ */
+export const connectorIcon = sqliteTable('connector_icon', {
+	connectorId: text('connector_id')
+		.primaryKey()
+		.references(() => connector.id, { onDelete: 'cascade' }),
+	contentType: text('content_type'),
+	data: blob('data', { mode: 'buffer' }),
+	fetchedAt: timestamp('fetched_at').notNull()
+});
 
 /**
  * Search text of each live tool, rebuilt by the connectors module on every sync and rename

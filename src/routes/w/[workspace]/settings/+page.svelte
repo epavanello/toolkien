@@ -9,13 +9,14 @@
 		FormField,
 		KeyValueList,
 		Page,
+		RelativeTime,
 		RemoteForm,
 		Section,
 		Stats
 	} from '#lib/components/app/index.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { attempt } from '#lib/core/attempt.ts';
-	import { formatDateTime, formatDuration } from '#lib/core/format.ts';
+	import { formatDuration } from '#lib/core/format.ts';
 	import {
 		cancelWorkspaceDeletion,
 		createCompanyWorkspace,
@@ -59,7 +60,8 @@
 		{#if s.deletion}
 			<Callout
 				tone="danger"
-				title="Scheduled for deletion on {formatDateTime(s.deletion.purgeAt)}"
+				title="Scheduled for deletion"
+				time={{ value: s.deletion.purgeAt }}
 				description="Nothing can run in this workspace. Everything is deleted when the grace period ends."
 			>
 				{#snippet action()}
@@ -232,7 +234,7 @@
 			>
 				{#if s.killSwitch}
 					<p class="text-sm text-muted-foreground">
-						Suspended since {formatDateTime(s.killSwitch.activatedAt)}.
+						Suspended since <RelativeTime value={s.killSwitch.activatedAt} />.
 					</p>
 					{#if s.killSwitch.origin === 'workspace_admin'}
 						<div>

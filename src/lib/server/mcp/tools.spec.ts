@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { InputRequiredResult, ServerContext } from '@modelcontextprotocol/server';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotImplementedError } from '#lib/server/not-implemented.ts';
 import { elicitationModes } from './elicitation.ts';
 import { errorResult, type ToolEnv, type ToolResult } from './register.ts';
@@ -230,6 +230,21 @@ describe('tools_search', () => {
 		expect(text).toContain('- posthogDevpost.query: Run a HogQL query');
 	});
 
+	it('audits the call with counts only (it ticks "Try a prompt")', async () => {
+		const { call, deps } = setup({ active: acme });
+		await call('tools_search', { query: 'github secret words' });
+		expect(deps.audit.record).toHaveBeenCalledWith({
+			type: 'tools.searched',
+			outcome: 'success',
+			workspaceId: acme.id,
+			userId: 'u1',
+			clientId: 'client-1',
+			clientName: 'Test Client',
+			metadata: { results: 2 }
+		});
+		expect(JSON.stringify(vi.mocked(deps.audit.record).mock.calls)).not.toContain('secret');
+	});
+
 	it('explains when nothing matches', async () => {
 		const { call, deps } = setup();
 		deps.connectors.searchTools.mockResolvedValueOnce([]);
@@ -253,6 +268,14 @@ describe('tools_describe', () => {
 		expect(text).toMatch(
 			/Not found or not allowed in this workspace: github\.deleteRepo, nope\.tool/
 		);
+		expect(deps.audit.record).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'tools.described',
+				clientName: 'Test Client',
+				metadata: { requested: 3, described: 1 }
+			})
+		);
+		expect(JSON.stringify(vi.mocked(deps.audit.record).mock.calls)).not.toContain('deleteRepo');
 	});
 });
 

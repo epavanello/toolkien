@@ -7,6 +7,7 @@
 			icon: 'mt-0.5 size-4 shrink-0',
 			body: 'flex min-w-0 flex-1 basis-56 flex-col gap-0.5',
 			title: 'font-medium',
+			time: 'ml-1.5 font-normal text-muted-foreground',
 			description: 'text-pretty text-muted-foreground',
 			action: 'flex items-center gap-2'
 		},
@@ -37,6 +38,7 @@
 	import Info from '@lucide/svelte/icons/info';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import type { Snippet } from 'svelte';
+	import RelativeTime from './relative-time.svelte';
 
 	/**
 	 * A page-level notice (passkey required, workspace scheduled for deletion, suspended…) with an
@@ -46,11 +48,13 @@
 		title: string;
 		description?: string;
 		tone?: CalloutTone;
+		/** When it happened or will happen, after the title: `Platform paused · since 2 h ago` */
+		time?: { label?: string; value: Date | string | number };
 		action?: Snippet;
 		children?: Snippet;
 	};
 
-	let { title, description, tone = 'info', action, children }: Props = $props();
+	let { title, description, tone = 'info', time, action, children }: Props = $props();
 
 	const styles = $derived(calloutVariants({ tone }));
 	const ICONS = {
@@ -71,7 +75,11 @@
 >
 	<Icon class={styles.icon()} aria-hidden="true" />
 	<div class={styles.body()}>
-		<p class={styles.title()}>{title}</p>
+		<p class={styles.title()}>
+			{title}{#if time}<span class={styles.time()}>
+					· {time.label ? `${time.label} ` : ''}<RelativeTime value={time.value} /></span
+				>{/if}
+		</p>
 		{#if description}<p class={styles.description()}>{description}</p>{/if}
 		{#if children}{@render children()}{/if}
 	</div>

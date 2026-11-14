@@ -1,7 +1,8 @@
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { ORIGIN } from '$app/env/private';
 import { record } from '#lib/server/audit/index.ts';
+import { connectorIcons } from '#lib/server/connectors/index.ts';
 import { db } from '#lib/server/db/index.ts';
 import {
 	auditEvent,
@@ -15,6 +16,8 @@ import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 import {
 	needsConnectGuide,
 	type AuthorizedClient,
+	type FirstToolCall,
+	type OnboardingServer,
 	type OnboardingStatus,
 	type RevokedClient
 } from './types.ts';
@@ -203,10 +206,18 @@ export async function revokeClient(
 	return { clientId, name, ...removed };
 }
 
-/** Names of the connectors the actor can see in the workspace (shared + their own) */
-async function visibleConnectorNames(actor: WorkspaceActor): Promise<string[]> {
+/**
+ * Services of the connectors the actor can see in the workspace (shared + their own), newest
+ * first, one per name, with their logo
+ */
+async function visibleServers(actor: WorkspaceActor): Promise<OnboardingServer[]> {
 	const rows = await db
-		.select({ name: connector.name, label: connector.label })
+		.select({
+			id: connector.id,
+			name: connector.name,
+			source: connector.source,
+			directoryId: connector.directoryId
+		})
 		.from(connector)
 		.where(
 			and(
@@ -215,22 +226,58 @@ async function visibleConnectorNames(actor: WorkspaceActor): Promise<string[]> {
 			)
 		)
 		.orderBy(desc(connector.createdAt));
-	return [...new Set(rows.map((row) => row.name))];
+	const icons = await connectorIcons(rows);
+	const servers = new Map<string, OnboardingServer>();
+	for (const row of rows) {
+		if (!servers.has(row.name))
+			servers.set(row.name, { name: row.name, icon: icons.get(row.id) ?? null });
+	}
+	return [...servers.values()];
 }
 
-async function hasTriedPrompt(actor: WorkspaceActor): Promise<boolean> {
+/** Audit events that prove an agent reached Toolkien through an MCP client */
+export const FIRST_CALL_EVENTS = [
+	'tools.searched',
+	'tools.described',
+	'execution.started',
+	'tool.called'
+] as const;
+
+const TOOL_OF_EVENT: Record<(typeof FIRST_CALL_EVENTS)[number], string> = {
+	'tools.searched': 'tools_search',
+	'tools.described': 'tools_describe',
+	'execution.started': 'execute',
+	'tool.called': 'execute'
+};
+
+/** The user's first MCP tool call in the workspace (oldest matching audit event), if any */
+export async function firstToolCall(actor: WorkspaceActor): Promise<FirstToolCall | null> {
 	const [row] = await db
-		.select({ id: auditEvent.id })
+		.select({
+			type: auditEvent.type,
+			toolPath: auditEvent.toolPath,
+			clientName: auditEvent.clientName,
+			occurredAt: auditEvent.occurredAt
+		})
 		.from(auditEvent)
 		.where(
 			and(
 				eq(auditEvent.workspaceId, actor.workspaceId),
 				eq(auditEvent.userId, actor.userId),
-				inArray(auditEvent.type, ['execution.started', 'tool.called'])
+				inArray(auditEvent.type, [...FIRST_CALL_EVENTS])
 			)
 		)
+		.orderBy(asc(auditEvent.occurredAt))
 		.limit(1);
-	return row !== undefined;
+	if (!row) return null;
+	return {
+		tool:
+			row.type === 'tool.called' && row.toolPath
+				? row.toolPath
+				: TOOL_OF_EVENT[row.type as (typeof FIRST_CALL_EVENTS)[number]],
+		clientName: row.clientName?.trim() || null,
+		at: row.occurredAt
+	};
 }
 
 /** Everything the connect page and the welcome checklist show (see the contract) */
@@ -238,19 +285,26 @@ export async function onboardingStatus(
 	actor: WorkspaceActor,
 	now = new Date()
 ): Promise<OnboardingStatus> {
-	const [connectors, clients, triedPrompt] = await Promise.all([
-		visibleConnectorNames(actor),
+	const [servers, clients, firstCall] = await Promise.all([
+		visibleServers(actor),
 		listAuthorizedClients(actor.userId, now),
-		hasTriedPrompt(actor)
+		firstToolCall(actor)
 	]);
-	return { mcpUrl: mcpUrl(), connectors, clients, triedPrompt };
+	return {
+		mcpUrl: mcpUrl(),
+		connectors: servers.map((server) => server.name),
+		servers,
+		clients,
+		triedPrompt: firstCall !== null,
+		firstCall
+	};
 }
 
 /** Whether the user still needs the connect guide: no connector and no authorized client */
 export async function needsGuide(actor: WorkspaceActor, now = new Date()): Promise<boolean> {
-	const [connectors, clients] = await Promise.all([
-		visibleConnectorNames(actor),
+	const [servers, clients] = await Promise.all([
+		visibleServers(actor),
 		listAuthorizedClients(actor.userId, now)
 	]);
-	return needsConnectGuide({ connectors, clients });
+	return needsConnectGuide({ connectors: servers.map((server) => server.name), clients });
 }

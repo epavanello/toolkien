@@ -24,6 +24,10 @@
 			"type": "string",
 			"format": "uri"
 		},
+		"icon": {
+			"type": "string",
+			"pattern": "^icons\\/[a-z0-9]+(?:-[a-z0-9]+)*\\.png$"
+		},
 		"url": {
 			"type": "string",
 			"format": "uri"
@@ -35,10 +39,7 @@
 		},
 		"publisher": {
 			"type": "string",
-			"enum": [
-				"official",
-				"community"
-			]
+			"enum": ["official", "community"]
 		},
 		"category": {
 			"type": "string",
@@ -70,11 +71,7 @@
 			"properties": {
 				"type": {
 					"type": "string",
-					"enum": [
-						"oauth",
-						"token",
-						"none"
-					]
+					"enum": ["oauth", "token", "none"]
 				},
 				"scopes": {
 					"maxItems": 20,
@@ -92,11 +89,7 @@
 							"type": "array",
 							"items": {
 								"type": "string",
-								"enum": [
-									"cimd",
-									"dcr",
-									"preregistered"
-								]
+								"enum": ["cimd", "dcr", "preregistered"]
 							}
 						},
 						"issuer": {
@@ -115,9 +108,7 @@
 					"format": "uri"
 				}
 			},
-			"required": [
-				"type"
-			],
+			"required": ["type"],
 			"additionalProperties": false
 		},
 		"tools": {
@@ -166,11 +157,7 @@
 			"properties": {
 				"status": {
 					"type": "string",
-					"enum": [
-						"tested",
-						"documented",
-						"needs-review"
-					]
+					"enum": ["tested", "documented", "needs-review"]
 				},
 				"by": {
 					"type": "string",
@@ -187,11 +174,7 @@
 					"maxLength": 1000
 				}
 			},
-			"required": [
-				"status",
-				"by",
-				"on"
-			],
+			"required": ["status", "by", "on"],
 			"additionalProperties": false
 		}
 	},

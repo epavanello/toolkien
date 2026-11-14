@@ -29,9 +29,7 @@
 
 <span class="inline-flex items-center gap-1.5" data-slot="source-badge">
 	{#if publisher === null}
-		<UnverifiedBadge
-			tooltip="Not in the directory: tool descriptions are treated as untrusted."
-		/>
+		<UnverifiedBadge tooltip="Not in the directory: tool descriptions are treated as untrusted." />
 	{:else}
 		<Tooltip.Root>
 			<Tooltip.Trigger>

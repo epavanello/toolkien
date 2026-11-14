@@ -2,7 +2,13 @@ import { z } from 'zod';
 import type { EffectiveLevel } from '#lib/server/permissions/types.ts';
 import type { WorkspaceActor, WorkspaceSummary } from '#lib/server/workspaces/types.ts';
 import type { McpDeps } from '../deps.ts';
-import { defineTool, text, type McpServerLike, type ToolEnvResolver } from '../register.ts';
+import {
+	defineTool,
+	text,
+	type McpServerLike,
+	type ToolEnv,
+	type ToolEnvResolver
+} from '../register.ts';
 import { label } from './workspaces.ts';
 
 /** The active workspace of this client and the actor every service call takes */
@@ -64,6 +70,28 @@ export function instanceLabel(item: {
 const INSTANCES_NOTE =
 	'A workspace can connect the same server more than once (one instance per account), each under its own namespace: the same tool can exist as `posthogDevmotion.query` and `posthogDevpost.query`. Pick the namespace of the account the user means; one script can call several instances.';
 
+/**
+ * Audits a discovery call (who, which client, counts): never the query or the paths. It is also
+ * what ticks "Try a prompt" on the connect page as soon as an agent reaches Toolkien.
+ */
+async function recordDiscovery(
+	deps: McpDeps,
+	env: ToolEnv,
+	actor: WorkspaceActor,
+	type: 'tools.searched' | 'tools.described',
+	metadata: Record<string, number>
+) {
+	await deps.audit.record({
+		type,
+		outcome: 'success',
+		workspaceId: actor.workspaceId,
+		userId: actor.userId,
+		clientId: env.request.clientId,
+		clientName: env.request.clientName,
+		metadata
+	});
+}
+
 const SEARCH_LIMIT_DEFAULT = 10;
 const SEARCH_LIMIT_MAX = 25;
 const DESCRIBE_MAX_PATHS = 20;
@@ -103,6 +131,7 @@ export function registerDiscoveryTools(
 				hits.map((hit) => hit.path)
 			);
 			const visible = hits.filter((hit) => levels.has(hit.path));
+			await recordDiscovery(deps, env, actor, 'tools.searched', { results: visible.length });
 			const header = `Workspace: ${label(workspace)}`;
 			if (visible.length === 0) {
 				return text(
@@ -169,6 +198,10 @@ export function registerDiscoveryTools(
 			const described = allowed.length ? await deps.connectors.describeTools(actor, allowed) : [];
 			const found = new Set(described.map((item) => item.path));
 			const missing = unique.filter((path) => !found.has(path));
+			await recordDiscovery(deps, env, actor, 'tools.described', {
+				requested: unique.length,
+				described: described.length
+			});
 			const parts = [`Workspace: ${label(workspace)}`];
 			if (described.length > 0) {
 				parts.push(

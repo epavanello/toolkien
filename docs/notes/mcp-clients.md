@@ -15,8 +15,8 @@ Placeholders: `{URL}` = `${ORIGIN}/mcp`, `{NAME}` = `toolkien`.
 ## Claude.ai (web) and Claude Desktop
 
 - No deeplink. https://claude.ai/customize/connectors → **+** → **Add custom connector** → name
-  + URL → Continue → keep the options marked Detected → **Add** → **Connect** (browser OAuth).
-  Desktop: same Customize › Connectors screen; connectors sync across web and desktop.
+  - URL → Continue → keep the options marked Detected → **Add** → **Connect** (browser OAuth).
+    Desktop: same Customize › Connectors screen; connectors sync across web and desktop.
 - Plans: Free (1 custom connector), Pro, Max, Team, Enterprise. Team/Enterprise: an Owner adds it
   at https://claude.ai/admin-settings/connectors (Add → Custom → Web), members click Connect.
 - Source: https://claude.com/docs/connectors/custom/remote-mcp
@@ -63,9 +63,9 @@ Placeholders: `{URL}` = `${ORIGIN}/mcp`, `{NAME}` = `toolkien`.
 - Gemini CLI: `gemini mcp add --transport http {NAME} {URL} --scope user`; login auto on 401 or
   `/mcp auth {NAME}`.
 - Zed: Settings › AI › MCP Servers › Add Remote Server, or `"context_servers": {"toolkien":
-  {"url": "{URL}"}}`; OAuth prompted.
+{"url": "{URL}"}}`; OAuth prompted.
 - Cline: Remote Servers tab → name, URL, Streamable HTTP; or `cline mcp add {NAME} {URL}
-  --transport http` then `cline mcp` → Authorize OAuth.
+--transport http` then `cline mcp` → Authorize OAuth.
 - Goose: `goose://extension?url={enc URL}&type=streamable_http&id={NAME}&name={NAME}&description={enc}`.
 - LM Studio: `lmstudio://add_mcp?name={NAME}&config={base64({"{NAME}":{"url":"{URL}"}})}`.
 - Raycast: "Install MCP Server" → HTTP, URL, OAuth Dynamic → Sign In.

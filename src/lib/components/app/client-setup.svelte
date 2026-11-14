@@ -1,22 +1,28 @@
 <script lang="ts">
+	import Activity from '@lucide/svelte/icons/activity';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import LibraryBig from '@lucide/svelte/icons/library-big';
+	import ShieldCheck from '@lucide/svelte/icons/shield-check';
 	import { resolve } from '$app/paths';
-	import { formatRelative } from '#lib/core/format.ts';
 	import { matchClient, samplePrompts, type ClientGuide } from '#lib/core/mcp-clients.ts';
 	import type { OnboardingStatus } from '#lib/server/clients/types.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import Callout from './callout.svelte';
+	import ChoiceGrid, { type ChoiceItem } from './choice-grid.svelte';
 	import CodeBlock from './code-block.svelte';
 	import CommandField from './command-field.svelte';
 	import Disclosure from './disclosure.svelte';
 	import InlineText from './inline-text.svelte';
+	import Mono from './mono.svelte';
+	import RelativeTime from './relative-time.svelte';
+	import ServiceLogo from './service-logo.svelte';
 	import Steps, { type StepItem } from './steps.svelte';
 
 	/**
 	 * The guided setup of one MCP client: install (fastest method first), sign in (what the user
-	 * will see, with the live connection state), try a prompt; then plan notes and the manual
-	 * config. All texts and commands come from the client catalog (`#lib/core/mcp-clients.ts`).
+	 * will see, with the live connection state), try a prompt (done as soon as the first MCP call
+	 * of this user reaches Toolkien, then next steps); then plan notes and the manual config. All
+	 * texts and commands come from the client catalog (`#lib/core/mcp-clients.ts`).
 	 */
 	type Props = { guide: ClientGuide; status: OnboardingStatus; workspace: string };
 
@@ -28,6 +34,31 @@
 	);
 	const others = $derived(status.clients.filter((client) => client !== connected));
 	const prompts = $derived(samplePrompts(status.connectors));
+	const firstCall = $derived(status.firstCall);
+
+	const nextSteps: (ChoiceItem & { href: string })[] = $derived([
+		{
+			value: 'activity',
+			label: 'Open Activity',
+			description: 'Every call your agents make',
+			icon: Activity,
+			href: resolve('/w/[workspace]/activity', { workspace })
+		},
+		{
+			value: 'permissions',
+			label: 'Set permissions',
+			description: 'Allow, ask or block each tool',
+			icon: ShieldCheck,
+			href: resolve('/w/[workspace]/permissions', { workspace })
+		},
+		{
+			value: 'directory',
+			label: 'Add more servers',
+			description: 'From the directory or by URL',
+			icon: LibraryBig,
+			href: resolve('/w/[workspace]/directory', { workspace })
+		}
+	]);
 	const installTitle = $derived(
 		install.kind === 'command'
 			? 'Run this in your terminal'
@@ -47,8 +78,10 @@
 		{
 			id: 'try',
 			title: 'Try it',
-			description: `Paste one of these in ${guide.name}.`,
-			status: status.triedPrompt ? 'done' : connected ? 'current' : 'todo',
+			description: firstCall
+				? 'Toolkien answered your agent. What next?'
+				: `Paste one of these in ${guide.name}. This step ticks by itself on the first call.`,
+			status: firstCall ? 'done' : connected ? 'current' : 'todo',
 			content: tryStep
 		}
 	]);
@@ -98,9 +131,9 @@
 		<Callout
 			tone="success"
 			title="Connected: {connected.name}"
-			description={connected.lastUsedAt
-				? `Last used ${formatRelative(connected.lastUsedAt)}.`
-				: `Signed in ${formatRelative(connected.connectedAt)}.`}
+			time={connected.lastUsedAt
+				? { label: 'last used', value: connected.lastUsedAt }
+				: { label: 'signed in', value: connected.connectedAt }}
 		/>
 	{:else}
 		<Callout
@@ -113,22 +146,48 @@
 	{/if}
 {/snippet}
 
-{#snippet tryStep()}
-	{#if status.connectors.length === 0}
-		<Callout title="Add a server first" description="Prompts need at least one connected server.">
-			{#snippet action()}
-				<Button
-					size="sm"
-					variant="outline"
-					icon={LibraryBig}
-					href={resolve('/w/[workspace]/directory', { workspace })}>Open directory</Button
-				>
-			{/snippet}
-		</Callout>
-	{/if}
+{#snippet promptList()}
 	{#each prompts as prompt (prompt)}
 		<CommandField variant="prompt" value={prompt} />
 	{/each}
+{/snippet}
+
+{#snippet tryStep()}
+	{#if firstCall}
+		<Callout tone="success" title="Your first call arrived">
+			<p class="text-pretty text-muted-foreground">
+				<Mono value={firstCall.tool} variant="path" /> via {firstCall.clientName ??
+					'your AI client'}, <RelativeTime value={firstCall.at} />.
+			</p>
+		</Callout>
+		<ChoiceGrid
+			label="Next steps"
+			groups={[{ items: nextSteps }]}
+			href={(value) => nextSteps.find((step) => step.value === value)!.href}
+			replaceState={false}
+		/>
+		<Disclosure title="More prompts to try">{@render promptList()}</Disclosure>
+	{:else}
+		{#if status.servers.length === 0}
+			<Callout title="Add a server first" description="Prompts need at least one connected server.">
+				{#snippet action()}
+					<Button
+						size="sm"
+						variant="outline"
+						icon={LibraryBig}
+						href={resolve('/w/[workspace]/directory', { workspace })}>Open directory</Button
+					>
+				{/snippet}
+			</Callout>
+		{:else}
+			<ul class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm" aria-label="Your servers">
+				{#each status.servers as server (server.name)}
+					<li><ServiceLogo name={server.name} src={server.icon} size="xs" withName /></li>
+				{/each}
+			</ul>
+		{/if}
+		{@render promptList()}
+	{/if}
 {/snippet}
 
 <div class="flex flex-col gap-6" data-slot="client-setup">

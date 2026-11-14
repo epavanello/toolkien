@@ -4,21 +4,16 @@
 	"name": "Notion",
 	"description": "Search, read and edit Notion pages and databases of the connected workspace.",
 	"homepage": "https://developers.notion.com/docs/mcp",
+	"icon": "icons/notion.png",
 	"url": "https://mcp.notion.com/mcp",
 	"namespace": "notion",
 	"publisher": "official",
 	"category": "knowledge",
-	"tags": [
-		"docs",
-		"wiki",
-		"databases"
-	],
+	"tags": ["docs", "wiki", "databases"],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": [
-				"dcr"
-			]
+			"registration": ["dcr"]
 		}
 	},
 	"verification": {

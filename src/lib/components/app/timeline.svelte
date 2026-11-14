@@ -21,8 +21,9 @@
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import type { Snippet } from 'svelte';
 	import { tv } from 'tailwind-variants';
-	import { formatDateTime, formatDuration } from '#lib/core/format.ts';
+	import { formatDuration } from '#lib/core/format.ts';
 	import EmptyState from './empty-state.svelte';
+	import RelativeTime from './relative-time.svelte';
 	import StatusBadge from './status-badge.svelte';
 
 	/**
@@ -43,7 +44,7 @@
 
 	const row = tv({
 		slots: {
-			root: 'grid min-h-9 grid-cols-[1.25rem_9.5rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-1.5 text-sm',
+			root: 'grid min-h-9 grid-cols-[1.25rem_5.5rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-1.5 text-sm',
 			time: 'text-xs whitespace-nowrap text-muted-foreground tabular-nums',
 			title: 'flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5',
 			meta: 'truncate text-xs text-muted-foreground',
@@ -56,9 +57,9 @@
 	});
 </script>
 
-{#snippet line(item: TimelineItem, child: boolean)}
+{#snippet line(item: TimelineItem, child: boolean, interactive = true)}
 	{@const styles = row({ child, mono: item.mono })}
-	<span class={styles.time()}>{formatDateTime(item.time)}</span>
+	<span class={styles.time()}><RelativeTime value={item.time} {interactive} /></span>
 	<span class={styles.title()}>
 		<span class="truncate">{item.title}</span>
 		{#if item.meta?.some(Boolean)}
@@ -93,7 +94,7 @@
 										: ''}"
 									aria-hidden="true"
 								/>
-								{@render line(item, false)}
+								{@render line(item, false, false)}
 							</button>
 							{#if expanded}
 								<ul class="divide-y border-t" aria-label="{item.title} events">

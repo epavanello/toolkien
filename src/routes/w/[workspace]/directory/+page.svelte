@@ -9,6 +9,7 @@
 		Page,
 		RemoteForm,
 		Section,
+		ServiceLogo,
 		SidePanel,
 		SourceBadge,
 		EmptyState,
@@ -30,7 +31,7 @@
 	let panelOpen = $state(false);
 
 	const columns: Column<Server>[] = [
-		{ key: 'name', header: 'Server' },
+		{ key: 'name', header: 'Server', logo: (row) => row.icon },
 		{ key: 'description', header: 'Description', hideOnMobile: true },
 		{
 			key: 'category',
@@ -141,6 +142,9 @@
 		{#if selected}
 			{@const s = selected}
 			<SidePanel bind:open={panelOpen} title={s.name} description={s.description}>
+				{#snippet media()}
+					<ServiceLogo name={s.name} src={s.icon} size="md" />
+				{/snippet}
 				<KeyValueList
 					items={[
 						{ label: 'Server URL', value: s.url, type: 'mono', copy: true },
@@ -156,7 +160,8 @@
 									: `Community (not maintained by ${s.name})`
 						},
 						{ label: 'Checked', value: checkLabel(s.verification.status) },
-						{ label: 'Checked by', value: `${s.verification.by}, ${s.verification.on}` },
+						{ label: 'Checked by', value: s.verification.by },
+						{ label: 'Checked on', value: s.verification.on, type: 'datetime' },
 						{ label: 'Tags', value: s.tags.join(', ') }
 					]}
 				/>

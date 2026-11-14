@@ -4,7 +4,7 @@
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import type { Snippet } from 'svelte';
 	import { tv } from 'tailwind-variants';
-	import { formatDateTime, formatNumber } from '#lib/core/format.ts';
+	import { formatNumber } from '#lib/core/format.ts';
 	import { remoteErrorMessage } from '#lib/core/remote-errors.ts';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -18,11 +18,14 @@
 		paginate,
 		sortByGroup,
 		type Column,
-		type TableFilter
+		type TableFilter,
+		type TableGroup
 	} from './data-table.ts';
 	import EmptyState from './empty-state.svelte';
 	import FilterBar from './filter-bar.svelte';
 	import Mono from './mono.svelte';
+	import RelativeTime from './relative-time.svelte';
+	import ServiceLogo from './service-logo.svelte';
 	import StatusBadge from './status-badge.svelte';
 	import { humanize } from './status.ts';
 
@@ -50,9 +53,10 @@
 		onRowClick?: (row: T) => void;
 		/**
 		 * Groups rows under a header row (e.g. connector instances by directory server); rows
-		 * are sorted by group, keeping their order inside a group. Empty labels go last.
+		 * are sorted by group, keeping their order inside a group. Empty labels go last. Return
+		 * `{ label, logo }` to show the service logo in the header.
 		 */
-		group?: (row: T) => string;
+		group?: (row: T) => string | TableGroup;
 		/** Accessible name of the table */
 		label: string;
 	};
@@ -176,9 +180,18 @@
 							<Table.Row class="bg-muted/30 hover:bg-muted/30">
 								<Table.Cell
 									colspan={columns.length}
-									class="h-8 px-3 text-xs font-medium text-muted-foreground"
+									class="h-9 px-3 pt-3 pb-1.5 text-xs font-medium text-muted-foreground"
 								>
-									{header || 'Other'}
+									{#if header.logo !== undefined}
+										<ServiceLogo
+											name={header.label || 'Other'}
+											src={header.logo}
+											size="xs"
+											withName
+										/>
+									{:else}
+										{header.label || 'Other'}
+									{/if}
 								</Table.Cell>
 							</Table.Row>
 						{/if}
@@ -216,9 +229,11 @@
 											{humanize(String(value))}
 										</Badge>
 									{:else if column.type === 'datetime'}
-										{formatDateTime(value as Date)}
+										<RelativeTime value={value as Date} />
 									{:else if column.type === 'number'}
 										{formatNumber(Number(value))}
+									{:else if column.logo}
+										<ServiceLogo name={String(value)} src={column.logo(row)} withName />
 									{:else}
 										{value}
 									{/if}

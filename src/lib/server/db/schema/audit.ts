@@ -34,6 +34,9 @@ export const AUDIT_EVENT_TYPES = [
 	'execution.failed',
 	'execution.cancelled',
 	'tool.called',
+	/** An MCP client searched or described tools (`tools_search`, `tools_describe`): counts only */
+	'tools.searched',
+	'tools.described',
 	'approval.requested',
 	'approval.decided',
 	'kill_switch.activated',

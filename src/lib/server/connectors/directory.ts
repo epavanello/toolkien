@@ -16,7 +16,21 @@ const files = import.meta.glob<unknown>('/directory/servers/*.json', {
 	import: 'default'
 });
 
-export function toDirectoryEntry(file: DirectoryEntryFile): DirectoryEntry {
+/**
+ * Icons (`directory/icons/*.png`) as asset URLs: Vite fingerprints them (or inlines the small
+ * ones as data URIs), so they are served by Toolkien itself and cached forever. Never hotlinked.
+ */
+const icons = import.meta.glob<string>('/directory/icons/*.png', {
+	eager: true,
+	query: '?url',
+	import: 'default'
+});
+const iconUrl = (icon: string | undefined) => (icon ? icons[`/directory/${icon}`] : undefined);
+
+export function toDirectoryEntry(
+	file: DirectoryEntryFile,
+	icon: string | undefined = iconUrl(file.icon)
+): DirectoryEntry {
 	const annotations: Record<string, ToolAnnotations> = {};
 	const toolNotes: Record<string, string> = {};
 	for (const [name, tool] of Object.entries(file.tools)) {
@@ -30,6 +44,7 @@ export function toDirectoryEntry(file: DirectoryEntryFile): DirectoryEntry {
 		url: file.url,
 		authType: file.auth.type,
 		homepage: file.homepage,
+		icon,
 		namespace: file.namespace,
 		scopes: file.auth.scopes,
 		annotations,

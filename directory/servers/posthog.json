@@ -4,14 +4,12 @@
 	"name": "PostHog",
 	"description": "Query PostHog insights, feature flags, experiments, errors and run HogQL.",
 	"homepage": "https://posthog.com/docs/model-context-protocol",
+	"icon": "icons/posthog.png",
 	"url": "https://mcp.posthog.com/mcp",
 	"namespace": "posthog",
 	"publisher": "official",
 	"category": "data",
-	"tags": [
-		"analytics",
-		"feature-flags"
-	],
+	"tags": ["analytics", "feature-flags"],
 	"auth": {
 		"type": "oauth"
 	},

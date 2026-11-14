@@ -14,8 +14,8 @@
 
 <script lang="ts">
 	import { tv, type VariantProps } from 'tailwind-variants';
-	import { formatDateTime } from '#lib/core/format.ts';
 	import Mono from './mono.svelte';
+	import RelativeTime from './relative-time.svelte';
 	import StatusBadge from './status-badge.svelte';
 
 	const variants = tv({
@@ -51,12 +51,12 @@
 					<span class="text-muted-foreground">—</span>
 				{:else if item.type === 'mono'}
 					<Mono value={String(item.value)} copy={item.copy} truncate />
-				{:else if item.type === 'datetime'}
-					<span class="tabular-nums">{formatDateTime(item.value)}</span>
+				{:else if item.type === 'datetime' || item.value instanceof Date}
+					<RelativeTime value={item.value} />
 				{:else if item.type === 'status'}
 					<StatusBadge status={String(item.value)} />
 				{:else}
-					{item.value instanceof Date ? formatDateTime(item.value) : item.value}
+					{item.value}
 				{/if}
 			</dd>
 		{/each}

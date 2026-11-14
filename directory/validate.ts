@@ -1,6 +1,7 @@
 /**
  * `pnpm directory:validate` — checks every `directory/servers/*.json` entry and that
- * `directory/schema.json` matches the zod schema. `--write` regenerates `schema.json`.
+ * `directory/schema.json` matches the zod schema, and the icons in `directory/icons/` (each
+ * referenced, square PNG, small). `--write` regenerates `schema.json`.
  * Runs with plain Node (type stripping), no build step. Exit code 1 on any issue (CI gate).
  */
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -12,13 +13,20 @@ import {
 
 const root = import.meta.dirname;
 const serversDir = join(root, 'servers');
+const iconsDir = join(root, 'icons');
 const schemaPath = join(root, 'schema.json');
 
 const files = readdirSync(serversDir)
 	.filter((name) => !name.startsWith('.'))
 	.map((name) => ({ name, content: readFileSync(join(serversDir, name), 'utf8') }));
 
-const { entries, issues } = validateDirectory(files);
+const icons = new Map(
+	readdirSync(iconsDir)
+		.filter((name) => !name.startsWith('.'))
+		.map((name) => [name, new Uint8Array(readFileSync(join(iconsDir, name)))] as const)
+);
+
+const { entries, issues } = validateDirectory(files, icons);
 
 const schema = `${JSON.stringify(directoryJsonSchema(), null, '\t')}\n`;
 if (process.argv.includes('--write')) {

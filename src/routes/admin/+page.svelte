@@ -13,7 +13,7 @@
 	} from '#lib/components/app/index.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { attempt } from '#lib/core/attempt.ts';
-	import { formatDateTime, formatDuration } from '#lib/core/format.ts';
+	import { formatDuration } from '#lib/core/format.ts';
 	import {
 		getPlatformOverview,
 		pausePlatform,
@@ -104,7 +104,8 @@
 		{#if o.platformSwitch}
 			<Callout
 				tone="danger"
-				title="Platform paused since {formatDateTime(o.platformSwitch.activatedAt)}"
+				title="Platform paused"
+				time={{ label: 'since', value: o.platformSwitch.activatedAt }}
 				description="Reason: {o.platformSwitch
 					.reason}. MCP access and executions are refused for everyone."
 			>

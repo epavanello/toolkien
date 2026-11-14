@@ -5,6 +5,7 @@
 		slots: {
 			root: 'flex scroll-mt-14 flex-col',
 			header: 'flex flex-wrap items-start justify-between gap-2',
+			heading: 'flex min-w-0 items-center gap-3',
 			title: 'text-sm font-semibold',
 			description: 'text-sm text-muted-foreground',
 			body: ''
@@ -36,11 +37,13 @@
 		description?: string;
 		variant?: SectionVariant;
 		tone?: SectionTone;
+		/** Before the title: a service logo, an avatar */
+		media?: Snippet;
 		actions?: Snippet;
 		children: Snippet;
 	};
 
-	let { id, title, description, variant, tone, actions, children }: Props = $props();
+	let { id, title, description, variant, tone, media, actions, children }: Props = $props();
 
 	const styles = $derived(sectionVariants({ variant, tone }));
 </script>
@@ -48,9 +51,12 @@
 <section {id} class={styles.root()} data-slot="section">
 	{#if title || actions}
 		<header class={styles.header()}>
-			<div class="flex flex-col gap-0.5">
-				{#if title}<h2 class={styles.title()}>{title}</h2>{/if}
-				{#if description}<p class={styles.description()}>{description}</p>{/if}
+			<div class={styles.heading()}>
+				{#if media}{@render media()}{/if}
+				<div class="flex min-w-0 flex-col gap-0.5">
+					{#if title}<h2 class={styles.title()}>{title}</h2>{/if}
+					{#if description}<p class={styles.description()}>{description}</p>{/if}
+				</div>
 			</div>
 			{#if actions}<div class="flex flex-wrap items-center gap-2">{@render actions()}</div>{/if}
 		</header>

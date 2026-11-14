@@ -54,6 +54,8 @@ The runner's network is internal: it can reach **only** the bridge in the app, n
 
 User-supplied server URLs are `https` only. Private, loopback, link-local, cloud metadata and internal Docker addresses are refused, DNS is resolved and checked at connection time (against rebinding), and redirects to blocked addresses are not followed. Every upstream call leaves through the dedicated egress proxy.
 
+The same transport fetches the favicon of a server added by URL (at most 64 KB, raster images recognised from their bytes, never SVG); Toolkien serves it from its own origin with `nosniff` and a CSP that forbids everything. Directory logos are committed to the repository. The app never loads third-party images.
+
 ## No token passthrough
 
 The access token your MCP client presents to Toolkien is only ever used to authenticate you to Toolkien. Upstream servers receive Toolkien's own credentials for them (shared or yours), never the client's token.

@@ -140,7 +140,11 @@ export function createFakeServer(options: FakeServerOptions): FakeServer {
 		const path = new URL(request.url).pathname;
 		if (options.auth?.kind === 'oauth') {
 			if (options.prmPath && path === options.prmPath) {
-				return json({ resource: origin, authorization_servers: [origin], scopes_supported: ['read'] });
+				return json({
+					resource: origin,
+					authorization_servers: [origin],
+					scopes_supported: ['read']
+				});
 			}
 			if (!options.prmPath && path.startsWith('/.well-known/oauth-protected-resource')) {
 				return json({

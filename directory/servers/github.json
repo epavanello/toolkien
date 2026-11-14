@@ -4,15 +4,12 @@
 	"name": "GitHub",
 	"description": "Repositories, issues, pull requests, Actions and code search through GitHub's official remote MCP server.",
 	"homepage": "https://github.com/github/github-mcp-server",
+	"icon": "icons/github.png",
 	"url": "https://api.githubcopilot.com/mcp/",
 	"namespace": "github",
 	"publisher": "official",
 	"category": "developer-tools",
-	"tags": [
-		"git",
-		"code",
-		"issues"
-	],
+	"tags": ["git", "code", "issues"],
 	"auth": {
 		"type": "token",
 		"tokenHelp": "Create a fine-grained personal access token with only the repositories and permissions you need.",

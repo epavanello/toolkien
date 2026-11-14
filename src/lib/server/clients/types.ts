@@ -11,7 +11,9 @@
  *   tokens are JWTs verified offline, so `/mcp` also requires a live grant (`hasLiveGrant`):
  *   a token issued before the disconnect stops working at once, not when it expires.
  * - Onboarding steps tick from real data only: a connector visible to the user in the
- *   workspace, an authorized client, a tool call or execution made through a client.
+ *   workspace, an authorized client, a tool call made through a client: (changed) any audited
+ *   MCP tool call counts (`tools_search`, `tools_describe`, `execute`), so the step ticks as soon
+ *   as an agent reaches Toolkien, not only after a script ran.
  */
 export type AuthorizedClient = {
 	clientId: string;
@@ -26,9 +28,25 @@ export type OnboardingStatus = {
 	mcpUrl: string;
 	/** Names of connectors the user can see in the workspace (for sample prompts) */
 	connectors: string[];
+	/** (additive) The same services with their logo, for display */
+	servers: OnboardingServer[];
 	clients: AuthorizedClient[];
 	/** A tool call or execution made by the user through an MCP client in this workspace */
 	triedPrompt: boolean;
+	/** (additive) The first of those calls, for the "first call arrived" state */
+	firstCall: FirstToolCall | null;
+};
+
+/** (additive) A service the user can use in the workspace (`ConnectorSummary.icon` for `icon`) */
+export type OnboardingServer = { name: string; icon: string | null };
+
+/** (additive) The user's first MCP tool call in a workspace */
+export type FirstToolCall = {
+	/** `tools_search`, `tools_describe`, `execute`, or the upstream tool path (`github.listIssues`) */
+	tool: string;
+	/** MCP client display name, when the client gave one */
+	clientName: string | null;
+	at: Date;
 };
 
 /** Whether the post-login landing should send the user to the connect page */

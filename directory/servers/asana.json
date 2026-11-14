@@ -4,19 +4,16 @@
 	"name": "Asana",
 	"description": "Read and manage Asana tasks, projects and goals.",
 	"homepage": "https://developers.asana.com/docs/using-asanas-mcp-server",
+	"icon": "icons/asana.png",
 	"url": "https://mcp.asana.com/v2/mcp",
 	"namespace": "asana",
 	"publisher": "official",
 	"category": "project-management",
-	"tags": [
-		"tasks"
-	],
+	"tags": ["tasks"],
 	"auth": {
 		"type": "oauth",
 		"oauth": {
-			"registration": [
-				"preregistered"
-			]
+			"registration": ["preregistered"]
 		}
 	},
 	"verification": {

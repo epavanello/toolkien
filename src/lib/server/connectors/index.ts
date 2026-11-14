@@ -10,6 +10,8 @@ export { detectAuth, type AuthDetection } from './detect.ts';
 /** Callback helpers for `src/routes/connectors/oauth/**` (not part of the service contract) */
 export { abandonUpstreamOAuth as abandonOAuth, clientMetadataDocument };
 export { handleOAuthCallback, OAuthCallbackError, withOAuthResult } from './callback.ts';
+/** Stored favicon of a free-URL connector, for `src/routes/connectors/icon/[id]` */
+export { connectorIcons, readConnectorIcon } from './icon.ts';
 /** Job `connectors.oauth_flows` (registered in `jobs/builtin.ts`) */
 export { purgeExpiredFlows };
 

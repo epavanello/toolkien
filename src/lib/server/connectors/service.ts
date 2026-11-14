@@ -40,6 +40,7 @@ import {
 import { OAuthCallbackError } from './callback.ts';
 import { detectAuth } from './detect.ts';
 import { findDirectoryEntryByUrl, getDirectoryEntry } from './directory.ts';
+import { connectorIcons, refreshConnectorIcon } from './icon.ts';
 import { resolveTool, summaryOf, toTypeInput, type ToolRecord } from './discovery.ts';
 import { completeUpstreamOAuth, revokeUpstreamTokens, startUpstreamOAuth } from './oauth.ts';
 import { upstreamCredential } from './session.ts';
@@ -79,6 +80,7 @@ async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<C
 			)
 		);
 	const toolCount = new Map(counts.map((c) => [c.connectorId, c.n]));
+	const icons = await connectorIcons(rows);
 	return rows.map((row) => {
 		const owner = credentialUserId(actor, row);
 		const entry = row.source === 'directory' ? getDirectoryEntry(row.directoryId) : null;
@@ -110,7 +112,8 @@ async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<C
 			canAuthenticate: canAuthenticate(actor, row),
 			protocolVersion: row.protocolVersion,
 			publisher: entry?.publisher ?? null,
-			needsReview: entry?.verification.status === 'needs-review'
+			needsReview: entry?.verification.status === 'needs-review',
+			icon: icons.get(row.id) ?? null
 		};
 	});
 }
@@ -388,6 +391,8 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 	if (authType === 'none') {
 		await syncConnector(row, null, 'manual', actor.userId).catch(() => undefined);
 	}
+	// Free URLs: the service's favicon, fetched once from its origin (best effort)
+	await refreshConnectorIcon(row);
 	const [summary] = await summaries(actor, [await getVisible(actor, row.id)]);
 	return summary;
 };
@@ -644,7 +649,10 @@ function scheduleSync(row: ConnectorRow, owner: string | null) {
 export const syncTools: ConnectorsService['syncTools'] = async (actor, connectorId, reason) => {
 	const row = await getVisible(actor, connectorId);
 	const owner = credentialUserId(actor, row);
-	const result = await syncConnector(row, owner, reason, actor.userId);
+	const [result] = await Promise.all([
+		syncConnector(row, owner, reason, actor.userId),
+		refreshConnectorIcon(row)
+	]);
 	const synced = await getVisible(actor, connectorId);
 	void ensureWatch(synced, owner, () => scheduleSync(synced, owner));
 	return result;
@@ -661,6 +669,7 @@ export const refreshStale: ConnectorsService['refreshStale'] = async (actor) => 
 	await Promise.allSettled(
 		rows.map(async (row) => {
 			const owner = credentialUserId(actor, row);
+			await refreshConnectorIcon(row);
 			if (row.authType !== 'none' && !(await findCredential(row.id, owner))) return;
 			const stale = !row.lastSyncedAt || now - row.lastSyncedAt.getTime() > CACHE_TTL_MS;
 			if (stale) {

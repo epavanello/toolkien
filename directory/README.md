@@ -7,7 +7,8 @@ What an entry gives Toolkien:
 - the Streamable HTTP endpoint (`https` only) and how to authenticate (OAuth, pasted token, or none);
 - the minimal OAuth scopes to request, when the server needs them;
 - **verified tool annotations** (`readOnlyHint`, `destructiveHint`, …). Toolkien's default permissions depend on them: read-only tools of a directory server are allowed without asking, everything else asks for confirmation. Wrong annotations weaken that protection, so reviewers check them carefully;
-- reviewer notes shown next to the tools, and who checked the entry and when.
+- reviewer notes shown next to the tools, and who checked the entry and when;
+- the service's logo (`icon`), a small PNG committed in [`icons/`](./icons) and served by Toolkien itself (never hotlinked from the vendor).
 
 Two separate facts describe an entry:
 
@@ -25,6 +26,7 @@ Official entries that are `tested` or `documented` are trusted: agents see their
 	"name": "Linear",
 	"description": "Find, create and update Linear issues, projects, cycles and comments.",
 	"homepage": "https://linear.app/docs/mcp",
+	"icon": "icons/linear.png", // optional, a file in icons/ (see below)
 	"url": "https://mcp.linear.app/mcp", // remote MCP endpoint, https only
 	"namespace": "linear", // scripts call `linear.listIssues(...)`
 	"publisher": "official", // "official" (run by the vendor) | "community" (third party)
@@ -50,10 +52,20 @@ Official entries that are `tested` or `documented` are trusted: agents see their
 
 The full schema is [`schema.json`](./schema.json), generated from the zod schema in `src/lib/server/connectors/directory-schema.ts`. Editors that understand `$schema` validate as you type.
 
+## Icon
+
+`icon` points to `icons/<id>.png`: a square PNG, 32 to 512 px, at most 32 KB. Make it from the vendor's own favicon or `apple-touch-icon` (never a third-party logo pack) with:
+
+```sh
+node scripts/directory-icon.ts <id> path/to/downloaded-logo.svg
+```
+
+The script rasterizes the file (SVG, PNG, ICO, WebP, JPEG) to a 96×96 opaque PNG with the Playwright Chromium of the test suite: SVG scripts and external references are dropped, transparent logos get a white tile. Without an icon the app shows a monogram.
+
 ## Validate
 
 ```sh
-pnpm directory:validate          # checks every entry (also run by CI and `pnpm test`)
+pnpm directory:validate          # checks every entry and icon (also run by CI and `pnpm test`)
 pnpm directory:validate --write  # regenerates schema.json after changing the zod schema
 ```
 

@@ -72,6 +72,8 @@ export type DirectoryEntry = {
 	url: string;
 	authType: ConnectorAuthType;
 	homepage?: string;
+	/** (additive) URL of the service's logo, served by Toolkien (bundled asset or data URI) */
+	icon?: string;
 	/** Suggested namespace in the generated types */
 	namespace: string;
 	/** Upstream OAuth scopes to request (minimal) */
@@ -143,6 +145,11 @@ export type ConnectorSummary = {
 	publisher: 'official' | 'community' | null;
 	/** (additive) The directory entry is marked `needs-review` */
 	needsReview: boolean;
+	/**
+	 * (additive) URL of the service's logo: the directory entry's icon, else the favicon fetched
+	 * from the server's origin (`/connectors/icon/<id>`), else `null` (the UI shows a monogram)
+	 */
+	icon: string | null;
 };
 
 /** (additive) One tool of a connector, as shown in the connector detail panel */
