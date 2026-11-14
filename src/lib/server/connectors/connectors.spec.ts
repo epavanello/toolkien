@@ -599,6 +599,31 @@ describe('upstream OAuth', () => {
 		expect(await auditTypes(id)).toContain('connector.authenticated');
 	});
 
+	it('registers again when the stored client carries another callback (domain moved)', async () => {
+		const [stored] = await db
+			.select()
+			.from(schema.upstreamOAuthClient)
+			.where(eq(schema.upstreamOAuthClient.connectorId, id));
+		await db
+			.update(schema.upstreamOAuthClient)
+			.set({
+				registration: {
+					...(stored.registration as Record<string, unknown>),
+					redirect_uris: ['https://old.toolkien.test/connectors/oauth/callback']
+				}
+			})
+			.where(eq(schema.upstreamOAuthClient.id, stored.id));
+
+		const { authorizationUrl } = await connectors.startOAuth(alice, id, '/w/ws-1/connectors');
+		server.visitAuthorize(authorizationUrl);
+		expect(server.oauth.registrations).toHaveLength(2);
+		expect(server.oauth.lastAuthorize!.get('redirect_uri')).toBe(
+			'https://toolkien.test/connectors/oauth/callback'
+		);
+		const { code, state } = server.oauth.approve();
+		await connectors.completeOAuth(state, code, { userId: 'alice' });
+	});
+
 	it('turns failures of a known flow into a short code and the way back', async () => {
 		const returnTo = `/w/ws-1/connectors?connector=${id}`;
 		const begin = async () => {

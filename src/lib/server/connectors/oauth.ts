@@ -42,6 +42,15 @@ export const REFRESH_SKEW_MS = 60 * 1000;
 export const callbackUrl = () => `${ORIGIN}/connectors/oauth/callback`;
 export const clientMetadataUrl = () => `${ORIGIN}/connectors/oauth/client-metadata.json`;
 
+/**
+ * A client registered under another ORIGIN (the instance moved domain) carries a callback the
+ * authorization server would now reject: register again instead of reusing it.
+ */
+function registeredForThisOrigin(registration: unknown): boolean {
+	const uris = (registration as { redirect_uris?: unknown } | null)?.redirect_uris;
+	return !Array.isArray(uris) || uris.includes(callbackUrl());
+}
+
 /** The Client ID Metadata Document served at `clientMetadataUrl()` */
 export const clientMetadataDocument = () => ({
 	client_id: clientMetadataUrl(),
@@ -92,7 +101,9 @@ async function ensureClient(
 		.from(upstreamOAuthClient)
 		.where(eq(upstreamOAuthClient.connectorId, conn.id))
 		.limit(1);
-	if (existing && existing.issuer === issuer) return existing;
+	if (existing && existing.issuer === issuer && registeredForThisOrigin(existing.registration)) {
+		return existing;
+	}
 	if (existing) await db.delete(upstreamOAuthClient).where(eq(upstreamOAuthClient.id, existing.id));
 
 	const extra = metadata as AuthorizationServerMetadata & Record<string, unknown>;

@@ -185,6 +185,41 @@ migrations on start; Toolkien assumes **one app instance**, so keep Coolify's ro
 for it. Redeploy the OpenBao resource only when its release notes say so, then unseal. Changing OpenBao or Deno versions: bump the
 `FROM` lines in `deploy/openbao/Dockerfile`, `egress/Dockerfile`, `runner/Dockerfile`.
 
+## Changing domain
+
+1. Point the new domain at the server (DNS only, no CDN proxy: Traefik terminates TLS, rate
+   limits key on the client IP and MCP streams stay open longer than a CDN allows).
+2. Set `ORIGIN` and `APP_DOMAIN` to the new domain and redeploy.
+3. Keep the old domain alive with a permanent redirect in **Servers → Proxy → Dynamic
+   Configurations** (one file, e.g. `toolkien-redirect.yaml`), so old links and MCP client
+   configurations keep working:
+
+   ```yaml
+   http:
+     routers:
+       toolkien-redirect:
+         rule: Host(`old.example.com`) || Host(`www.new.example.com`)
+         entryPoints: [https]
+         tls: { certResolver: letsencrypt }
+         middlewares: [toolkien-redirect]
+         service: noop@internal
+       toolkien-redirect-http:
+         rule: Host(`old.example.com`) || Host(`www.new.example.com`)
+         entryPoints: [http]
+         middlewares: [toolkien-redirect]
+         service: noop@internal
+     middlewares:
+       toolkien-redirect:
+         redirectRegex:
+           regex: '^https?://[^/]+(.*)'
+           replacement: 'https://new.example.com${1}'
+           permanent: true
+   ```
+
+OAuth follows `ORIGIN`: MCP clients connected to the old domain sign in again once (tokens are
+bound to the old issuer), and upstream connectors register a new client with the new callback
+the next time they authorize.
+
 ## Key rotation
 
 The transit key rotates automatically every 90 days and the app re-wraps data keys daily. The
