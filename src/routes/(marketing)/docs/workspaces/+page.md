@@ -16,7 +16,7 @@ Every account has a **personal workspace**. Create a **company workspace** from 
 | **Admin**  | Manage members, invite links, shared connectors, the permission policy, the kill switch; see everyone's activity and export it |
 | **Member** | Use allowed connectors, add personal connectors if the policy allows it, see their own activity                                |
 
-Owners and admins of company workspaces must use a **passkey or two-factor authentication**. It is checked when someone becomes an admin or owner and before every admin action, so an admin who removes their second factor loses admin powers until they add one again.
+Owners and admins of company workspaces must use a **passkey**. It is checked when someone becomes an admin or owner and before every admin action, so an admin who removes their second factor loses admin powers until they add one again.
 
 ## Invite links
 

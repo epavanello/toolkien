@@ -80,7 +80,7 @@
 						<Callout
 							tone="warning"
 							title="Admins need a second factor"
-							description="Add a passkey or enable two-factor authentication in your account settings before joining as an admin."
+							description="Add a passkey in your account settings before joining as an admin."
 						/>
 					{/if}
 					<div><Button onclick={join}>Join {preview.workspaceName}</Button></div>

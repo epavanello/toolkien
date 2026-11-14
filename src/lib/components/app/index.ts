@@ -12,6 +12,7 @@ export { default as DataTable } from './data-table.svelte';
 export type { Column, TableFilter } from './data-table.ts';
 export { default as EmptyState } from './empty-state.svelte';
 export { default as FilterBar, type FilterDefinition } from './filter-bar.svelte';
+export { default as EmailSignIn } from './email-sign-in.svelte';
 export { default as FocusFrame } from './focus-frame.svelte';
 export { default as FormDialog } from './form-dialog.svelte';
 export { default as FormField } from './form-field.svelte';

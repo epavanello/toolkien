@@ -17,7 +17,7 @@ const params = z.object({
 export const GET: RequestHandler = async ({ params: route, url }) => {
 	const { workspace, actor } = await requireWorkspace(route.workspace, 'admin');
 	if (!(await canSeeAllMembers(workspace, actor))) {
-		error(403, 'Add a passkey or enable two-factor authentication to export activity.', {
+		error(403, 'Add a passkey to export activity.', {
 			code: 'SECOND_FACTOR_REQUIRED'
 		});
 	}

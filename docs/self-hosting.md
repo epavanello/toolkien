@@ -29,6 +29,7 @@ cp deploy/compose.env.example .env.production && chmod 600 .env.production
 | `RUNNER_SHARED_SECRET`                                                                          | yes      | `openssl rand -hex 32` (app ↔ runner)                     |
 | `EGRESS_PROXY_TOKEN`                                                                            | yes      | `openssl rand -hex 32` (app ↔ egress proxy)               |
 | `OPENBAO_ROLE_ID`, `OPENBAO_SECRET_ID`                                                          | yes\*    | Printed by `init.sh` on first boot                        |
+| `RESEND_API_KEY`, `EMAIL_FROM`                                                                  | yes      | Sign-in email (code + link) and invitations, see below    |
 | `PLATFORM_ADMIN_EMAILS`                                                                         | no       | Access to `/admin` (limits, kill switches)                |
 | `APP_PUBLISH`                                                                                   | no       | Host port for the reverse proxy, default `127.0.0.1:3000` |
 | `APP_DOMAIN`, `PUBLIC_NETWORK*`, `TRAEFIK_CERT_RESOLVER`                                        | no       | Only with Traefik (Coolify raw mode)                      |
@@ -37,6 +38,13 @@ cp deploy/compose.env.example .env.production && chmod 600 .env.production
 
 Every app variable is documented in `src/env.ts`. The app refuses to start in production
 without OpenBao (`OPENBAO_ADDR` is set by the compose file).
+
+Email: sign-in is passwordless (an emailed 6-digit code and a single-use link, or a passkey),
+so the app needs a transactional email provider. Toolkien talks to the [Resend](https://resend.com)
+HTTP API: create an API key with sending access only, verify your sender domain (pick the EU
+region for the domain), and set `EMAIL_FROM` to an address on it. `RESEND_BASE_URL` overrides the
+API base if you use a compatible endpoint. Without a key the app refuses email sign-in (passkeys
+still work); calls go out through the egress proxy like every other outbound request.
 
 Reverse proxy (Caddy, `/etc/caddy/Caddyfile`):
 
@@ -111,7 +119,7 @@ memory. Read the release notes before upgrades that touch OpenBao or the databas
 - [ ] Host firewall: only 22, 80, 443 inbound; SSH keys only; unattended security updates.
 - [ ] Swap off (or encrypted) so key material never hits disk.
 - [ ] Both backups running, copied off-site, restore tested.
-- [ ] Owners and admins of company workspaces use a passkey or 2FA (enforced by the app).
+- [ ] Owners and admins of company workspaces register a passkey (enforced by the app).
 - [ ] Transit key rotation left on (90 days); `rotate.sh trim` after each rotation.
 - [ ] Container logs kept at most 14 days (compose rotates by size, 10 MB × 5; for an age limit
       use journald with `MaxRetentionSec=14day`, see `deploy-coolify.md` § 5b); the OpenBao

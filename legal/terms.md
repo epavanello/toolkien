@@ -16,7 +16,7 @@ Toolkien lets your AI clients reach the remote MCP servers you configure through
 
 ## 3. Accounts and workspaces
 
-You must provide accurate information and keep your credentials safe. Owners and admins of company workspaces must use a passkey or two-factor authentication. The owner of a company workspace is responsible for its members, its policy and the connectors its admins configure. A workspace owner may delete the workspace; deletion takes effect after a 7-day grace period.
+You must provide accurate information and keep your credentials safe. Owners and admins of company workspaces must use a passkey. The owner of a company workspace is responsible for its members, its policy and the connectors its admins configure. A workspace owner may delete the workspace; deletion takes effect after a 7-day grace period.
 
 ## 4. Your connectors and content
 

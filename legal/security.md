@@ -15,7 +15,7 @@ Toolkien is designed so that even a stolen database exposes no upstream token. T
 - **No token passthrough**: the token your MCP client holds is never sent upstream.
 - **Humans approve writes**: approvals never come from the model.
 - **Metadata-only logs**: no arguments, results or script code.
-- **Strong authentication** for owners and admins of company workspaces (passkey or 2FA).
+- **Strong authentication** for owners and admins of company workspaces (a registered passkey).
 - **EU hosting** and a short list of [sub-processors](/legal/sub-processors).
 
 ## Reporting a vulnerability

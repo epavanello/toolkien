@@ -6,10 +6,12 @@ import { mcp } from '@better-auth/mcp';
 import { passkey } from '@better-auth/passkey';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { betterAuth } from 'better-auth/minimal';
-import { jwt, organization, twoFactor } from 'better-auth/plugins';
+import { emailOTP, jwt, magicLink, organization } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { brand } from '#lib/brand.ts';
+import { safeRedirectPath } from '#lib/core/redirects.ts';
 import { db } from '#lib/server/db/index.ts';
+import { loginEmail, sendEmail } from '#lib/server/email/index.ts';
 import { safeFetch } from '#lib/server/net/index.ts';
 import { ensurePersonalWorkspace } from '#lib/server/personal-workspace.ts';
 
@@ -17,6 +19,28 @@ if (!building && !dev && !BETTER_AUTH_SECRET) throw new Error('BETTER_AUTH_SECRE
 
 /** The MCP protected resource: access tokens are audience-bound to it (RFC 8707) */
 export const MCP_RESOURCE = `${ORIGIN}/mcp`;
+
+/** Sign-in by email: one message carries a magic link and a 6-digit code, both single use */
+export const EMAIL_SIGN_IN_TTL_SECONDS = 10 * 60;
+
+/**
+ * HTTP endpoints of the email plugins we never expose: sign-in emails are requested and
+ * verified only through our remote functions (`#lib/server/email-sign-in.ts`), which rate-limit
+ * sends and keep the magic link behind a confirm button (link scanners prefetch GET links).
+ */
+const SERVER_ONLY_PATHS = [
+	'/sign-in/magic-link',
+	'/magic-link/verify',
+	'/sign-in/email-otp',
+	'/email-otp/send-verification-otp',
+	'/email-otp/check-verification-otp',
+	'/email-otp/verify-email',
+	'/email-otp/request-password-reset',
+	'/forget-password/email-otp',
+	'/email-otp/reset-password',
+	'/email-otp/request-email-change',
+	'/email-otp/change-email'
+];
 
 /** MCP access tokens are short-lived; refresh tokens rotate with reuse detection */
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
@@ -28,6 +52,7 @@ export const auth = betterAuth({
 	// The runtime secret is not available while the build analyses server modules
 	secret: building ? crypto.randomUUID() + crypto.randomUUID() : BETTER_AUTH_SECRET,
 	trustedOrigins: [ORIGIN],
+	disabledPaths: SERVER_ONLY_PATHS,
 	database: drizzleAdapter(db, { provider: 'sqlite' }),
 	user: {
 		additionalFields: {
@@ -36,11 +61,15 @@ export const auth = betterAuth({
 		},
 		deleteUser: { enabled: true }
 	},
-	// No email service: no verification or reset emails (see DECISIONS.md)
-	emailAndPassword: { enabled: true, minPasswordLength: 12, autoSignIn: true },
+	// Passwordless: email (magic link + code) and passkeys. No passwords to leak or reset.
+	emailAndPassword: { enabled: false },
 	databaseHooks: {
 		user: {
 			create: {
+				// Email sign-up asks for the address only: start with its local part as the name
+				before: async (user) => ({
+					data: { ...user, name: user.name?.trim() || user.email.split('@')[0]!.slice(0, 100) }
+				}),
 				// Every account starts with its personal workspace
 				after: async (user) => {
 					await ensurePersonalWorkspace(user);
@@ -68,7 +97,43 @@ export const auth = betterAuth({
 			}
 		}),
 		passkey({ rpID: new URL(ORIGIN).hostname, rpName: brand.name, origin: ORIGIN }),
-		twoFactor({ issuer: brand.name }),
+		/**
+		 * Email sign-in (also signs up). `email-sign-in.ts` first creates the code (server-only
+		 * `createVerificationOTP`), then asks for the magic link with the code in `metadata`, so
+		 * one email carries both. Tokens and codes are stored hashed.
+		 */
+		magicLink({
+			expiresIn: EMAIL_SIGN_IN_TTL_SECONDS,
+			storeToken: 'hashed',
+			sendMagicLink: async ({ email, token, metadata }) => {
+				const code = String(metadata?.code ?? '');
+				if (!/^\d{6}$/.test(code)) throw new Error('Sign-in code missing');
+				// The link opens a confirm page; only its button consumes the token
+				const url = new URL('/login/confirm', ORIGIN);
+				url.searchParams.set('token', token);
+				const redirectTo = safeRedirectPath(String(metadata?.redirectTo ?? '/'));
+				if (redirectTo !== '/') url.searchParams.set('redirectTo', redirectTo);
+				await sendEmail(
+					loginEmail({
+						to: email,
+						product: brand.name,
+						url: url.toString(),
+						code,
+						expiresMinutes: EMAIL_SIGN_IN_TTL_SECONDS / 60
+					})
+				);
+			}
+		}),
+		emailOTP({
+			otpLength: 6,
+			expiresIn: EMAIL_SIGN_IN_TTL_SECONDS,
+			storeOTP: 'hashed',
+			allowedAttempts: 5,
+			// Never called: the send endpoint is disabled and codes go out with the magic link
+			sendVerificationOTP: async () => {
+				throw new Error('Codes are sent with the magic link');
+			}
+		}),
 		jwt(),
 		/**
 		 * OAuth 2.1 authorization server for MCP clients (see docs/notes/mcp.md).

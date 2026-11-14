@@ -42,9 +42,7 @@ export async function createWorkspace(userId: string, input: { name: string }) {
 		error(400, 'Enter a workspace name (up to 80 characters).', { code: 'INVALID_INPUT' });
 	}
 	if (!(await hasSecondFactor(userId))) {
-		secondFactorError(
-			'Add a passkey or enable two-factor authentication before creating a company workspace.'
-		);
+		secondFactorError('Add a passkey before creating a company workspace.');
 	}
 	const workspaceId = crypto.randomUUID();
 	const slug = companySlug(name);

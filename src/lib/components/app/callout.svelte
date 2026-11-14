@@ -31,7 +31,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * A page-level notice (2FA required, workspace scheduled for deletion, suspended…) with an
+	 * A page-level notice (passkey required, workspace scheduled for deletion, suspended…) with an
 	 * optional action on the right.
 	 */
 	type Props = {

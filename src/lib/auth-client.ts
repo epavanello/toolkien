@@ -1,5 +1,5 @@
 import { passkeyClient } from '@better-auth/passkey/client';
-import { organizationClient, twoFactorClient } from 'better-auth/client/plugins';
+import { organizationClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/svelte';
 
 /**
@@ -7,5 +7,5 @@ import { createAuthClient } from 'better-auth/svelte';
  * passkeys). Everything else goes through remote functions in `#lib/functions/auth.remote.ts`.
  */
 export const authClient = createAuthClient({
-	plugins: [passkeyClient(), twoFactorClient(), organizationClient()]
+	plugins: [passkeyClient(), organizationClient()]
 });

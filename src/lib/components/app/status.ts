@@ -32,7 +32,7 @@ const TONES: Record<string, Tone> = {
 	verified: 'success',
 	community: 'neutral',
 	unverified: 'pending',
-	// members (2FA), invite links, kill switches
+	// members (passkey), invite links, kill switches
 	missing: 'pending',
 	used: 'neutral',
 	revoked: 'neutral',

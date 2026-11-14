@@ -35,7 +35,7 @@ function requirePlatformAdmin() {
 async function requirePlatformAdminAction() {
 	const user = requirePlatformAdmin();
 	if (!(await hasSecondFactor(user.id))) {
-		error(403, 'Add a passkey or enable two-factor authentication to change platform settings.', {
+		error(403, 'Add a passkey to change platform settings.', {
 			code: 'SECOND_FACTOR_REQUIRED'
 		});
 	}

@@ -5,7 +5,7 @@
 	import CopyButton from './copy-button.svelte';
 
 	/**
-	 * Shows a value the server returns only once (invite link, 2FA secret, backup codes) with a
+	 * Shows a value the server returns only once (invite link, one-time values) with a
 	 * copy button and a warning that it will not be shown again.
 	 */
 	type Props = {

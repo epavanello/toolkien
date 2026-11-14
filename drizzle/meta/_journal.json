@@ -15,6 +15,13 @@
       "when": 1794654613040,
       "tag": "0001_search_and_audit_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794656254848,
+      "tag": "0002_passwordless",
+      "breakpoints": true
     }
   ]
 }

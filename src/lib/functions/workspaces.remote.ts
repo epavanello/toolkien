@@ -1,10 +1,13 @@
 import { command, form, getRequestEvent, query } from '$app/server';
 import { redirect } from '@sveltejs/kit';
 import { z } from 'zod';
+import { brand } from '#lib/brand.ts';
+import { emailConfigured, inviteEmail, sendEmail } from '#lib/server/email/index.ts';
 import { resolve } from '$app/paths';
 import { requireUser, requireWorkspace } from '#lib/server/guards.ts';
 import {
 	activateKillSwitch,
+	checkRateLimit,
 	getUsage,
 	listKillSwitches,
 	releaseKillSwitch,
@@ -225,6 +228,37 @@ export const transferWorkspaceOwnership = command(
 
 // ─── Invite links ────────────────────────────────────────────────────────
 
+/** Best effort: the admin still gets the link to share if sending fails or is rate-limited */
+async function sendInviteEmail(input: {
+	to: string;
+	inviterId: string;
+	workspaceName: string;
+	role: string;
+	url: string;
+	expiresAt: Date;
+}): Promise<boolean> {
+	if (!emailConfigured()) return false;
+	if (!checkRateLimit(`invite:email:${input.inviterId}`, 30, 60 * 60_000).allowed) return false;
+	const { locals } = getRequestEvent();
+	try {
+		await sendEmail(
+			inviteEmail({
+				to: input.to,
+				product: brand.name,
+				workspaceName: input.workspaceName,
+				inviterName: locals.user?.name || 'A workspace admin',
+				role: input.role,
+				url: input.url,
+				expiresAt: input.expiresAt
+			})
+		);
+		return true;
+	} catch {
+		console.error('[invites] invitation email failed');
+		return false;
+	}
+}
+
 export const createInvite = form(
 	z.object({
 		workspace: slug,
@@ -234,10 +268,21 @@ export const createInvite = form(
 		expiresInDays: z.number().int().min(1).max(30).default(7)
 	}),
 	async ({ workspace, ...input }) => {
-		const { actor } = await requireWorkspace(workspace, 'admin');
-		const { url } = await createInviteLink(actor, { ...input, email: input.email || null });
+		const { actor, workspace: current } = await requireWorkspace(workspace, 'admin');
+		const { url, invite } = await createInviteLink(actor, { ...input, email: input.email || null });
 		void getMembers(workspace).refresh();
-		return { url };
+		// Restricted to an address and email configured: send it too (the link stays copyable)
+		const emailed = invite.email
+			? await sendInviteEmail({
+					to: invite.email,
+					inviterId: actor.userId,
+					workspaceName: current.name,
+					role: invite.role,
+					url,
+					expiresAt: invite.expiresAt
+				})
+			: false;
+		return { url, emailed };
 	}
 );
 

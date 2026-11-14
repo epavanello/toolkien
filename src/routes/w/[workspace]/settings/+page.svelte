@@ -100,7 +100,7 @@
 			<Callout
 				tone="warning"
 				title="Second factor required"
-				description="Owners and admins of company workspaces need a passkey or two-factor authentication to change settings."
+				description="Owners and admins of company workspaces need a passkey to change settings."
 			>
 				{#snippet action()}
 					<Button
@@ -221,9 +221,7 @@
 					New company workspace
 				</Button>
 			{/snippet}
-			<p class="text-sm text-muted-foreground">
-				You become its owner; owners need a passkey or two-factor authentication.
-			</p>
+			<p class="text-sm text-muted-foreground">You become its owner; owners need a passkey.</p>
 		</Section>
 
 		{#if company && s.canManage}

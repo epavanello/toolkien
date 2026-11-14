@@ -12,29 +12,16 @@
 		FormField,
 		KeyValueList,
 		Page,
-		RevealDialog,
 		Section,
-		StatusBadge,
 		type Column
 	} from '#lib/components/app/index.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { attempt } from '#lib/core/attempt.ts';
-	import {
-		confirmTwoFactorSetup,
-		deleteMyAccount,
-		disableTwoFactor,
-		getAccount,
-		removePasskey,
-		startTwoFactorSetup
-	} from '#lib/functions/account.remote.ts';
+	import { deleteMyAccount, getAccount, removePasskey } from '#lib/functions/account.remote.ts';
 
 	const workspace = $derived(page.params.workspace!);
 
-	let setupOpen = $state(false);
-	let confirmOpen = $state(false);
-	let disableOpen = $state(false);
 	let deleteOpen = $state(false);
-	let secrets = $state<{ secret: string; backupCodes: string[] } | null>(null);
 
 	async function addPasskey() {
 		const result = await authClient.passkey.addPasskey();
@@ -70,18 +57,16 @@
 <Page
 	title="Account"
 	variant="form"
-	description="Your profile, sign-in security and your data."
+	description="Your profile, passkeys and your data."
 	back={{ href: resolve('/w/[workspace]/settings', { workspace }), label: 'Settings' }}
 >
 	<Boundary>
 		{@const account = await getAccount()}
-		{@const hasFactor = account.twoFactorEnabled || account.passkeys.length > 0}
-
-		{#if account.secondFactorRequired && !hasFactor}
+		{#if account.secondFactorRequired && account.passkeys.length === 0}
 			<Callout
 				tone="warning"
-				title="Add a second factor"
-				description="You own or administer a company workspace: a passkey or two-factor authentication is required for admin actions."
+				title="Add a passkey"
+				description="You own or administer a company workspace: a passkey is required for admin actions."
 			/>
 		{/if}
 
@@ -98,7 +83,7 @@
 		<Section
 			title="Passkeys"
 			variant="plain"
-			description="Sign in without a password; also counts as a second factor."
+			description="Sign in with your device instead of an email code. Required for owners and admins of company workspaces."
 		>
 			<DataTable
 				label="Passkeys"
@@ -114,23 +99,6 @@
 					</Button>
 				{/snippet}
 			</DataTable>
-		</Section>
-
-		<Section
-			title="Two-factor authentication"
-			description="A 6-digit code from an authenticator app at sign-in."
-		>
-			{#snippet actions()}
-				{#if account.twoFactorEnabled}
-					<Button size="sm" variant="outline" onclick={() => (disableOpen = true)}>Turn off</Button>
-				{:else}
-					<Button size="sm" onclick={() => (setupOpen = true)}>Turn on</Button>
-				{/if}
-			{/snippet}
-			<StatusBadge
-				status={account.twoFactorEnabled ? 'active' : 'disabled'}
-				label={account.twoFactorEnabled ? 'On' : 'Off'}
-			/>
 		</Section>
 
 		<Section
@@ -172,74 +140,6 @@
 		</Section>
 	</Boundary>
 </Page>
-
-<FormDialog
-	bind:open={setupOpen}
-	title="Turn on two-factor authentication"
-	description="Confirm your password to generate a secret for your authenticator app."
-	submitLabel="Continue"
-	form={startTwoFactorSetup}
-	onSuccess={(result) => {
-		if (!result) return;
-		secrets = { secret: result.secret, backupCodes: result.backupCodes };
-	}}
->
-	<FormField
-		field={startTwoFactorSetup.fields.password}
-		type="password"
-		label="Password"
-		autocomplete="current-password"
-	/>
-</FormDialog>
-
-<RevealDialog
-	bind:open={
-		() => secrets !== null,
-		(value) => {
-			if (!value) {
-				secrets = null;
-				confirmOpen = true;
-			}
-		}
-	}
-	title="Add Toolkien to your authenticator app"
-	description="Enter the secret key in your app, and keep the backup codes somewhere safe. They will not be shown again."
-	values={secrets
-		? [`Secret: ${secrets.secret}`, ...secrets.backupCodes.map((code) => `Backup code: ${code}`)]
-		: []}
-/>
-
-<FormDialog
-	bind:open={confirmOpen}
-	title="Enter a code"
-	description="Type the 6-digit code your app shows to finish."
-	submitLabel="Turn on"
-	form={confirmTwoFactorSetup}
-	success="Two-factor authentication is on"
->
-	<FormField
-		field={confirmTwoFactorSetup.fields.code}
-		type="text"
-		label="Code"
-		autocomplete="one-time-code"
-	/>
-</FormDialog>
-
-<FormDialog
-	bind:open={disableOpen}
-	title="Turn off two-factor authentication?"
-	submitLabel="Turn off"
-	submitVariant="destructive"
-	form={disableTwoFactor}
-	success="Two-factor authentication is off"
->
-	<FormField
-		field={disableTwoFactor.fields.password}
-		type="password"
-		label="Password"
-		autocomplete="current-password"
-	/>
-</FormDialog>
 
 <FormDialog
 	bind:open={deleteOpen}

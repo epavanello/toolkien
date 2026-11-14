@@ -10,7 +10,7 @@ export type { PermissionLevel, WorkspaceKind, WorkspaceRole };
  * - Every server-side read or write of workspace data is scoped by `workspaceId` AND checks
  *   membership of the acting user; a slug in a URL is never trusted on its own.
  * - Roles: owner > admin > member. Only the owner deletes (7-day grace) or transfers ownership.
- * - Owners and admins of company workspaces must have 2FA or a passkey before admin actions.
+ * - Owners and admins of company workspaces must have a passkey before admin actions.
  * - Suspended workspaces (`suspendedAt`) or workspaces scheduled for deletion cannot start
  *   executions; their connectors stay configured.
  */
@@ -77,7 +77,7 @@ export type MemberSummary = {
 	email: string;
 	role: WorkspaceRole;
 	joinedAt: Date;
-	/** 2FA or passkey configured; `null` when the viewer is not an admin */
+	/** At least one passkey registered; `null` when the viewer is not an admin */
 	secondFactor: boolean | null;
 };
 

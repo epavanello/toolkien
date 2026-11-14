@@ -16,17 +16,17 @@ Toolkien is a gateway between your AI clients (Claude, Codex, Cursor…) and the
 
 ## What we collect
 
-| Category                | Examples                                                | Why                                                   |
-| ----------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
-| Account                 | name, email, password hash, passkeys, 2FA settings      | Sign-in and account security                          |
-| Workspaces              | memberships, roles, invite links (hashed), admin policy | Running personal and company workspaces               |
-| Connector configuration | server URLs, names, scopes, permission levels           | Connecting your MCP servers                           |
-| Upstream credentials    | OAuth tokens or API keys you provide                    | Calling your servers on your behalf; always encrypted |
-| Activity logs           | who, when, which tool, outcome, duration, client name   | Your activity timeline, admin audit, abuse prevention |
-| Technical logs          | request ids, errors, no personal data beyond ids        | Operating and debugging the service                   |
-| Usage counters          | executions and tool calls per workspace and day         | Capacity planning and future pricing                  |
+| Category                | Examples                                                | Why                                                    |
+| ----------------------- | ------------------------------------------------------- | ------------------------------------------------------ |
+| Account                 | name, email, passkeys (public keys only)                | Sign-in (email codes and links, passkeys) and security |
+| Workspaces              | memberships, roles, invite links (hashed), admin policy | Running personal and company workspaces                |
+| Connector configuration | server URLs, names, scopes, permission levels           | Connecting your MCP servers                            |
+| Upstream credentials    | OAuth tokens or API keys you provide                    | Calling your servers on your behalf; always encrypted  |
+| Activity logs           | who, when, which tool, outcome, duration, client name   | Your activity timeline, admin audit, abuse prevention  |
+| Technical logs          | request ids, errors, no personal data beyond ids        | Operating and debugging the service                    |
+| Usage counters          | executions and tool calls per workspace and day         | Capacity planning and future pricing                   |
 
-We do not use third-party analytics, advertising or tracking. We only set technical cookies (see the [cookie policy](/legal/cookies)).
+Sign-in codes, sign-in links and workspace invitations are sent by email through our email provider (see [sub-processors](/legal/sub-processors)); the codes and links are stored only hashed and expire after 10 minutes. We do not use third-party analytics, advertising or tracking. We only set technical cookies (see the [cookie policy](/legal/cookies)).
 
 ## Legal bases (GDPR)
 

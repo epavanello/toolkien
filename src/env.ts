@@ -41,6 +41,22 @@ export const variables = defineEnvVars({
 			'Secret that signs sessions and tokens: at least 32 random characters (`openssl rand -base64 32`).',
 		schema: optional
 	},
+	// ─── Email (passwordless sign-in, invitations) ───────────────────────────
+	RESEND_API_KEY: {
+		description:
+			'Resend API key (transactional email: sign-in links and codes, workspace invitations). Required in production; in development without it the link and code are printed to the server console.',
+		schema: optional
+	},
+	EMAIL_FROM: {
+		description:
+			'Sender address on a domain verified in Resend, e.g. `Toolkien <login@toolkien.example>`.',
+		schema: optional
+	},
+	RESEND_BASE_URL: {
+		description:
+			'Resend API base URL (default `https://api.resend.com`). The sending region (e.g. EU) is chosen per domain in Resend.',
+		schema: (value) => (value?.trim() || 'https://api.resend.com').replace(/\/+$/, '')
+	},
 	PLATFORM_ADMIN_EMAILS: {
 		description:
 			'Comma-separated emails of platform admins (access to `/admin`: limits, kill switches).',

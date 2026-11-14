@@ -11,6 +11,14 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+// Sign-in emails never leave the test
+vi.mock('#lib/server/email/index.ts', async () => ({
+	...(await import('#lib/server/email/templates.ts')),
+	emailConfigured: () => true,
+	sendEmail: async () => {}
+}));
+vi.mock('$app/server', () => ({ getRequestEvent: () => null }));
+
 vi.mock('#lib/server/db/index.ts', async () => {
 	const { createTestDb } = await import('#lib/server/workspaces/test-db.ts');
 	return { db: await createTestDb() };
@@ -80,15 +88,14 @@ const mcpFetch = (url: string | URL, init?: RequestInit) =>
 let cookie = '';
 let userId = '';
 
+/** Passwordless sign-up: the emailed code, created server side (no email in tests) */
 async function signUp() {
-	const response = await callAuth('/api/auth/sign-up/email', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-		body: JSON.stringify({
-			name: 'Ada',
-			email: 'ada@example.com',
-			password: 'correct horse battery staple'
-		})
+	const email = 'ada@example.com';
+	const otp = await auth.api.createVerificationOTP({ body: { email, type: 'sign-in' } });
+	const response = await auth.api.signInEmailOTP({
+		body: { email, otp, name: 'Ada' },
+		headers: new Headers({ Origin: ORIGIN }),
+		asResponse: true
 	});
 	expect(response.status).toBe(200);
 	cookie = response.headers

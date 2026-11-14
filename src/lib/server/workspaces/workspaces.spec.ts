@@ -68,7 +68,7 @@ describe('company workspaces and roles', () => {
 		expect(await codeOf(changeRole(asMember, admin.id, 'member'))).toBe('FORBIDDEN');
 		expect(await codeOf(createInviteLink(asMember, { role: 'member' }))).toBe('FORBIDDEN');
 
-		// An admin without 2FA/passkey loses admin powers
+		// An admin without passkey loses admin powers
 		const asAdmin: WorkspaceActor = { workspaceId, userId: admin.id, role: 'admin' };
 		expect(await codeOf(createInviteLink(asAdmin, { role: 'member' }))).toBe(
 			'SECOND_FACTOR_REQUIRED'
@@ -82,7 +82,7 @@ describe('company workspaces and roles', () => {
 		const members = await listMembers(actor);
 		expect(members.find((m) => m.userId === strong.id)?.role).toBe('admin');
 		expect(members.find((m) => m.userId === strong.id)?.secondFactor).toBe(true);
-		// Members see the list without 2FA status
+		// Members see the list without passkey status
 		expect((await listMembers(asMember)).every((m) => m.secondFactor === null)).toBe(true);
 	});
 

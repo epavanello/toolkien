@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import AuthHeading from '#lib/components/app/auth-heading.svelte';
+	import { EmailSignIn } from '#lib/components/app/index.ts';
 	import SeoHead from '#lib/components/seo/seo-head.svelte';
-	import { FormField, RemoteForm } from '#lib/components/app/index.ts';
-	import { signup } from '#lib/functions/auth.remote.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -15,17 +14,8 @@
 />
 
 <AuthHeading title="Create your account">
-	Already registered? <a href={resolve('/(auth)/login')}>Sign in</a>
+	No password needed: we email you a code. Already registered? <a href={resolve('/(auth)/login')}
+		>Sign in</a
+	>
 </AuthHeading>
-<RemoteForm form={signup} submitLabel="Create account" submit="block">
-	<input {...signup.fields.redirectTo.as('hidden', data.redirectTo)} />
-	<FormField field={signup.fields.name} type="text" label="Name" autocomplete="name" />
-	<FormField field={signup.fields.email} type="email" label="Email" autocomplete="email" />
-	<FormField
-		field={signup.fields.password}
-		type="password"
-		label="Password"
-		description="At least 12 characters."
-		autocomplete="new-password"
-	/>
-</RemoteForm>
+<EmailSignIn redirectTo={data.redirectTo} submitLabel="Email me a code" passkey={false} />

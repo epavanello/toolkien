@@ -6,7 +6,7 @@ updated: 2026-11-14
 
 ## 1. Create an account
 
-[Sign up](/signup) with an email and a password of at least 12 characters, or add a passkey later in **Settings → Account**. Every account starts with a **personal workspace**.
+[Sign up](/signup) with your email: we send a 6-digit code and a sign-in link, no password needed. You can add a passkey later in **Settings → Account**. Every account starts with a **personal workspace**.
 
 ## 2. Add a connector
 

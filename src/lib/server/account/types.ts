@@ -21,7 +21,6 @@ export type AccountExport = {
 		name: string;
 		email: string;
 		createdAt: string;
-		twoFactorEnabled: boolean;
 	};
 	passkeys: { name: string | null; deviceType: string; createdAt: string | null }[];
 	sessions: {

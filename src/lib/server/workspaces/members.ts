@@ -20,7 +20,7 @@ import {
 } from './core.ts';
 import type { GrantableRole, MemberSummary, WorkspaceActor } from './types.ts';
 
-/** Members of the actor's workspace; 2FA status only for admins */
+/** Members of the actor's workspace; passkey status only for admins */
 export async function listMembers(actor: WorkspaceActor): Promise<MemberSummary[]> {
 	const workspace = await loadWorkspace(actor);
 	const rows = await db
@@ -30,8 +30,7 @@ export async function listMembers(actor: WorkspaceActor): Promise<MemberSummary[
 			name: user.name,
 			email: user.email,
 			role: member.role,
-			joinedAt: member.createdAt,
-			twoFactorEnabled: user.twoFactorEnabled
+			joinedAt: member.createdAt
 		})
 		.from(member)
 		.innerJoin(user, eq(user.id, member.userId))
@@ -55,10 +54,10 @@ export async function listMembers(actor: WorkspaceActor): Promise<MemberSummary[
 			)
 		: new Set<string>();
 
-	return rows.map(({ twoFactorEnabled, ...row }) => ({
+	return rows.map((row) => ({
 		...row,
 		role: toRole(row.role),
-		secondFactor: isAdmin ? !!twoFactorEnabled || withPasskey.has(row.userId) : null
+		secondFactor: isAdmin ? withPasskey.has(row.userId) : null
 	}));
 }
 
@@ -74,7 +73,7 @@ async function findMember(workspaceId: string, userId: string) {
 
 /**
  * Admins change any non-owner role between `member` and `admin`. Granting `admin` requires the
- * target to have 2FA or a passkey. `owner` moves only with `transferOwnership`.
+ * target to have a passkey. `owner` moves only with `transferOwnership`.
  */
 export async function changeRole(actor: WorkspaceActor, targetUserId: string, role: GrantableRole) {
 	await assertCompanyAdminAction(actor);
@@ -84,9 +83,7 @@ export async function changeRole(actor: WorkspaceActor, targetUserId: string, ro
 	}
 	if (target.role === role) return;
 	if (role === 'admin' && !(await hasSecondFactor(targetUserId))) {
-		secondFactorError(
-			'This member needs a passkey or two-factor authentication to become an admin.'
-		);
+		secondFactorError('This member needs a passkey to become an admin.');
 	}
 	await db.update(member).set({ role }).where(eq(member.id, target.id));
 	await record({
@@ -191,7 +188,7 @@ export async function removeMemberConnectors(
 }
 
 /**
- * The owner hands the workspace to another member, who must have 2FA or a passkey. The old
+ * The owner hands the workspace to another member, who must have a passkey. The old
  * owner becomes an admin.
  */
 export async function transferOwnership(actor: WorkspaceActor, targetUserId: string) {
@@ -200,7 +197,7 @@ export async function transferOwnership(actor: WorkspaceActor, targetUserId: str
 	const target = await findMember(actor.workspaceId, targetUserId);
 	const current = await findMember(actor.workspaceId, actor.userId);
 	if (!(await hasSecondFactor(targetUserId))) {
-		secondFactorError('The new owner needs a passkey or two-factor authentication first.');
+		secondFactorError('The new owner needs a passkey first.');
 	}
 	await db.batch([
 		db.update(member).set({ role: 'owner' }).where(eq(member.id, target.id)),

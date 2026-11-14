@@ -69,7 +69,7 @@
 			<Callout
 				tone="warning"
 				title="You only see your own activity"
-				description="Add a passkey or enable two-factor authentication to see every member's activity and export it."
+				description="Add a passkey to see every member's activity and export it."
 			>
 				{#snippet action()}
 					<Button

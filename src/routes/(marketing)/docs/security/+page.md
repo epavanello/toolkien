@@ -17,7 +17,7 @@ Toolkien holds credentials to your services and runs code written by a language 
 | SSRF through a user-supplied URL         | https only, private ranges blocked, DNS checked at connect time, egress proxy              |
 | Stolen MCP client token                  | 15-minute audience-bound tokens, rotating refresh tokens with reuse detection, kill switch |
 | Token confusion between services         | No passthrough: the client's token never goes upstream                                     |
-| Account takeover of an admin             | Passkey or 2FA required for owners and admins                                              |
+| Account takeover of an admin             | Passkey required for owners and admins                                                     |
 | Abuse of the platform                    | Rate limits per user, workspace and IP; concurrency limits; kill switches                  |
 
 ## Architecture and network isolation
@@ -67,7 +67,7 @@ The access token your MCP client presents to Toolkien is only ever used to authe
 
 ## Web application
 
-HttpOnly, Secure, SameSite cookies; CSRF origin checks; a Content Security Policy with nonces and `frame-ancestors 'none'`; HSTS; locked dependencies. Passkeys and TOTP are supported for everyone and required for owners and admins of company workspaces.
+HttpOnly, Secure, SameSite cookies; CSRF origin checks; a Content Security Policy with nonces and `frame-ancestors 'none'`; HSTS; locked dependencies. Sign-in is passwordless: an emailed 6-digit code or a single-use link (stored hashed, 10 minutes, rate-limited per address and IP; the link opens a confirm page so mail scanners cannot use it), or a passkey. A registered passkey is required for owners and admins of company workspaces.
 
 ## Data minimisation and logs
 

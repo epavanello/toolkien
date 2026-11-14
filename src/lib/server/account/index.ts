@@ -85,8 +85,7 @@ export async function exportAccount(userId: string): Promise<AccountExport> {
 			id: account.id,
 			name: account.name,
 			email: account.email,
-			createdAt: account.createdAt.toISOString(),
-			twoFactorEnabled: !!account.twoFactorEnabled
+			createdAt: account.createdAt.toISOString()
 		},
 		passkeys: passkeys.map((p) => ({
 			name: p.name,

@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { and, asc, eq } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
-import { member, organization, passkey, user } from '#lib/server/db/schema/index.ts';
+import { member, organization, passkey } from '#lib/server/db/schema/index.ts';
 import type {
 	WorkspaceActor,
 	WorkspaceRole,
@@ -15,7 +15,7 @@ export const ROLE_RANK: Record<WorkspaceRole, number> = { member: 0, admin: 1, o
 export const hasRole = (role: WorkspaceRole, minimum: WorkspaceRole) =>
 	ROLE_RANK[role] >= ROLE_RANK[minimum];
 
-/** 2FA or passkey is required for owners and admins of company workspaces */
+/** A passkey is required for owners and admins of company workspaces */
 export const requiresSecondFactor = (workspace: Pick<WorkspaceSummary, 'kind' | 'role'>) =>
 	workspace.kind === 'company' && hasRole(workspace.role, 'admin');
 
@@ -90,14 +90,12 @@ export async function loadWorkspace(actor: WorkspaceActor) {
 	return summary;
 }
 
-/** 2FA (verified TOTP) or at least one passkey */
+/**
+ * At least one registered passkey: the second factor required of owners and admins of company
+ * workspaces. Sign-in is by email (magic link or code), which TOTP would not gate, so passkeys
+ * are the only factor (see DECISIONS.md).
+ */
 export async function hasSecondFactor(userId: string): Promise<boolean> {
-	const [row] = await db
-		.select({ twoFactorEnabled: user.twoFactorEnabled })
-		.from(user)
-		.where(eq(user.id, userId))
-		.limit(1);
-	if (row?.twoFactorEnabled) return true;
 	const [key] = await db
 		.select({ id: passkey.id })
 		.from(passkey)
@@ -112,7 +110,7 @@ export const secondFactorError = (message: string): never =>
 /**
  * Throws unless the actor has at least `minRole` and, for owners/admins of a company workspace,
  * a second factor. Every admin action calls it (role grants, policy, deletion, kill switch,
- * workspace-wide logs), so an admin who later removes their 2FA loses admin powers until they
+ * workspace-wide logs), so an admin who later removes their last passkey loses admin powers until they
  * add one again.
  */
 export async function assertAdminAction(actor: WorkspaceActor, minRole: WorkspaceRole = 'admin') {
@@ -121,9 +119,7 @@ export async function assertAdminAction(actor: WorkspaceActor, minRole: Workspac
 		error(403, 'You do not have access to this action.', { code: 'FORBIDDEN' });
 	}
 	if (requiresSecondFactor(workspace) && !(await hasSecondFactor(actor.userId))) {
-		secondFactorError(
-			'Add a passkey or enable two-factor authentication to manage this workspace.'
-		);
+		secondFactorError('Add a passkey to manage this workspace.');
 	}
 	return workspace;
 }

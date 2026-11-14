@@ -182,7 +182,7 @@ export async function getInvitePreview(
 }
 
 /**
- * Joins the workspace of a valid invite link. Admin invites require 2FA or a passkey. The use
+ * Joins the workspace of a valid invite link. Admin invites require a passkey. The use
  * counter is incremented with a conditional update, so concurrent acceptances cannot exceed
  * `maxUses`. Returns the workspace slug.
  */
@@ -203,7 +203,7 @@ export async function acceptInvite(
 		error(400, messages[preview.status] ?? messages.invalid, { code: 'INVALID_INPUT' });
 	}
 	if (preview.role === 'admin' && !(await hasSecondFactor(viewer.id))) {
-		secondFactorError('Add a passkey or enable two-factor authentication to join as an admin.');
+		secondFactorError('Add a passkey to join as an admin.');
 	}
 
 	const found = (await findByToken(token))!;

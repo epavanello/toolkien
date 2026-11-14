@@ -98,7 +98,7 @@
 			<Callout
 				tone="warning"
 				title="Changes need a second factor"
-				description="Add a passkey or enable two-factor authentication in your account settings."
+				description="Add a passkey in your account settings."
 			/>
 		{/if}
 		{#if o.platformSwitch}

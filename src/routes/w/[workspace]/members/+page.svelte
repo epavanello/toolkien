@@ -31,6 +31,7 @@
 
 	let inviteOpen = $state(false);
 	let revealed = $state<string | null>(null);
+	let emailed = $state(false);
 	let confirm = $state<{ kind: 'remove' | 'leave' | 'transfer'; member: MemberSummary } | null>(
 		null
 	);
@@ -91,7 +92,7 @@
 				? [
 						{
 							key: 'secondFactor',
-							header: '2FA / passkey',
+							header: 'Passkey',
 							type: 'status' as const,
 							value: (m: MemberSummary) => (m.secondFactor ? 'active' : 'missing')
 						}
@@ -187,7 +188,7 @@
 			<Callout
 				tone="warning"
 				title="Second factor required"
-				description="Owners and admins of company workspaces need a passkey or two-factor authentication before managing members."
+				description="Owners and admins of company workspaces need a passkey before managing members."
 			>
 				{#snippet action()}
 					<Button
@@ -239,7 +240,10 @@
 	description="There are no invitation emails: share the link yourself."
 	submitLabel="Create link"
 	form={createInvite}
-	onSuccess={(result) => (revealed = result?.url ?? null)}
+	onSuccess={(result) => {
+		emailed = !!result?.emailed;
+		revealed = result?.url ?? null;
+	}}
 >
 	<input {...createInvite.fields.workspace.as('hidden', workspace)} />
 	<FormField
@@ -249,7 +253,7 @@
 		value="member"
 		options={[
 			{ value: 'member', label: 'Member' },
-			{ value: 'admin', label: 'Admin (needs a passkey or 2FA)' }
+			{ value: 'admin', label: 'Admin (needs a passkey)' }
 		]}
 	/>
 	<FormField
@@ -279,6 +283,9 @@
 <RevealDialog
 	bind:open={() => revealed !== null, (value) => !value && (revealed = null)}
 	title="Invite link created"
+	description={emailed
+		? 'We emailed it to the invited address. You can also copy it now: it will not be shown again.'
+		: undefined}
 	values={revealed ? [revealed] : []}
 	copyEach
 />

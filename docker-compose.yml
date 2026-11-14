@@ -39,6 +39,10 @@ services:
       DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET (openssl rand -base64 32)}
       PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      # Passwordless sign-in and invitations (Resend); without them email sign-in is refused
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      RESEND_BASE_URL: ${RESEND_BASE_URL:-}
       OPENBAO_ADDR: http://openbao:8200
       # Empty until OpenBao is initialised (deploy/openbao/init.sh prints them)
       OPENBAO_ROLE_ID: ${OPENBAO_ROLE_ID:-}
