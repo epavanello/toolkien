@@ -68,7 +68,7 @@ Files `src/lib/functions/<domain>.remote.ts`; `query`, `query.live`, `query.batc
 
 ## Better Auth
 
-`src/lib/server/auth.ts`: drizzle sqlite adapter, `emailAndPassword` (min 12 chars, no email verification — no email service), plugins `organization()` (workspace = organization, roles owner/admin/member, extra fields `kind`, `deleteScheduledAt`, `suspendedAt`, deletion disabled in favour of our grace period), `passkey()`, `twoFactor()`, `jwt()`, `mcp()` (OAuth 2.1 AS for MCP clients, resource `${ORIGIN}/mcp`, 15 min access tokens, 30 day rotating refresh tokens, DCR allowed), `cimd()` (fetches through `net.safeFetch`), and `sveltekitCookies` **last**.
+`src/lib/server/auth.ts`: drizzle sqlite adapter, no passwords (`emailAndPassword` disabled), plugins `organization()` (workspace = organization, roles owner/admin/member, extra fields `kind`, `deleteScheduledAt`, `suspendedAt`, deletion disabled in favour of our grace period), `passkey()`, `magicLink()` + `emailOTP()` (one email with link + code, sent by `#lib/server/email`; their HTTP endpoints are disabled and `#lib/server/email-sign-in.ts` calls them server-side), `jwt()`, `mcp()` (OAuth 2.1 AS for MCP clients, resource `${ORIGIN}/mcp`, 15 min access tokens, 30 day rotating refresh tokens, DCR allowed), `cimd()` (fetches through `net.safeFetch`), and `sveltekitCookies` **last**.
 
 - Every new user gets a personal workspace (`databaseHooks.user.create.after` → `ensurePersonalWorkspace`, idempotent; `/` calls it again).
 - `locals.user` / `locals.session` come from the cookie session in `hooks.server.ts`; suspended users are treated as signed out. `/mcp` never reads cookies (bearer only).
@@ -80,7 +80,7 @@ Files `src/lib/functions/<domain>.remote.ts`; `query`, `query.live`, `query.batc
 - One schema file per domain in `src/lib/server/db/schema/` (`auth`, `workspaces`, `connectors`, `permissions`, `executions`, `audit`, `platform`), re-exported by `index.ts`. Helpers in `columns.ts`: `id()` (UUID), `createdAt(name?)`, `updatedAt()`, `timestamp()`, `json<T>()`, `sealed(prefix)` (ciphertext + nonce + key version of a value encrypted with the workspace key).
 - Enums are `as const` arrays exported next to the table (`EXECUTION_STATUSES`) and reused by contracts.
 - Nullable-scoped uniqueness uses two partial unique indexes (`… where user_id is null` / `is not null`): SQLite treats NULLs as distinct, and drizzle-kit cannot render `coalesce()` expressions.
-- Migrations: `pnpm db:generate` (only the integrator, see brief), `pnpm db:migrate`. Things drizzle-kit cannot express go in a custom migration (`pnpm db:generate --custom --name <x>`): the FTS5 table `tool_search` and the append-only trigger on `audit_event` live in `drizzle/0001_search_and_audit_guards.sql`.
+- Migrations are the only schema path (dev, prod, tests: `#lib/server/db/testing.ts`): `pnpm db:generate`, `pnpm db:migrate`; a spec fails when the schema drifts. Things drizzle-kit cannot express go in a custom migration (`pnpm db:generate --custom --name <x>`): the FTS5 table `tool_search` and the append-only trigger on `audit_event` live in `drizzle/0001_search_and_audit_guards.sql`.
 - Content (tokens, script code, tool arguments/results) is stored only sealed and wiped when no longer needed. Everything else is metadata.
 
 ## Errors

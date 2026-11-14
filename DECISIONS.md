@@ -1,42 +1,152 @@
 # Decisions
 
-Choices made where the spec is open or ambiguous. Newest at the bottom of each section.
+Choices made where the spec (`docs/spec.md`) is open or ambiguous, and the reasons. Grouped by
+area; the build notes of each vertical they come from are in the git history (`docs/notes/`,
+removed after this merge).
+
+## Product and licence
+
+- **Open source under AGPL-3.0** (`LICENSE`, `package.json` `AGPL-3.0-only`) plus a managed
+  service. Self-hosting is first-class: one compose file for plain Docker and Coolify.
+- **Curated directory is community-contributed**: one JSON file per server in `directory/servers/`,
+  schema-validated (`pnpm directory:validate`, also a Vitest gate). 17 seed entries, all
+  `community`; Atlassian, Asana and Intercom `unverified`. Entries were not live-tested.
+- Content pages (docs, legal, future blog) are markdown rendered by one mdsvex layout. Legal texts
+  are drafts with a review disclaimer (tested) and bracketed placeholders.
 
 ## Platform
 
-- **Turso (libSQL) instead of Postgres in milestone 1.** The spec's stack table says Turso; the milestone list still mentions Postgres. Turso wins (EU region, point-in-time restore). Local dev uses a `file:` database through the same driver.
-- **SvelteKit 3 native `query.live`** (async generator remote queries) instead of copying Pack's `liveQuery.svelte.ts`: it is built in and simpler. Used for execution status, pending approvals and activity.
-- **Single instance.** Rate limits, concurrency, `.d.ts` caches and jobs live in memory (`#lib/server/{limits,jobs}`); everything that must survive a restart (paused executions, approvals) is in the database.
-- **MCP spec 2026-07-28** (latest stable), with version negotiation down to 2025-11-25. Stateless Streamable HTTP: no `Mcp-Session-Id`, no GET stream.
+- **Turso (libSQL)**, not Postgres; local dev uses a `file:` database through the same driver.
+- **Migrations are the only schema path** (dev, prod and tests): `pnpm db:generate` +
+  `pnpm db:migrate`; no `db:push`. Custom SQL (FTS5 `tool_search`, append-only audit trigger) is
+  migration `0001`. A spec fails when the schema drifts from the migrations.
+- **Single instance**: rate limits, concurrency slots, caches, `list_changed` watchers and jobs
+  live in memory; anything that must survive a restart (paused executions, approvals) is in the DB.
+- **Jobs** are registered in one place (`jobs/builtin.ts`, dynamic imports, no import-time side
+  effects); re-registering replaces (dev HMR).
+- SvelteKit 3 native **`query.live`** for live data (execution status, approvals, activity).
+- `@libsql/client`, `drizzle-orm` and `shiki` are runtime `dependencies` so adapter-node keeps them
+  external (the libSQL native binding must resolve from `node_modules`).
 
-## Identity and workspaces
+## Identity, sign-in and workspaces
 
-- **Workspace = Better Auth organization.** `organization` gets `kind` (`personal` | `company`), `deleteScheduledAt` (7-day grace) and `suspendedAt` (kill switch) as additional fields. Better Auth's own organization deletion is disabled; deletion goes through the grace period.
-- **Personal workspace on sign-up** via `databaseHooks.user.create.after` (idempotent; `/` re-checks). Its slug is `personal-<user id>`: stable and free of personal data.
-- **No email service**: invitations are links (`workspace_invite_link`, token stored as SHA-256), there are no verification or password-reset emails. A forgotten password currently needs a passkey or an operator; to revisit before launch.
-- **Login methods**: email + password (min 12 characters) and passkeys; TOTP 2FA available. **2FA or a passkey is required for owners and admins of company workspaces** (`requiresSecondFactor` in the workspaces contract; enforcement by org-ops).
-- **Users are suspended** with `user.suspendedAt`; the hooks treat a suspended user as signed out.
+- **Passwordless**: sign-in (and sign-up) by email, or a passkey. One email (Resend) carries a
+  6-digit code and a magic link. The code is typed in the same tab, so an MCP OAuth/consent
+  redirect survives; the link opens `/login/confirm`, whose button consumes the token (corporate
+  link scanners prefetch GET links). Tokens and codes are stored hashed, valid 10 minutes, single
+  use (5 code attempts). Better Auth's HTTP endpoints for these flows are disabled; our remote
+  functions call them server-side and rate-limit sends (5 per address, 20 per IP, 15 minutes).
+- **No passwords and no TOTP.** TOTP would not gate an email sign-in, so the second factor
+  required of **owners and admins of company workspaces is a registered passkey**, checked on role
+  grants and before every admin action (an admin without one keeps the role, loses the powers).
+  Follow-up worth considering: require a passkey _session_ (step-up) for admin actions.
+- **Email transport** (`#lib/server/email`): Resend over plain `fetch` through `net.safeFetch`
+  (egress proxy). Development without a key prints link and code to the console; production
+  refuses email sign-in without `RESEND_API_KEY` + `EMAIL_FROM`. Bodies and tokens are never logged.
+- **Workspace = Better Auth organization** with `kind`, `deleteScheduledAt` (7-day grace, purge
+  job), `suspendedAt` (kill switch). Personal workspace on first sign-in, slug `personal-<user id>`.
+- **Invite links** (32 random bytes, SHA-256 stored, optional email restriction, max uses, 1–30
+  days); restricted invites are also emailed when a transport exists. Owner only moves through
+  transfer; members see the member list, admins also see passkey status.
+- **Policy** (`checkConnectorPolicy`, single source): members add connectors only for themselves
+  and only if allowed; `allowFreeUrls` and `allowedServers` apply to everyone (admins change the
+  policy for an exception).
+- **Audit** is append-only (trigger); metadata never holds user ids (anonymisation only nulls
+  `user_id`); members see their own events, admins with a passkey everyone's. Retention 90 days
+  (job). Technical logs are separate: stdout, ids only, **14 days** (journald on the host; compose
+  rotates by size).
+- **Kill switches** (user, workspace, platform) revoke sessions/tokens, suspend connectors, abort
+  and cancel executions; workspace admins can release only switches pulled by workspace admins.
 
 ## OAuth for MCP clients
 
-- Better Auth `mcp()` (OAuth 2.1 provider) + `jwt()` + `cimd()`: CIMD preferred, DCR still allowed (deprecated in 2026-07-28 but widely used). PKCE required, tokens audience-bound to `${ORIGIN}/mcp`, 15-minute access tokens, 30-day refresh tokens with rotation and reuse detection (30 s replay window, the MCP plugin default).
-- CIMD documents are fetched through `net.safeFetch` (SSRF rules + egress proxy).
-- `/mcp` ignores cookies entirely: bearer tokens only.
-- **CSRF**: SvelteKit's built-in origin check rejected form-encoded POSTs without `Origin` from non-browser MCP clients to the token endpoint before hooks run. It is disabled (`csrf.trustedOrigins: ['*']`) and reimplemented in `hooks.server.ts` (`isCrossSiteFormRequest`): every form-encoded state-changing request must carry our `Origin`, except `/api/auth/oauth2/{token,register,revoke,introspect}`, which authenticate with client credentials / PKCE, never cookies. Session cookies are also `SameSite=Lax`.
+- Better Auth `mcp()` + `jwt()` + `cimd()`: issuer `${ORIGIN}/api/auth`, CIMD preferred, open DCR
+  (deprecated in 2026-07-28 but widely used), PKCE S256 always, `aud = ${ORIGIN}/mcp` verified on
+  `/mcp` (tokens without `resource` are useless), 15-minute access tokens, 30-day rotating refresh
+  tokens with reuse detection, `iss` in responses. Grant types: authorization code + refresh only.
+- **`/consent` is the single interaction entry** (also the login page for the provider): it sends
+  signed-out users to `/login?redirectTo=…` and back, then asks which workspace to start in.
+- **CSRF**: SvelteKit's origin check is replaced by `isCrossSiteFormRequest` in hooks so the token,
+  register, revoke and introspect endpoints accept form posts from non-browser clients.
 
-## Data and security
+## MCP server
 
-- **Envelope encryption columns**: every sealed value is `<x>_ciphertext`, `<x>_nonce`, `<x>_key_version` (AES-256-GCM, workspace id as associated data) with one DEK per workspace and version in `workspace_data_key`, wrapped by OpenBao transit. Dev without OpenBao uses `TOOLKIEN_DEV_MASTER_KEY`, refused in production.
-- **Durable execution state** (code, approvals) and cached call results are stored sealed and wiped when the execution ends or expires; the script's SHA-256 is kept to refuse a resume with different code.
-- **Approval previews** (main arguments shown on the approval page) are sealed and wiped once decided.
-- **Audit log is append-only** by trigger; the only allowed update is anonymisation (user ids → NULL) on account deletion; the retention job deletes rows older than `AUDIT_RETENTION_DAYS` (90).
-- **Tool search** uses an FTS5 virtual table (`tool_search`) with a `keywords` column holding the camelCase path split into words.
-- **Permission rows**: `user_id IS NULL` = workspace floor set by admins, otherwise the member's own level; effective = most restrictive of default, policy floor, workspace row, user row.
-- **Connector auth type `none`** added for public MCP servers that need no credentials.
-- **Security headers**: CSP with nonces (`kit.csp`), `frame-ancestors 'none'`, `form-action 'self'`, HSTS in production, `X-Frame-Options: DENY`, `nosniff`, strict referrer, COOP. The light/dark pre-paint script lives in `app.html` to carry the nonce.
+- One `/mcp` handler for **2026-07-28 and 2025-11-25**, stateless (no `Mcp-Session-Id`, POST only),
+  fresh server per request. Pipeline: Origin → per-IP limit → bearer + audience → disabled client
+  / suspended user / kill switch → per-user limit → handler (client name and IP in the context).
+- **Approvals**: 2026-07-28 clients get form elicitation (else URL mode, else a link); 2025 clients
+  always get the out-of-band link (stateless legacy cannot carry an elicitation answer). There is
+  no approve tool: the model can never answer.
+- Six tools; descriptions teach search → describe → execute. `tools_describe` returns one
+  declaration per namespace.
+
+## Connectors
+
+- **Custom JSON Schema → TypeScript emitter** (inline types, deterministic, every upstream string
+  escaped, `@` tags neutralised, unsupported constructs degrade to `unknown`). `signatureHash` over
+  schemas + annotation hints; a change makes confirmed permissions "to confirm".
+- **Multiple instances per server** (one per account/project), each with label, namespace,
+  credentials and tool versions; rename rewrites tool paths, ids (and permissions) survive.
+- **Upstream MCP client**: SDK v2 with version negotiation, `net.safeFetch`, bearer only to the
+  connector's own origin. **Upstream OAuth**: RFC 9728 → 8414, CIMD when possible else DCR, PKCE,
+  RFC 8707 resource, refresh ahead and on 401, RFC 7009 revocation on disconnect/remove and when a
+  member leaves (`revokeUserCredentials`). No pre-registered clients (GitHub → pasted token);
+  custom auth headers unsupported.
+- **Refresh triggers**: `list_changed` watcher, 6 h staleness on session open, unknown tool /
+  invalid params on call, manual refresh.
+- Script values come from `toScriptValue` (structured content, else parsed text), matching the
+  generated `.d.ts`.
+- **Development only**: plain `http://` to loopback is allowed (local MCP servers); production
+  accepts https on port 443 to public addresses only.
+
+## Execution, permissions, bridge
+
+- **Default levels**: `readOnlyHint` (and not destructive) → allow, anything else → ask. Free-URL
+  and unverified tools are "to confirm" (≥ ask) until a person confirms. Effective level = most
+  restrictive of user row, admin workspace row, policy floor and "to confirm".
+- **Bridge order**: execution ownership → kill switches → durable replay by `seq` (results and
+  errors cached; a pending write is never re-sent) → tool-call limit → resolve tool → effective
+  level (block / approval gate / allow) → claim → upstream → seal outcome → audit (no content).
+- Approvals: `once` covers its seq and the same arguments only; `tool_in_script` covers the
+  execution. Admins/owners may decide members' approvals (audited as admin). 30-minute expiry.
+- **Durable executions**: sealed state `{ code }` from the start; resume re-runs the script and
+  replays cached calls; claimed atomically; code hash checked. Terminal states wipe all content.
+- Rate limits per user, workspace and IP; concurrency slots (per user + global, FIFO); usage
+  counters per workspace and UTC day.
+
+## Runner (Deno)
+
+- One WebSocket per execution (`/run`, shared secret, constant-time compare); tool calls answered
+  one at a time in seq order, so a pause at seq N means nothing after N reached the bridge.
+- **Type check in a sandboxed TypeScript compiler**, not `deno check` (which could read host files
+  into diagnostics); the wrapper must not be escaped; no imports of any kind.
+- Fresh `deno run` per execution with no permissions, cleared env, V8 heap limit, `ulimit -d`
+  (Linux), wall-clock timeout; read-only container, `cap_drop: ALL`, internal network only.
+  gVisor recommended. Development starts a local supervisor with the `deno` binary.
+
+## Data protection and crypto
+
+- **Envelope encryption**: one DEK per workspace and version (generated in the app), wrapped by
+  OpenBao transit; values AES-256-GCM with the workspace id as AAD. Every sealed column is listed
+  in `SEALED_GROUPS` (a spec checks coverage) so key rotation re-seals them. Dev fallback
+  `TOOLKIEN_DEV_MASTER_KEY`, refused in production.
+- **SSRF**: IPv4 blocklist, IPv6 allowlist, local names rejected before DNS, port 443 only, DNS
+  pinned at connect, redirects re-checked; production egress through the CONNECT-only proxy.
+- Content (tokens, arguments, results, code) is stored only sealed and wiped when no longer needed.
+- **OpenBao 2.7**: raft, Shamir 5/3, root token revoked after init, AppRoles for app and backup.
+- **Compose**: `core` and `sandbox` networks are internal; Coolify needs Raw Compose Deployment.
 
 ## UI
 
-- **Component library first**: presentation lives in `#lib/components/app/` as variants; pages only compose (see `docs/conventions.md` → UI).
-- Dense PostHog-like style: neutral palette, single blue accent (`primary`), semantic success/warning/destructive, small radii, system monospace for ids and code.
-- Markdown pages (`+page.md`) via mdsvex + `rehype-slug` with one layout (`components/markdown/markdown-layout.svelte`).
+- **Pages compose, the library presents** (`#lib/components/app`). Additions during the build:
+  Timeline, Callout, RevealDialog, PermissionSelect, ToolPath, FocusFrame, ToolDefinition,
+  EmailSignIn, DataTable groups, marketing and SEO components.
+- Dense neutral style, one blue accent, light/dark via mode-watcher (pre-paint script in
+  `app.html` for the CSP nonce). Side panels sit below dialogs; KeyValueList pairs by container
+  width.
+- **Syntax highlighting with Shiki, server side only** (`#lib/server/highlight.ts`): `shiki/core`
+  with the JavaScript regex engine, ts/js/json/bash, dual themes as CSS variables following
+  `.dark`. `CodeBlock` gets HTML through a batched remote query (no Shiki in the client bundle);
+  mdsvex code fences use the same module; ` ```ts twoslash ` fences get CSS-only type hovers at
+  build time.
+- No OG image yet (would need satori/resvg).
