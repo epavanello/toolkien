@@ -8,7 +8,7 @@ updated: 2026-11-14
 
 ## Who we are
 
-This policy covers the managed Toolkien service operated by **[Operator legal name]**, **[registered address]**, reachable at **[privacy contact email]** ("we"). Toolkien is open source: if you run your own instance, you are the controller (and, for your users' content, the processor) of the data it handles, and this policy does not apply to your instance.
+This policy covers the managed Toolkien service operated by **[Operator legal name]**, **[registered address]**, reachable at [toolkien@emadev.co](mailto:toolkien@emadev.co) ("we"). Toolkien is open source: if you run your own instance, you are the controller (and, for your users' content, the processor) of the data it handles, and this policy does not apply to your instance.
 
 ## The principle: data minimisation
 
@@ -48,7 +48,7 @@ See the [data retention policy](/legal/retention). In short: activity logs 90 da
 
 ## Your rights
 
-You can access, rectify, export and erase your data, restrict or object to processing, and lodge a complaint with your supervisory authority. Export and account deletion are self-service in **Settings → Account**. Deleting your account revokes upstream tokens where the provider allows it, deletes credentials and configuration, and anonymises your entries in the activity logs of company workspaces you were a member of. For anything else, write to **[privacy contact email]**.
+You can access, rectify, export and erase your data, restrict or object to processing, and lodge a complaint with your supervisory authority. Export and account deletion are self-service in **Settings → Account**. Deleting your account revokes upstream tokens where the provider allows it, deletes credentials and configuration, and anonymises your entries in the activity logs of company workspaces you were a member of. For anything else, write to [toolkien@emadev.co](mailto:toolkien@emadev.co).
 
 ## Security
 

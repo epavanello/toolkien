@@ -20,4 +20,4 @@ Toolkien is designed so that even a stolen database exposes no upstream token. T
 
 ## Reporting a vulnerability
 
-Write to **[security contact email]** with a description and steps to reproduce. Please give us reasonable time to fix the issue before disclosing it and do not access data that is not yours. We will acknowledge your report within **[3] business days**. Toolkien is open source: you can also review the code in the public repository.
+Write to [toolkien@emadev.co](mailto:toolkien@emadev.co) with a description and steps to reproduce. Please give us reasonable time to fix the issue before disclosing it and do not access data that is not yours. We will acknowledge your report within **[3] business days**. Toolkien is open source: you can also review the code in the public repository.

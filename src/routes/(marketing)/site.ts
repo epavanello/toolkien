@@ -10,7 +10,7 @@ import { DOCS_PAGES } from './docs/nav.ts';
 /** Source repository (single value in `#lib/brand.ts`, shared with the app shell) */
 export const REPO_URL = REPOSITORY_URL;
 export const LICENSE = 'AGPL-3.0';
-export const SECURITY_CONTACT = 'security@toolkien.example';
+export const SECURITY_CONTACT = 'toolkien@emadev.co';
 
 export const LEGAL_DOCUMENTS = [
 	{ slug: 'privacy', label: 'Privacy policy' },

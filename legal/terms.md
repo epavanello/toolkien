@@ -44,4 +44,4 @@ You can delete your account at any time from **Settings → Account**. We may te
 
 ## 10. Contact
 
-**[Contact email]**
+[toolkien@emadev.co](mailto:toolkien@emadev.co)

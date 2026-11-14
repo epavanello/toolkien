@@ -42,4 +42,4 @@ Data is hosted in the European Union. Any transfer outside the EEA relies on an 
 
 ## 7. Contact
 
-**[DPO or privacy contact email]**
+[toolkien@emadev.co](mailto:toolkien@emadev.co)
