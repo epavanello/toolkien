@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import Check from '@lucide/svelte/icons/check';
+	import Plus from '@lucide/svelte/icons/plus';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import User from '@lucide/svelte/icons/user';
 	import { resolve } from '$app/paths';
@@ -65,6 +66,18 @@
 						{/snippet}
 					</DropdownMenu.Item>
 				{/each}
+				<DropdownMenu.Separator />
+				<DropdownMenu.Item>
+					{#snippet child({ props })}
+						<a
+							href="{resolve('/w/[workspace]/settings', { workspace: current.slug })}?new"
+							{...props}
+						>
+							<Plus />
+							<span class="flex-1 truncate">New company workspace</span>
+						</a>
+					{/snippet}
+				</DropdownMenu.Item>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 	</Sidebar.MenuItem>

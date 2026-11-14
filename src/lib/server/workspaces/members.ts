@@ -172,15 +172,21 @@ export async function removeMemberConnectors(
 		}
 	}
 	if (includeCredentials) {
-		// No upstream revocation contract for a single member credential yet (see notes)
-		await db
-			.delete(connectorCredential)
-			.where(
-				and(
-					eq(connectorCredential.workspaceId, memberActor.workspaceId),
-					eq(connectorCredential.userId, memberActor.userId)
-				)
-			);
+		// Their credentials on shared "personal" connectors: revoked upstream, then deleted
+		const connectors = await import('#lib/server/connectors/index.ts');
+		try {
+			await connectors.revokeUserCredentials(memberActor.workspaceId, memberActor.userId);
+		} catch {
+			console.error('[workspaces] credential revocation failed, deleting locally');
+			await db
+				.delete(connectorCredential)
+				.where(
+					and(
+						eq(connectorCredential.workspaceId, memberActor.workspaceId),
+						eq(connectorCredential.userId, memberActor.userId)
+					)
+				);
+		}
 	}
 }
 

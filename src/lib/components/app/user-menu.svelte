@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import LogOut from '@lucide/svelte/icons/log-out';
+	import UserCog from '@lucide/svelte/icons/user-cog';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';
@@ -13,9 +14,13 @@
 	import * as Sidebar from '#lib/components/ui/sidebar/index.js';
 	import { signOut } from '#lib/functions/auth.remote.ts';
 
-	type Props = { user: { name: string; email: string; image?: string | null } };
+	type Props = {
+		user: { name: string; email: string; image?: string | null };
+		/** Current workspace slug, for the account page link (kept inside the shell) */
+		workspace: string;
+	};
 
-	let { user }: Props = $props();
+	let { user, workspace }: Props = $props();
 
 	const sidebar = Sidebar.useSidebar();
 	const initials = $derived(
@@ -61,6 +66,15 @@
 				side={sidebar.isMobile ? 'bottom' : 'right'}
 				sideOffset={4}
 			>
+				<DropdownMenu.Item>
+					{#snippet child({ props })}
+						<a href={resolve('/w/[workspace]/settings/account', { workspace })} {...props}>
+							<UserCog />
+							Account
+						</a>
+					{/snippet}
+				</DropdownMenu.Item>
+				<DropdownMenu.Separator />
 				<DropdownMenu.Label class="text-xs text-muted-foreground">Theme</DropdownMenu.Label>
 				<DropdownMenu.RadioGroup
 					value={userPrefersMode.current}

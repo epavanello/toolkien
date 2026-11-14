@@ -34,6 +34,12 @@ export type BridgeDeps = {
 	crypto: Pick<WorkspaceCrypto, 'encryptJsonForWorkspace' | 'decryptJsonForWorkspace'>;
 	audit: Pick<AuditService, 'record'>;
 	limits: Pick<LimitsService, 'getLimits' | 'assertNotSuspended'>;
+	/**
+	 * Maps a successful upstream result to the value the script receives (connectors'
+	 * `toScriptValue`, so runtime values match the generated `.d.ts`). Defaults to
+	 * `structuredContent ?? content`.
+	 */
+	toScriptValue?: (result: Extract<UpstreamCallResult, { ok: true }>) => unknown;
 	now?: () => Date;
 };
 
@@ -392,7 +398,12 @@ export function createBridge(deps: BridgeDeps): HandleToolCall {
 		const durationMs = Math.round(performance.now() - started);
 
 		const outcome: CachedCall['outcome'] = upstream.ok
-			? { kind: 'result', value: upstream.structuredContent ?? upstream.content }
+			? {
+					kind: 'result',
+					value: deps.toScriptValue
+						? deps.toScriptValue(upstream)
+						: (upstream.structuredContent ?? upstream.content)
+				}
 			: await errorOutcome(ctx, path, upstream);
 		await storeOutcome(exec, seq, { argsHash, outcome }, durationMs);
 

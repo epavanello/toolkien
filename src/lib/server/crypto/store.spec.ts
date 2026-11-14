@@ -1,6 +1,7 @@
 import { createClient } from '@libsql/client';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
+import { getTableConfig, SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '#lib/server/db/schema/index.ts';
 import type { Db } from '#lib/server/db/index.ts';
 import { createEnvelopeCrypto } from './envelope.ts';
-import { drizzleKeyStore, drizzleResealer, workspacesWithKeys } from './store.ts';
+import { drizzleKeyStore, drizzleResealer, SEALED_GROUPS, workspacesWithKeys } from './store.ts';
 import { devWrapper } from './wrappers.ts';
 
 const MASTER = Buffer.alloc(32, 3).toString('base64');
@@ -91,5 +92,21 @@ describe('drizzle key store', () => {
 		expect(untouched[0]!.v).toBe(1);
 		// Idempotent: nothing left on the old version
 		expect(await c.rewrap('ws', { rotateDataKey: false })).toEqual({ resealed: 0 });
+	});
+});
+
+describe('SEALED_GROUPS', () => {
+	it('covers every sealed column of the schema', () => {
+		const inSchema = (Object.values(schema) as unknown[])
+			.filter((value): value is SQLiteTable => value instanceof SQLiteTable)
+			.flatMap((table) => {
+				const config = getTableConfig(table);
+				return config.columns
+					.filter((column) => column.name.endsWith('_ciphertext'))
+					.map((column) => `${config.name}.${column.name.replace(/_ciphertext$/, '')}`);
+			})
+			.sort();
+		const covered = SEALED_GROUPS.map((group) => `${group.table}.${group.prefix}`).sort();
+		expect(covered).toEqual(inSchema);
 	});
 });

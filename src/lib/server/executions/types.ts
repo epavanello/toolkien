@@ -86,6 +86,10 @@ export interface ExecutionsService {
 	start(input: {
 		actor: WorkspaceActor;
 		clientId: string | null;
+		/** Display name of the MCP client, recorded in the audit (activity view) */
+		clientName?: string | null;
+		/** Client IP, for the per-IP execution rate limit */
+		ip?: string | null;
 		code: string;
 	}): Promise<ExecutionOutcome>;
 	/** Status of an execution of this user; with `resume`, continues a paused one if decided */

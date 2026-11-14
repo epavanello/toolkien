@@ -101,6 +101,7 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 				userId,
 				clientId,
 				clientName: client.name,
+				clientAddress: meta.clientAddress,
 				scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter(Boolean) : []
 			};
 			return deps.handle(verified, ctx);

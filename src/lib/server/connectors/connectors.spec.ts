@@ -73,7 +73,8 @@ vi.mock('#lib/server/permissions/index.ts', () => ({
 	visibleToolIds: async (_w: string, _u: string, ids: string[]) =>
 		ids.filter((id) => !blocked.has(id))
 }));
-vi.mock('#lib/server/workspaces/index.ts', () => ({
+vi.mock('#lib/server/workspaces/index.ts', async () => ({
+	checkConnectorPolicy: (await import('#lib/server/workspaces/policy.ts')).checkConnectorPolicy,
 	getPolicy: async (workspaceId: string) => ({ workspaceId, permissionFloor: null, ...policy }),
 	getById: async (userId: string, workspaceId: string) =>
 		roles[userId]

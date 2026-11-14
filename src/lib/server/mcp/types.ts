@@ -33,6 +33,8 @@ export type McpRequestContext = {
 	clientId: string;
 	clientName: string | null;
 	scopes: string[];
+	/** Client IP (per-IP execution rate limit); absent in tests */
+	clientAddress?: string;
 };
 
 export type McpClientCapabilities = {

@@ -10,7 +10,7 @@ import {
 	toolDeclaration,
 	uniqueName
 } from '#lib/server/typegen/index.ts';
-import { getById, getPolicy } from '#lib/server/workspaces/index.ts';
+import { checkConnectorPolicy, getById, getPolicy } from '#lib/server/workspaces/index.ts';
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 import {
 	assertCanAuthenticate,
@@ -226,9 +226,15 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 		error(403, 'Only workspace admins can add connectors for everyone.', { code: 'FORBIDDEN' });
 	}
 	const policy = await getPolicy(actor.workspaceId);
-	if (onlyForMe && !isAdmin(actor) && !policy.allowPersonalConnectors) {
-		deny('This workspace does not allow personal connectors.');
-	}
+	// Admin policy (org-ops, single source): personal connectors, free URLs, allowed servers
+	const check = checkConnectorPolicy(policy, actor.role, {
+		onlyForMe,
+		source:
+			input.source.type === 'directory'
+				? { type: 'directory', directoryId: input.source.directoryId }
+				: { type: 'url', url: input.source.url.trim() }
+	});
+	if (!check.allowed) deny(check.reason);
 
 	let url: string;
 	let name: string;
@@ -246,9 +252,6 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 		unverified = entry.verification.status === 'unverified';
 		directoryId = entry.id;
 	} else {
-		if (!isAdmin(actor) && !policy.allowFreeUrls) {
-			deny('This workspace only allows servers from the directory.');
-		}
 		let safe: URL;
 		try {
 			safe = await assertSafeUrl(input.source.url.trim());
@@ -371,6 +374,30 @@ async function revokeAndDelete(row: ConnectorRow, userId: string | null) {
 	await deleteCredential(row.id, userId);
 	return true;
 }
+
+export const revokeUserCredentials: ConnectorsService['revokeUserCredentials'] = async (
+	workspaceId,
+	userId
+) => {
+	const rows = await db
+		.select({ row: connector })
+		.from(connectorCredential)
+		.innerJoin(connector, eq(connector.id, connectorCredential.connectorId))
+		.where(
+			and(eq(connectorCredential.workspaceId, workspaceId), eq(connectorCredential.userId, userId))
+		);
+	let deleted = 0;
+	for (const { row } of rows) {
+		try {
+			if (await revokeAndDelete(row, userId)) deleted++;
+		} catch {
+			console.error('[connectors] credential revocation failed, deleting locally');
+			await deleteCredential(row.id, userId);
+			deleted++;
+		}
+	}
+	return deleted;
+};
 
 export const remove: ConnectorsService['remove'] = async (actor, connectorId) => {
 	const row = await getVisible(actor, connectorId);

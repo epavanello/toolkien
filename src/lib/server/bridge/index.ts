@@ -1,5 +1,10 @@
 import { record } from '#lib/server/audit/index.ts';
-import { callTool, describeTools, resolveTool } from '#lib/server/connectors/index.ts';
+import {
+	callTool,
+	describeTools,
+	resolveTool,
+	toScriptValue
+} from '#lib/server/connectors/index.ts';
 import { decryptJsonForWorkspace, encryptJsonForWorkspace } from '#lib/server/crypto/index.ts';
 import { db } from '#lib/server/db/index.ts';
 import { assertNotSuspended, getLimits } from '#lib/server/limits/index.ts';
@@ -16,5 +21,6 @@ export const handleToolCall: HandleToolCall = createBridge({
 	permissions: { getEffectiveLevel },
 	crypto: { encryptJsonForWorkspace, decryptJsonForWorkspace },
 	audit: { record },
-	limits: { getLimits, assertNotSuspended }
+	limits: { getLimits, assertNotSuspended },
+	toScriptValue
 });

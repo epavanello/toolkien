@@ -40,3 +40,34 @@ registerJob({
 		pruneRateLimits();
 	}
 });
+
+// Dynamic import: the executions module pulls connectors/crypto, which import this scheduler
+registerJob({
+	name: 'executions.expire',
+	intervalMs: MINUTE,
+	runOnStart: true,
+	run: async () => {
+		const { expireStale } = await import('#lib/server/executions/index.ts');
+		await expireStale();
+	}
+});
+
+registerJob({
+	name: 'connectors.oauth_flows',
+	intervalMs: HOUR,
+	run: async () => {
+		const { purgeExpiredFlows } = await import('#lib/server/connectors/index.ts');
+		await purgeExpiredFlows();
+	}
+});
+
+// Daily, idempotent: a no-op until the transit key is rotated, then it moves every wrapped DEK
+// to the new key version so `min_decryption_version` can be raised.
+registerJob({
+	name: 'crypto.rewrap',
+	intervalMs: 24 * HOUR,
+	run: async () => {
+		const { rewrapAllWorkspaces } = await import('#lib/server/crypto/index.ts');
+		await rewrapAllWorkspaces();
+	}
+});

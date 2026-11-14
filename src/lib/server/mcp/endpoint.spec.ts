@@ -109,6 +109,7 @@ describe('/mcp endpoint', () => {
 			userId: 'u1',
 			clientId: 'client-1',
 			clientName: 'Claude',
+			clientAddress: '203.0.113.7',
 			scopes: ['openid', 'offline_access']
 		});
 	});

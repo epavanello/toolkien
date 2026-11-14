@@ -1,5 +1,3 @@
-import { building } from '$app/env';
-import { registerJob } from '#lib/server/jobs/index.ts';
 import { listDirectoryEntries } from './directory.ts';
 import * as discovery from './discovery.ts';
 import { abandonUpstreamOAuth, clientMetadataDocument, purgeExpiredFlows } from './oauth.ts';
@@ -10,6 +8,8 @@ export type * from './types.ts';
 export { toScriptValue } from './upstream.ts';
 /** Callback helpers for `src/routes/connectors/oauth/**` (not part of the service contract) */
 export { abandonUpstreamOAuth as abandonOAuth, clientMetadataDocument };
+/** Job `connectors.oauth_flows` (registered in `jobs/builtin.ts`) */
+export { purgeExpiredFlows };
 
 export const listDirectory: ConnectorsService['listDirectory'] = listDirectoryEntries;
 export const list: ConnectorsService['list'] = service.list;
@@ -18,6 +18,8 @@ export const add: ConnectorsService['add'] = service.add;
 export const remove: ConnectorsService['remove'] = service.remove;
 export const rename: ConnectorsService['rename'] = service.rename;
 export const disconnect: ConnectorsService['disconnect'] = service.disconnect;
+export const revokeUserCredentials: ConnectorsService['revokeUserCredentials'] =
+	service.revokeUserCredentials;
 export const startOAuth: ConnectorsService['startOAuth'] = service.startOAuth;
 export const completeOAuth: ConnectorsService['completeOAuth'] = service.completeOAuth;
 export const setToken: ConnectorsService['setToken'] = service.setToken;
@@ -28,15 +30,3 @@ export const describeTools: ConnectorsService['describeTools'] = discovery.descr
 export const declarationsFor: ConnectorsService['declarationsFor'] = discovery.declarationsFor;
 export const resolveTool: ConnectorsService['resolveTool'] = discovery.resolveTool;
 export const callTool: ConnectorsService['callTool'] = service.callTool;
-
-if (!building) {
-	try {
-		registerJob({
-			name: 'connectors.oauth_flows',
-			intervalMs: 60 * 60 * 1000,
-			run: () => purgeExpiredFlows()
-		});
-	} catch {
-		// Already registered (module re-evaluated by HMR)
-	}
-}

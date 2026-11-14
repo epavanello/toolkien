@@ -29,7 +29,8 @@
 	} from '#lib/functions/workspaces.remote.ts';
 
 	const workspace = $derived(page.params.workspace!);
-	let createOpen = $state(false);
+	// `?new` (workspace switcher link) opens the new company workspace dialog
+	let createOpen = $state(page.url.searchParams.has('new'));
 	let deleteOpen = $state(false);
 	let suspendOpen = $state(false);
 

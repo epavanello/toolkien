@@ -16,7 +16,7 @@ import {
 	tool,
 	usageDaily
 } from '#lib/server/db/schema/index.ts';
-import type { LimitsService } from '#lib/server/limits/types.ts';
+import type { LimitsService, RateLimitResult } from '#lib/server/limits/types.ts';
 import type { PermissionsService } from '#lib/server/permissions/types.ts';
 import type { RunnerClient, RunnerResult } from '#lib/server/runner/types.ts';
 import type { WorkspaceActor, WorkspacesService } from '#lib/server/workspaces/types.ts';
@@ -41,7 +41,17 @@ export type ExecutionsDeps = {
 	limits: Pick<
 		LimitsService,
 		'getLimits' | 'checkRateLimit' | 'acquireExecutionSlot' | 'assertNotSuspended'
-	>;
+	> & {
+		/**
+		 * Per-user, per-workspace and per-IP limits (org-ops `checkExecutionRateLimits`). Without
+		 * it only the per-user limit applies through `checkRateLimit`.
+		 */
+		checkExecutionRateLimits?: (input: {
+			userId: string;
+			workspaceId: string;
+			ip?: string | null;
+		}) => Promise<RateLimitResult>;
+	};
 	workspaces: Pick<WorkspacesService, 'getById'>;
 	/** Public origin, for approval links */
 	origin: string;
@@ -424,7 +434,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 		return finalize(row, result, limits.execMaxOutputBytes);
 	}
 
-	const start: ExecutionsService['start'] = async ({ actor, clientId, code }) => {
+	const start: ExecutionsService['start'] = async ({ actor, clientId, clientName, ip, code }) => {
 		const workspace = await deps.workspaces.getById(actor.userId, actor.workspaceId);
 		if (!workspace) error(404, 'Workspace not found.', { code: 'NOT_FOUND' });
 		if (workspace.suspended || workspace.deleteScheduledAt) {
@@ -435,11 +445,13 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: actor.workspaceId
 		});
 		const limits = await deps.limits.getLimits();
-		const rate = deps.limits.checkRateLimit(
-			`exec:user:${actor.userId}`,
-			limits.rateLimitExecPerMin,
-			60_000
-		);
+		const rate = deps.limits.checkExecutionRateLimits
+			? await deps.limits.checkExecutionRateLimits({
+					userId: actor.userId,
+					workspaceId: actor.workspaceId,
+					ip
+				})
+			: deps.limits.checkRateLimit(`exec:user:${actor.userId}`, limits.rateLimitExecPerMin, 60_000);
 		if (!rate.allowed) {
 			error(429, `Too many executions. Retry in ${Math.ceil(rate.retryAfterMs / 1000)} s.`, {
 				code: 'RATE_LIMITED'
@@ -471,6 +483,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: row.workspaceId,
 			userId: row.userId,
 			clientId,
+			clientName: clientName ?? null,
 			executionId: row.id
 		});
 		return run(row, code, { ...actor, role: workspace.role });

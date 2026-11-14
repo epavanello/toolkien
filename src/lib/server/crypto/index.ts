@@ -7,7 +7,6 @@ import {
 	TOOLKIEN_DEV_MASTER_KEY
 } from '$app/env/private';
 import { db } from '#lib/server/db/index.ts';
-import { registerJob } from '#lib/server/jobs/index.ts';
 import { CryptoError } from './aead.ts';
 import { createEnvelopeCrypto, type EnvelopeCrypto } from './envelope.ts';
 import { OpenBaoClient } from './openbao.ts';
@@ -81,13 +80,3 @@ export async function rewrapAllWorkspaces(opts: { rotateDataKey?: boolean } = {}
 	}
 	return { workspaces, resealed };
 }
-
-// Daily, idempotent: a no-op until the transit key is rotated, then it moves every wrapped DEK
-// to the new key version so `min_decryption_version` can be raised.
-registerJob({
-	name: 'crypto.rewrap',
-	intervalMs: 24 * 60 * 60_000,
-	run: async () => {
-		await rewrapAllWorkspaces();
-	}
-});

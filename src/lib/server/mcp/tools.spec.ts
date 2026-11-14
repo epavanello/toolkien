@@ -266,6 +266,8 @@ describe('execute', () => {
 		expect(deps.executions.start).toHaveBeenCalledWith({
 			actor: { workspaceId: acme.id, userId: 'u1', role: 'member' },
 			clientId: 'client-1',
+			clientName: 'Test Client',
+			ip: null,
 			code: 'return 1'
 		});
 		expect(text.split('\n')[0]).toBe('Workspace: Acme (acme)');

@@ -44,7 +44,7 @@
 		{/each}
 	</Sidebar.Content>
 	<Sidebar.Footer>
-		<UserMenu {user} />
+		<UserMenu {user} workspace={workspace.slug} />
 	</Sidebar.Footer>
 	<Sidebar.Rail />
 </Sidebar.Root>

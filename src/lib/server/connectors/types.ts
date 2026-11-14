@@ -261,6 +261,12 @@ export interface ConnectorsService {
 	/** (additive) Removes the actor's own credential (or the shared one, admins), revoking it */
 	disconnect(actor: WorkspaceActor, connectorId: string): Promise<void>;
 	/**
+	 * (additive) Revokes upstream (best effort) and deletes every credential `userId` holds on
+	 * connectors of the workspace (member leaving or removed, account deletion). Returns the
+	 * number of credentials deleted. No permission check: callers authorise the removal.
+	 */
+	revokeUserCredentials(workspaceId: string, userId: string): Promise<number>;
+	/**
 	 * (additive) Session open: syncs the actor's usable connectors whose definitions are older
 	 * than 6 h (or never synced). Never throws; failures land in the connector status.
 	 */

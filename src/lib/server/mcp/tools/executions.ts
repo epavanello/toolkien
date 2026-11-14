@@ -127,6 +127,8 @@ export function registerExecutionTools(
 			const outcome = await deps.executions.start({
 				actor,
 				clientId: env.request.clientId,
+				clientName: env.request.clientName,
+				ip: env.request.clientAddress ?? null,
 				code
 			});
 			return renderOutcome(env, outcome);

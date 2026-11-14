@@ -84,7 +84,11 @@ export function drizzleKeyStore(db: Db): DataKeyStore {
  * to scope it to one workspace. A new sealed column must be added here, or key rotation leaves
  * it on a retired data key (still readable, but never re-sealed).
  */
-const SEALED_GROUPS: { table: string; prefix: string; scope: (workspaceId: string) => SQL }[] = [
+export const SEALED_GROUPS: {
+	table: string;
+	prefix: string;
+	scope: (workspaceId: string) => SQL;
+}[] = [
 	{
 		table: 'connector_credential',
 		prefix: 'secret',
@@ -93,6 +97,11 @@ const SEALED_GROUPS: { table: string; prefix: string; scope: (workspaceId: strin
 	{
 		table: 'upstream_oauth_client',
 		prefix: 'client_secret',
+		scope: (ws) => sql`workspace_id = ${ws}`
+	},
+	{
+		table: 'upstream_oauth_flow',
+		prefix: 'code_verifier',
 		scope: (ws) => sql`workspace_id = ${ws}`
 	},
 	{ table: 'execution', prefix: 'state', scope: (ws) => sql`workspace_id = ${ws}` },
