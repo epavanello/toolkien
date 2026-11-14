@@ -5,7 +5,9 @@
  * 3. Rate limit per IP, before any token work.
  * 4. Bearer token: signature, issuer, expiry, `aud = ${ORIGIN}/mcp` (Better Auth
  *    `requireMcpAuth`); failures get the RFC 9728 `WWW-Authenticate` challenge.
- * 5. Kill switches: disabled OAuth client, suspended user (`limits.assertNotSuspended`).
+ * 5. Kill switches: disabled OAuth client, suspended user (`limits.assertNotSuspended`), and a
+ *    client the user disconnected (access tokens are JWTs verified offline: without a live
+ *    grant they get the challenge again instead of working until they expire).
  * 6. Rate limit per user.
  * 7. The MCP handler, with the client name captured for audit.
  *
@@ -27,6 +29,10 @@ export type McpEndpointDeps = {
 	) => Promise<Response>;
 	loadClient: (clientId: string) => Promise<{ name: string | null; disabled: boolean } | null>;
 	loadUser: (userId: string) => Promise<{ suspended: boolean } | null>;
+	/** The user still grants the client access (consent or live refresh token) */
+	hasLiveGrant: (userId: string, clientId: string) => Promise<boolean>;
+	/** RFC 9728 metadata URL, sent in the challenge when the grant is gone */
+	resourceMetadataUrl: string;
 	limits: Pick<LimitsService, 'checkRateLimit' | 'assertNotSuspended' | 'getLimits'>;
 	/** Exact origins a browser may call `/mcp` from (requests without `Origin` are allowed) */
 	isAllowedOrigin: (origin: string) => boolean;
@@ -78,9 +84,18 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 			const clientId = typeof claims.azp === 'string' ? claims.azp : null;
 			if (!userId || !clientId) return jsonRpcError(401, 'Access token is not bound to a user.');
 
-			const [client, user] = await Promise.all([deps.loadClient(clientId), deps.loadUser(userId)]);
+			const [client, user, granted] = await Promise.all([
+				deps.loadClient(clientId),
+				deps.loadUser(userId),
+				deps.hasLiveGrant(userId, clientId)
+			]);
 			if (!client || client.disabled) return jsonRpcError(403, 'This MCP client is disabled.');
 			if (!user) return jsonRpcError(401, 'Unknown user.');
+			if (!granted) {
+				return jsonRpcError(401, 'This client was disconnected. Sign in again to reconnect it.', {
+					'WWW-Authenticate': `Bearer error="invalid_token", error_description="The user disconnected this client", resource_metadata="${deps.resourceMetadataUrl}"`
+				});
+			}
 			if (user.suspended) return jsonRpcError(403, 'This account is suspended.');
 			try {
 				await deps.limits.assertNotSuspended({ userId });

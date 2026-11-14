@@ -90,6 +90,8 @@ export async function seedConnector(
 		namespace?: string;
 		name?: string;
 		source?: 'directory' | 'url';
+		/** Community or needs-review directory entry (free URLs are always unverified) */
+		unverified?: boolean;
 		ownerUserId?: string | null;
 	} = {}
 ) {
@@ -104,7 +106,7 @@ export async function seedConnector(
 		url: `https://${namespace}.example.test/mcp`,
 		name: opts.name ?? namespace,
 		namespace,
-		unverified: (opts.source ?? 'directory') === 'url',
+		unverified: opts.unverified ?? (opts.source ?? 'directory') === 'url',
 		authType: 'none',
 		status: 'active'
 	});

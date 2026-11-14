@@ -429,4 +429,24 @@ describe('MCP', () => {
 		expect(JSON.stringify(list.content)).toContain('Active workspace: Acme (acme)');
 		await client.close();
 	});
+	it('stops a disconnected client at once, even with an unexpired access token', async () => {
+		const { revokeClient } = await import('#lib/server/clients/index.ts');
+		const call = () =>
+			mcpFetch(MCP_RESOURCE, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'Content-Type': 'application/json',
+					Accept: 'application/json, text/event-stream',
+					'MCP-Protocol-Version': '2025-11-25'
+				},
+				body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
+			});
+		expect((await call()).status).not.toBe(401);
+		const client = String(decodeJwt(accessToken).azp);
+		await revokeClient({ workspaceId: 'any', userId, role: 'owner' }, client);
+		const response = await call();
+		expect(response.status).toBe(401);
+		expect(response.headers.get('www-authenticate')).toContain('error="invalid_token"');
+	});
 });

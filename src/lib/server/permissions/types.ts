@@ -12,10 +12,11 @@ export type { PermissionLevel };
  *
  * Levels: `allow` (always allowed), `ask` (ask for confirmation), `block` (blocked).
  * Defaults by tool origin:
- * - curated directory + `readOnlyHint: true` → `allow`
- * - curated directory + write or `destructiveHint` → `ask`
- * - free URL → the same rule is *proposed*; the user confirms it on first configuration, until
- *   then the tool is treated as `ask` (reads) / `ask` (writes)
+ * - trusted directory entry (publisher `official`, check `tested`/`documented`):
+ *   `readOnlyHint: true` → `allow`; write or `destructiveHint` → `ask`
+ * - (changed) community entries, `needs-review` entries and free URLs (every connector stored as
+ *   `unverified`) → the same rule is *proposed*; the user confirms it on first configuration,
+ *   until then the tool is treated as `ask` (reads) / `ask` (writes)
  * - no annotations → treated as a write → `ask`
  *
  * Resolution: the effective level is the most restrictive of the default, the workspace policy
@@ -45,7 +46,7 @@ export type DefaultLevelInput = {
 
 export type EffectiveLevel = {
 	level: PermissionLevel;
-	/** Signature changed since confirmation, or free-URL default never confirmed */
+	/** Signature changed since confirmation, or the default of an unverified connector never confirmed */
 	needsConfirmation: boolean;
 	/** Which layer decided the level (for the UI and the audit `approvedBy`) */
 	source: 'default' | 'policy' | 'workspace' | 'user';
@@ -59,6 +60,12 @@ export type PermissionRowInput = {
 
 /** Everything `resolveEffectiveLevel` needs about one tool for one user */
 export type ResolveLevelInput = DefaultLevelInput & {
+	/**
+	 * (additive) `connector.unverified`: free URL, community or needs-review directory entry.
+	 * Only `source = 'directory'` with `unverified: false` counts as trusted; a missing value is
+	 * treated as unverified (fail closed).
+	 */
+	unverified?: boolean;
 	/** Signature hash of the tool's current version */
 	signatureHash: string;
 	/** `workspace_policy.permission_floor` */

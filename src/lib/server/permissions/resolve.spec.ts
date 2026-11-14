@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { defaultLevel, floorFor, resolveEffectiveLevel, satisfiesFloor } from './resolve.ts';
+import {
+	defaultLevel,
+	floorFor,
+	isTrustedSource,
+	resolveEffectiveLevel,
+	satisfiesFloor
+} from './resolve.ts';
 import { mostRestrictive, type ResolveLevelInput } from './types.ts';
 
 const base: ResolveLevelInput = {
 	source: 'directory',
+	unverified: false,
 	annotations: { readOnlyHint: true },
 	signatureHash: 'sig',
 	policyFloor: null,
@@ -68,10 +75,29 @@ describe('resolveEffectiveLevel', () => {
 	});
 
 	it('free URL without rows is "to confirm" and at least ask', () => {
-		expect(resolveEffectiveLevel({ ...base, source: 'url' })).toEqual({
+		expect(resolveEffectiveLevel({ ...base, source: 'url', unverified: true })).toEqual({
 			level: 'ask',
 			needsConfirmation: true,
 			source: 'default'
+		});
+	});
+
+	it('community and needs-review directory entries are proposals too (unverified)', () => {
+		expect(resolveEffectiveLevel({ ...base, unverified: true })).toEqual({
+			level: 'ask',
+			needsConfirmation: true,
+			source: 'default'
+		});
+	});
+
+	it('fails closed: a free URL is never trusted, a missing flag counts as unverified', () => {
+		expect(isTrustedSource({ source: 'directory', unverified: false })).toBe(true);
+		expect(isTrustedSource({ source: 'url', unverified: false })).toBe(false);
+		expect(isTrustedSource({ source: 'directory' })).toBe(false);
+		const { unverified: _unverified, ...withoutFlag } = base;
+		expect(resolveEffectiveLevel(withoutFlag)).toMatchObject({
+			level: 'ask',
+			needsConfirmation: true
 		});
 	});
 
@@ -152,10 +178,15 @@ describe('resolveEffectiveLevel', () => {
 		for (const policyFloor of [null, ...levels]) {
 			for (const ws of [null, ...levels]) {
 				for (const user of [null, ...levels]) {
-					for (const source of ['directory', 'url'] as const) {
+					for (const [source, unverified] of [
+						['directory', false],
+						['directory', true],
+						['url', true]
+					] as const) {
 						const result = resolveEffectiveLevel({
 							...base,
 							source,
+							unverified,
 							policyFloor,
 							workspaceRow: ws ? row(ws) : null,
 							userRow: user ? row(user) : null

@@ -16,6 +16,8 @@ function setup(overrides: Partial<McpEndpointDeps> = {}) {
 		verify: vi.fn<McpEndpointDeps['verify']>(async (request, next) => next(request, claims)),
 		loadClient: vi.fn(async () => ({ name: 'Claude', disabled: false })),
 		loadUser: vi.fn(async () => ({ suspended: false })),
+		hasLiveGrant: vi.fn(async () => true),
+		resourceMetadataUrl: 'https://toolkien.test/.well-known/oauth-protected-resource/mcp',
 		limits: {
 			checkRateLimit: vi.fn(() => ({ allowed: true as const })),
 			assertNotSuspended: vi.fn(async () => {}),
@@ -81,6 +83,17 @@ describe('/mcp endpoint', () => {
 			minRequestsPerUser(60),
 			60_000
 		);
+	});
+
+	it('rejects a token of a client the user disconnected, with the OAuth challenge', async () => {
+		const { post, deps } = setup({ hasLiveGrant: vi.fn(async () => false) });
+		const response = await post();
+		expect(response.status).toBe(401);
+		expect(response.headers.get('www-authenticate')).toMatch(
+			/^Bearer error="invalid_token".*resource_metadata="https:\/\/toolkien\.test\/\.well-known\/oauth-protected-resource\/mcp"$/
+		);
+		expect(deps.hasLiveGrant).toHaveBeenCalledWith('u1', 'client-1');
+		expect(deps.handle).not.toHaveBeenCalled();
 	});
 
 	it('applies kill switches: disabled client, suspended user', async () => {

@@ -1,5 +1,7 @@
-import { and, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { error } from '@sveltejs/kit';
+import { and, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { ORIGIN } from '$app/env/private';
+import { record } from '#lib/server/audit/index.ts';
 import { db } from '#lib/server/db/index.ts';
 import {
 	auditEvent,
@@ -10,12 +12,19 @@ import {
 	oauthRefreshToken
 } from '#lib/server/db/schema/index.ts';
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
-import { needsConnectGuide, type AuthorizedClient, type OnboardingStatus } from './types.ts';
+import {
+	needsConnectGuide,
+	type AuthorizedClient,
+	type OnboardingStatus,
+	type RevokedClient
+} from './types.ts';
 
 export type * from './types.ts';
 export { needsConnectGuide } from './types.ts';
 
 export const mcpUrl = () => `${ORIGIN}/mcp`;
+
+const UNNAMED = 'Unnamed MCP client';
 
 type Activity = { clientId: string; first: Date | null; last: Date | null; live: boolean };
 
@@ -101,7 +110,7 @@ export async function listAuthorizedClients(
 			const tokens = value.tokens;
 			return {
 				clientId,
-				name: nameOf.get(clientId) ?? 'Unnamed MCP client',
+				name: nameOf.get(clientId) ?? UNNAMED,
 				connectedAt: earliest(value.consentedAt, ...tokens.map((token) => token.first)) ?? now,
 				lastUsedAt: latest(...tokens.map((token) => token.last), lastCall.get(clientId))
 			};
@@ -110,6 +119,88 @@ export async function listAuthorizedClients(
 			(a, b) =>
 				(b.lastUsedAt ?? b.connectedAt).getTime() - (a.lastUsedAt ?? a.connectedAt).getTime()
 		);
+}
+
+/**
+ * Whether the user still grants this client access: a stored consent, or a live refresh token.
+ * `/mcp` checks it on every request, so a disconnect also stops access tokens already issued.
+ */
+export async function hasLiveGrant(
+	userId: string,
+	clientId: string,
+	now = new Date()
+): Promise<boolean> {
+	const [consents, refresh] = await Promise.all([
+		db
+			.select({ id: oauthConsent.id })
+			.from(oauthConsent)
+			.where(and(eq(oauthConsent.userId, userId), eq(oauthConsent.clientId, clientId)))
+			.limit(1),
+		db
+			.select({ id: oauthRefreshToken.id })
+			.from(oauthRefreshToken)
+			.where(
+				and(
+					eq(oauthRefreshToken.userId, userId),
+					eq(oauthRefreshToken.clientId, clientId),
+					isNull(oauthRefreshToken.revoked),
+					gt(oauthRefreshToken.expiresAt, now)
+				)
+			)
+			.limit(1)
+	]);
+	return consents.length > 0 || refresh.length > 0;
+}
+
+/**
+ * Disconnects an MCP client for the actor's user only (see the contract): consent and every
+ * access/refresh token deleted in one transaction, then audited in the actor's workspace. 404
+ * when the user never authorized it (or it was already disconnected).
+ */
+export async function revokeClient(
+	actor: WorkspaceActor,
+	clientId: string
+): Promise<RevokedClient> {
+	const { userId } = actor;
+	const removed = await db.transaction(async (tx) => {
+		// Access tokens first: those minted by a refresh token would cascade anyway
+		const accessTokens = await tx
+			.delete(oauthAccessToken)
+			.where(and(eq(oauthAccessToken.userId, userId), eq(oauthAccessToken.clientId, clientId)))
+			.returning({ id: oauthAccessToken.id });
+		const refreshTokens = await tx
+			.delete(oauthRefreshToken)
+			.where(and(eq(oauthRefreshToken.userId, userId), eq(oauthRefreshToken.clientId, clientId)))
+			.returning({ id: oauthRefreshToken.id });
+		const consents = await tx
+			.delete(oauthConsent)
+			.where(and(eq(oauthConsent.userId, userId), eq(oauthConsent.clientId, clientId)))
+			.returning({ id: oauthConsent.id });
+		return {
+			accessTokens: accessTokens.length,
+			refreshTokens: refreshTokens.length,
+			consents: consents.length
+		};
+	});
+	if (removed.accessTokens + removed.refreshTokens + removed.consents === 0) {
+		error(404, 'This client is not connected to your account.', { code: 'NOT_FOUND' });
+	}
+	const [client] = await db
+		.select({ name: oauthClient.name })
+		.from(oauthClient)
+		.where(eq(oauthClient.clientId, clientId))
+		.limit(1);
+	const name = client?.name?.trim() || UNNAMED;
+	await record({
+		type: 'mcp_client.revoked',
+		outcome: 'success',
+		workspaceId: actor.workspaceId,
+		userId: actor.userId,
+		clientId,
+		clientName: name,
+		metadata: removed
+	});
+	return { clientId, name, ...removed };
 }
 
 /** Names of the connectors the actor can see in the workspace (shared + their own) */

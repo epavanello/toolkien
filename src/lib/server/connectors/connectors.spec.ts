@@ -118,6 +118,7 @@ const { db } = await import('#lib/server/db/index.ts');
 const schema = await import('#lib/server/db/schema/index.ts');
 const { seedWorkspace } = await import('./testing/db.ts');
 const connectors = await import('./index.ts');
+const { OAuthCallbackError } = connectors;
 
 const actor = (userId: keyof typeof roles): WorkspaceActor => ({
 	workspaceId: 'ws-1',
@@ -584,6 +585,47 @@ describe('upstream OAuth', () => {
 		expect(await auditTypes(id)).toContain('connector.authenticated');
 	});
 
+	it('turns failures of a known flow into a short code and the way back', async () => {
+		const returnTo = `/w/ws-1/connectors?connector=${id}`;
+		const begin = async () => {
+			const { authorizationUrl } = await connectors.startOAuth(alice, id, returnTo);
+			server.visitAuthorize(authorizationUrl);
+			return server.oauth.approve();
+		};
+		const failure = (promise: Promise<unknown>) =>
+			promise.then(
+				() => null,
+				(cause: unknown) =>
+					cause instanceof OAuthCallbackError
+						? { code: cause.code, returnTo: cause.returnTo }
+						: cause
+			);
+
+		// The authorization server refuses the code
+		const refused = await begin();
+		expect(
+			await failure(connectors.completeOAuth(refused.state, 'not-the-code', { userId: 'alice' }))
+		).toEqual({ code: 'exchange_failed', returnTo });
+
+		// The authorization server cannot be reached
+		const offline = await begin();
+		servers.splice(servers.indexOf(server), 1);
+		try {
+			expect(
+				await failure(connectors.completeOAuth(offline.state, offline.code, { userId: 'alice' }))
+			).toEqual({ code: 'unreachable', returnTo });
+		} finally {
+			servers.push(server);
+		}
+
+		// The user took longer than the flow lifetime
+		const late = await begin();
+		await db.update(schema.upstreamOAuthFlow).set({ expiresAt: new Date(Date.now() - 1000) });
+		expect(
+			await failure(connectors.completeOAuth(late.state, late.code, { userId: 'alice' }))
+		).toEqual({ code: 'expired', returnTo });
+	});
+
 	it('refreshes the access token after a 401 and retries', async () => {
 		server.oauth.expireAccessTokens();
 		const tool = (await connectors.resolveTool(bob, 'oauth.listIssues'))!;
@@ -868,7 +910,11 @@ describe('authentication detection and guided setup', () => {
 			})
 			.returning();
 		const summary = (await connectors.list(alice)).find((c) => c.id === row.id)!;
-		expect(summary).toMatchObject({ authType: 'oauth', status: 'pending_auth', authenticated: false });
+		expect(summary).toMatchObject({
+			authType: 'oauth',
+			status: 'pending_auth',
+			authenticated: false
+		});
 		expect((await connectors.get(alice, row.id)).authType).toBe('oauth');
 	});
 

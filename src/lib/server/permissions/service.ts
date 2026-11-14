@@ -145,6 +145,7 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 			const userRow = rows.userRows.get(facts.toolId) ?? null;
 			const input = {
 				source: facts.source,
+				unverified: facts.unverified,
 				annotations: facts.annotations,
 				signatureHash: facts.signatureHash,
 				policyFloor: floor,

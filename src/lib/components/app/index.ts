@@ -12,6 +12,7 @@ export { default as ClientSetup } from './client-setup.svelte';
 export { default as CommandField } from './command-field.svelte';
 export { default as CodeBlock } from './code-block.svelte';
 export { default as ConfirmDialog } from './confirm-dialog.svelte';
+export { default as ConnectedClients } from './connected-clients.svelte';
 export { default as CopyButton } from './copy-button.svelte';
 export { default as DataTable } from './data-table.svelte';
 export { default as Disclosure } from './disclosure.svelte';

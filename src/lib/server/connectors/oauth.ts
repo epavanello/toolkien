@@ -5,6 +5,8 @@ import {
 	checkResourceAllowed,
 	discoverOAuthServerInfo,
 	exchangeAuthorization,
+	OAuthClientFlowError,
+	OAuthError,
 	refreshAuthorization,
 	registerClient,
 	startAuthorization,
@@ -20,6 +22,7 @@ import { db } from '#lib/server/db/index.ts';
 import { upstreamOAuthClient, upstreamOAuthFlow } from '#lib/server/db/schema/index.ts';
 import { safeFetch } from '#lib/server/net/index.ts';
 import type { ConnectorRow } from './access.ts';
+import { OAuthCallbackError } from './callback.ts';
 import { fromSealedColumns, type OAuthSecret } from './credentials.ts';
 import { readChallenge } from './detect.ts';
 import type { DirectoryEntry } from './types.ts';
@@ -246,14 +249,21 @@ export async function completeUpstreamOAuth(
 		.delete(upstreamOAuthFlow)
 		.where(eq(upstreamOAuthFlow.stateHash, sha256(state)))
 		.returning();
-	if (!flow || flow.expiresAt.getTime() < Date.now()) {
-		error(400, 'This authorization link expired. Start again from the connector.', {
-			code: 'INVALID_INPUT'
-		});
+	if (!flow) {
+		error(
+			400,
+			'This sign-in link expired or was already used. Open Connectors and choose Connect again.',
+			{ code: 'INVALID_INPUT' }
+		);
 	}
 	if (opts.userId !== undefined && opts.userId !== flow.userId) {
-		error(403, 'This authorization was started by another account.', { code: 'FORBIDDEN' });
+		error(
+			403,
+			'This sign-in was started by another Toolkien account. Sign in with that account, or start again from Connectors.',
+			{ code: 'FORBIDDEN' }
+		);
 	}
+	if (flow.expiresAt.getTime() < Date.now()) throw new OAuthCallbackError('expired', flow.returnTo);
 	const [client] = await db
 		.select()
 		.from(upstreamOAuthClient)
@@ -264,7 +274,7 @@ export async function completeUpstreamOAuth(
 		flow.codeVerifierNonce,
 		flow.codeVerifierKeyVersion
 	);
-	if (!client || !sealed) failure('The connector changed during authorization. Start again.');
+	if (!client || !sealed) throw new OAuthCallbackError('failed', flow.returnTo);
 	const codeVerifier = new TextDecoder().decode(
 		await decryptForWorkspace(flow.workspaceId, sealed)
 	);
@@ -281,8 +291,11 @@ export async function completeUpstreamOAuth(
 			resource: flow.resource ?? undefined,
 			fetchFn: oauthFetch
 		});
-	} catch {
-		failure('The authorization server refused the authorization code.');
+	} catch (cause) {
+		// An OAuth error answer or a failed check (issuer, endpoint) is a refusal; anything else
+		// (DNS, TLS, timeout, blocked address) means the server could not be reached
+		const refused = OAuthError.isInstance(cause) || OAuthClientFlowError.isInstance(cause);
+		throw new OAuthCallbackError(refused ? 'exchange_failed' : 'unreachable', flow.returnTo);
 	}
 	return {
 		connectorId: flow.connectorId,

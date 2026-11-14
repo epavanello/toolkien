@@ -38,6 +38,7 @@ export const AUDIT_EVENT_TYPES = [
 	'approval.decided',
 	'kill_switch.activated',
 	'kill_switch.released',
+	'mcp_client.revoked',
 	'account.exported',
 	'account.deleted',
 	'platform.limits_changed',

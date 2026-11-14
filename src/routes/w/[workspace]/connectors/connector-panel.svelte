@@ -65,9 +65,7 @@
 					{#if c.authenticated}
 						<Button size="sm" variant="outline" onclick={() => onDisconnect(c)}>Disconnect</Button>
 					{/if}
-					<Button size="sm" variant="outline" onclick={() => onConnect(c)}
-						>{signInLabel(c)}</Button
-					>
+					<Button size="sm" variant="outline" onclick={() => onConnect(c)}>{signInLabel(c)}</Button>
 				{/if}
 				{#if c.canManage}
 					<Button size="sm" variant="outline" onclick={() => onRename(c)}>Rename</Button>
@@ -132,16 +130,18 @@
 				description={c.statusMessage ?? 'The server did not answer as expected.'}
 			>
 				{#snippet action()}
-					<Button size="sm" variant="outline" icon={RefreshCw} onclick={refresh}
-						>Retry</Button
-					>
+					<Button size="sm" variant="outline" icon={RefreshCw} onclick={refresh}>Retry</Button>
 				{/snippet}
 			</Callout>
 		{:else if c.statusMessage}
 			<Callout title="Note" description={c.statusMessage} />
 		{/if}
 		{#if c.unverified}
-			<Callout tone="warning" title="Untrusted tool descriptions" description={untrustedReason(c)} />
+			<Callout
+				tone="warning"
+				title="Untrusted tool descriptions"
+				description={untrustedReason(c)}
+			/>
 		{/if}
 		{#if c.directory?.tokenHelp && !c.authenticated}
 			<Callout title="Token" description={c.directory.tokenHelp} />

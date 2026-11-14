@@ -18,8 +18,17 @@ export const isReadOnly = (annotations: ToolAnnotations | null | undefined): boo
 	annotations?.readOnlyHint === true && annotations.destructiveHint !== true;
 
 /**
- * Default level from the spec table. Free-URL tools get the same *proposed* level; the caller
- * marks them "to confirm" until the user confirms (see `resolveEffectiveLevel`).
+ * Whether the connector's defaults apply without confirmation: a directory entry by the official
+ * publisher with a `tested`/`documented` check (stored as `unverified: false`). Community and
+ * needs-review entries and free URLs are not; a missing flag counts as unverified.
+ */
+export const isTrustedSource = (input: { source: ConnectorSource; unverified?: boolean }) =>
+	input.source === 'directory' && input.unverified === false;
+
+/**
+ * Default level from the spec table. Untrusted connectors (see `isTrustedSource`) get the same
+ * *proposed* level; the caller marks them "to confirm" until the user confirms (see
+ * `resolveEffectiveLevel`).
  * Missing annotations mean "treated as a write" → `ask`.
  */
 export function defaultLevel(input: {
@@ -46,7 +55,8 @@ export const satisfiesFloor = (level: PermissionLevel, minimum: PermissionLevel)
  * - The *floor* is the most restrictive of the policy floor and the workspace row; the result is
  *   never looser than it, whatever the user chose.
  * - "To confirm": the row that provided the chosen level was confirmed against another signature,
- *   or there is no row and the tool comes from a free URL. Such a tool is at least `ask`.
+ *   or there is no row and the connector is not trusted (free URL, community or needs-review
+ *   directory entry). Such a tool is at least `ask`.
  */
 export function resolveEffectiveLevel(input: ResolveLevelInput): EffectiveLevel {
 	const { userRow, workspaceRow, policyFloor } = input;
@@ -55,7 +65,7 @@ export function resolveEffectiveLevel(input: ResolveLevelInput): EffectiveLevel 
 	const needsConfirmation = baseRow
 		? baseRow.confirmedSignatureHash === null ||
 			baseRow.confirmedSignatureHash !== input.signatureHash
-		: input.source === 'url';
+		: !isTrustedSource(input);
 
 	const level = mostRestrictive(
 		chosen,

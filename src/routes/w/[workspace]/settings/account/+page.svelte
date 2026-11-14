@@ -7,6 +7,7 @@
 	import {
 		Boundary,
 		Callout,
+		ConnectedClients,
 		DataTable,
 		FormDialog,
 		FormField,
@@ -18,6 +19,7 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { attempt } from '#lib/core/attempt.ts';
 	import { deleteMyAccount, getAccount, removePasskey } from '#lib/functions/account.remote.ts';
+	import { watchOnboarding } from '#lib/functions/onboarding.remote.ts';
 
 	const workspace = $derived(page.params.workspace!);
 
@@ -99,6 +101,15 @@
 					</Button>
 				{/snippet}
 			</DataTable>
+		</Section>
+
+		<Section
+			title="Connected AI clients"
+			variant="plain"
+			description="MCP clients (Claude, ChatGPT, Cursor…) you signed in to Toolkien from. Disconnecting one revokes its access in every workspace."
+		>
+			{@const onboarding = await watchOnboarding(workspace)}
+			<ConnectedClients clients={onboarding.clients} {workspace} />
 		</Section>
 
 		<Section

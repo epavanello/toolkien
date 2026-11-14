@@ -28,6 +28,7 @@ let outsider: string;
 let readTool: string;
 let writeTool: string;
 let urlTool: string;
+let communityTool: string;
 let foreignTool: string;
 let privateTool: string;
 
@@ -46,6 +47,7 @@ beforeEach(async () => {
 	await seedMember(db, other, outsider, 'owner');
 	const curated = await seedConnector(db, ws, { namespace: 'gh' });
 	const free = await seedConnector(db, ws, { namespace: 'free', source: 'url' });
+	const community = await seedConnector(db, ws, { namespace: 'community', unverified: true });
 	const mine = await seedConnector(db, ws, { namespace: 'mine', ownerUserId: admin });
 	const foreign = await seedConnector(db, other, { namespace: 'gh' });
 	readTool = await seedTool(db, ws, curated.id, {
@@ -55,6 +57,10 @@ beforeEach(async () => {
 	writeTool = await seedTool(db, ws, curated.id, { path: 'gh.createIssue' });
 	urlTool = await seedTool(db, ws, free.id, {
 		path: 'free.read',
+		annotations: { readOnlyHint: true }
+	});
+	communityTool = await seedTool(db, ws, community.id, {
+		path: 'community.read',
 		annotations: { readOnlyHint: true }
 	});
 	privateTool = await seedTool(db, ws, mine.id, {
@@ -86,6 +92,11 @@ describe('permissions service', () => {
 		expect((await level(memberId, readTool)).level).toBe('allow');
 		expect((await level(memberId, writeTool)).level).toBe('ask');
 		expect(await level(memberId, urlTool)).toMatchObject({ level: 'ask', needsConfirmation: true });
+		// Community / needs-review directory entries: proposed like a free URL
+		expect(await level(memberId, communityTool)).toMatchObject({
+			level: 'ask',
+			needsConfirmation: true
+		});
 	});
 
 	it('denies tools of another workspace, unknown ids and private connectors of others', async () => {
@@ -299,7 +310,12 @@ describe('permissions service', () => {
 			userId: memberId,
 			role: 'member'
 		});
-		expect(list.map((r) => r.path)).toEqual(['free.read', 'gh.createIssue', 'gh.listIssues']);
+		expect(list.map((r) => r.path)).toEqual([
+			'community.read',
+			'free.read',
+			'gh.createIssue',
+			'gh.listIssues'
+		]);
 		const free = list.find((r) => r.path === 'free.read')!;
 		expect(free).toMatchObject({
 			unverified: true,

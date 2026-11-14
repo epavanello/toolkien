@@ -38,12 +38,15 @@
 		audienceLabel,
 		describeSync,
 		needsSignIn,
+		oauthNotice,
 		signInLabel
 	} from './connectors.ts';
 
 	const workspace = $derived(page.params.workspace!);
-	/** Back from the upstream authorization (`connected` / `denied`), read once */
+	/** Back from the upstream authorization (`?oauth=<code>&connector=<id>`), read once */
 	const oauthResult = page.url.searchParams.get('oauth');
+	const oauth = oauthNotice(oauthResult);
+	const oauthConnector = page.url.searchParams.get('connector');
 
 	let selected = $state<string | null>(page.url.searchParams.get('connector'));
 	let panelOpen = $state(page.url.searchParams.has('connector'));
@@ -86,6 +89,12 @@
 		disconnecting = row;
 		disconnectOpen = true;
 	};
+	/** The sign-in failed: start it again for the same connector */
+	const retrySignIn = () =>
+		listConnectors(workspace).then(({ connectors }) => {
+			const row = connectors.find((c) => c.id === oauthConnector);
+			return row ? connect(row) : undefined;
+		});
 	const refresh = (row: Pick<ConnectorSummary, 'id'>) =>
 		attempt(refreshConnector({ workspace, id: row.id }).then(describeSync));
 
@@ -196,17 +205,14 @@
 		<Button icon={Plus} onclick={() => (urlOpen = true)}>Add by URL</Button>
 	{/snippet}
 
-	{#if oauthResult === 'connected'}
-		<Callout
-			title="Connected"
-			description="You are signed in and the tool list was loaded. Agents can use it now."
-		/>
-	{:else if oauthResult === 'denied'}
-		<Callout
-			tone="warning"
-			title="Sign-in cancelled"
-			description="Nothing was connected. Use Connect on the connector to try again."
-		/>
+	{#if oauth}
+		<Callout tone={oauth.tone} title={oauth.title} description={oauth.description}>
+			{#snippet action()}
+				{#if oauth.action && oauthConnector}
+					<Button size="sm" variant="outline" onclick={retrySignIn}>{oauth.action}</Button>
+				{/if}
+			{/snippet}
+		</Callout>
 	{/if}
 
 	<Boundary>

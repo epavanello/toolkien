@@ -2,6 +2,7 @@ import { toast } from 'svelte-sonner';
 import type {
 	ConnectorAuthType,
 	ConnectorSummary,
+	OAuthResult,
 	SyncResult
 } from '#lib/server/connectors/types.ts';
 
@@ -72,9 +73,7 @@ export const checkLabel = (status: 'tested' | 'documented' | 'needs-review') =>
 			: 'Needs review';
 
 /** Why agents see this connector's descriptions flagged as untrusted */
-export const untrustedReason = (
-	c: Pick<ConnectorSummary, 'publisher' | 'needsReview' | 'name'>
-) =>
+export const untrustedReason = (c: Pick<ConnectorSummary, 'publisher' | 'needsReview' | 'name'>) =>
 	`${
 		c.publisher === null
 			? 'This server is not in the directory'
@@ -82,3 +81,69 @@ export const untrustedReason = (
 				? `This server is maintained by a third party, not by ${c.name}`
 				: 'Its directory entry still needs review'
 	}: agents see its tool descriptions flagged as untrusted, and you confirm each tool's permission.`;
+
+export type OAuthNotice = {
+	tone: 'success' | 'warning' | 'danger';
+	title: string;
+	description: string;
+	/** Label of the button that starts the sign-in again, when it makes sense */
+	action: 'Connect' | 'Try again' | null;
+};
+
+const OAUTH_NOTICES: Record<OAuthResult, OAuthNotice> = {
+	connected: {
+		tone: 'success',
+		title: 'Connected',
+		description: 'You are signed in and the tool list was loaded. Agents can use it now.',
+		action: null
+	},
+	denied: {
+		tone: 'warning',
+		title: 'Sign-in cancelled',
+		description: 'You cancelled at the provider, so nothing was connected.',
+		action: 'Connect'
+	},
+	provider_error: {
+		tone: 'warning',
+		title: 'The provider did not complete the sign-in',
+		description:
+			'It answered with an error instead of an authorization. Try again; if it keeps failing, check that your account there has access.',
+		action: 'Try again'
+	},
+	expired: {
+		tone: 'warning',
+		title: 'The sign-in took too long',
+		description: 'A sign-in link is valid for 10 minutes. Start it again to connect.',
+		action: 'Try again'
+	},
+	exchange_failed: {
+		tone: 'danger',
+		title: 'The provider refused the sign-in',
+		description:
+			'Toolkien could not exchange the authorization for access. Try again; if it keeps failing, the server may only accept a pasted token.',
+		action: 'Try again'
+	},
+	unreachable: {
+		tone: 'danger',
+		title: 'The sign-in server did not respond',
+		description:
+			"Toolkien could not reach the provider's authorization server. It may be down: try again in a moment.",
+		action: 'Try again'
+	},
+	removed: {
+		tone: 'warning',
+		title: 'Connector removed',
+		description: 'The connector was deleted while you were signing in. Nothing was connected.',
+		action: null
+	},
+	failed: {
+		tone: 'danger',
+		title: 'The sign-in could not be completed',
+		description: "The connector's sign-in setup changed while you were away. Start it again.",
+		action: 'Try again'
+	}
+};
+
+/** What the page says after the upstream sign-in (`?oauth=<code>`); unknown codes say nothing */
+export const oauthNotice = (code: string | null): OAuthNotice | null =>
+	code !== null && Object.hasOwn(OAUTH_NOTICES, code) ? OAUTH_NOTICES[code as OAuthResult] : null;

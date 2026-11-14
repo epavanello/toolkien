@@ -37,14 +37,11 @@ import {
 	openCredential,
 	saveCredential
 } from './credentials.ts';
+import { OAuthCallbackError } from './callback.ts';
 import { detectAuth } from './detect.ts';
 import { findDirectoryEntryByUrl, getDirectoryEntry } from './directory.ts';
 import { resolveTool, summaryOf, toTypeInput, type ToolRecord } from './discovery.ts';
-import {
-	completeUpstreamOAuth,
-	revokeUpstreamTokens,
-	startUpstreamOAuth
-} from './oauth.ts';
+import { completeUpstreamOAuth, revokeUpstreamTokens, startUpstreamOAuth } from './oauth.ts';
 import { upstreamCredential } from './session.ts';
 import { rebuildSearch, requireAuthentication, syncConnector } from './sync.ts';
 import type {
@@ -122,19 +119,23 @@ async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<C
  * Lazy fixes on read, no data migration:
  * - free-URL connectors whose endpoint is a directory server are linked to that entry (source,
  *   directory id, trust), so they get its publisher, annotations and notes;
+ * - directory connectors follow their entry's current trust (`unverified`), which decides
+ *   whether default permissions are applied or proposed;
  * - connectors stuck on `authType = 'none'` + `pending_auth` (saved before detection existed,
  *   or the server started asking for sign-in) are re-detected and switched.
  */
 async function reconcile(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<ConnectorRow[]> {
 	const fixed = new Map<string, ConnectorRow>();
 	for (const row of rows) {
-		const entry = row.source === 'url' ? findDirectoryEntryByUrl(row.url) : null;
-		if (!entry) continue;
+		const entry =
+			row.source === 'url' ? findDirectoryEntryByUrl(row.url) : getDirectoryEntry(row.directoryId);
+		// Directory rows only need a fix when the entry's trust changed since they were added
+		if (!entry || (row.source === 'directory' && row.unverified === !entry.trusted)) continue;
 		const linked = await db.transaction(async (tx) => {
 			const [updated] = await tx
 				.update(connector)
 				.set({ source: 'directory', directoryId: entry.id, unverified: !entry.trusted })
-				.where(and(eq(connector.id, row.id), eq(connector.source, 'url')))
+				.where(and(eq(connector.id, row.id), eq(connector.source, row.source)))
 				.returning();
 			if (updated) await rebuildSearch(tx, updated);
 			return updated;
@@ -391,11 +392,7 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 	return summary;
 };
 
-export const addAndConnect: ConnectorsService['addAndConnect'] = async (
-	actor,
-	input,
-	returnTo
-) => {
+export const addAndConnect: ConnectorsService['addAndConnect'] = async (actor, input, returnTo) => {
 	const added = await add(actor, input);
 	if (added.authenticated || !added.canAuthenticate || added.suspended) {
 		return { connector: added, next: { type: 'ready', message: null } };
@@ -580,7 +577,12 @@ export const completeOAuth: ConnectorsService['completeOAuth'] = async (state, c
 		.from(connector)
 		.where(eq(connector.id, flow.connectorId))
 		.limit(1);
-	if (!row) error(404, 'Connector not found.', { code: 'NOT_FOUND' });
+	if (!row) {
+		// Back to the list: the connector the flow pointed at is gone
+		const list = new URL(flow.returnTo, 'http://localhost');
+		list.searchParams.delete('connector');
+		throw new OAuthCallbackError('removed', `${list.pathname}${list.search}`);
+	}
 	// The user must still be a member with the right to authenticate this credential
 	const workspace = await getById(flow.userId, flow.workspaceId);
 	if (!workspace)

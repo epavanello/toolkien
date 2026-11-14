@@ -3,7 +3,13 @@ import { db } from '#lib/server/db/index.ts';
 import { createPermissionsService } from './service.ts';
 
 export * from './types.ts';
-export { defaultLevel, isReadOnly, resolveEffectiveLevel, satisfiesFloor } from './resolve.ts';
+export {
+	defaultLevel,
+	isReadOnly,
+	isTrustedSource,
+	resolveEffectiveLevel,
+	satisfiesFloor
+} from './resolve.ts';
 
 const service = createPermissionsService({ db, audit: { record } });
 

@@ -1,6 +1,6 @@
-import { query } from '$app/server';
+import { command, query } from '$app/server';
 import { z } from 'zod';
-import { onboardingStatus } from '#lib/server/clients/index.ts';
+import { onboardingStatus, revokeClient } from '#lib/server/clients/index.ts';
 import { requireWorkspace } from '#lib/server/guards.ts';
 
 /**
@@ -12,8 +12,9 @@ import { requireWorkspace } from '#lib/server/guards.ts';
 
 const POLL_MS = 3000;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const slug = z.string().min(1).max(100);
 
-export const watchOnboarding = query.live(z.string().min(1).max(100), async function* (slug) {
+export const watchOnboarding = query.live(slug, async function* (slug) {
 	const { actor } = await requireWorkspace(slug);
 	let last = '';
 	while (true) {
@@ -27,3 +28,17 @@ export const watchOnboarding = query.live(z.string().min(1).max(100), async func
 		await sleep(POLL_MS);
 	}
 });
+
+/**
+ * Disconnects one of the user's MCP clients: its consent and tokens are deleted (it must sign in
+ * again), and the live onboarding state restarts so every "connected" mark updates.
+ */
+export const disconnectClient = command(
+	z.object({ workspace: slug, clientId: z.string().min(1).max(2048) }),
+	async ({ workspace, clientId }) => {
+		const { actor } = await requireWorkspace(workspace);
+		const { name } = await revokeClient(actor, clientId);
+		void watchOnboarding(workspace).reconnect();
+		return { name };
+	}
+);

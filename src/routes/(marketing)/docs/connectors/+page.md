@@ -8,7 +8,7 @@ A **connector** is a remote MCP server configured in a workspace. Toolkien suppo
 
 ## Directory or free URL
 
-- **Directory**: a curated list of popular servers with checked configuration and verified annotations (which tools are read-only or destructive). Directory servers get sensible default permissions.
+- **Directory**: a curated list of popular servers with checked configuration and verified annotations (which tools are read-only or destructive). Official, checked directory servers get sensible default permissions; community-maintained entries and entries still under review get them as a proposal you confirm, like a free URL.
 - **Free URL**: any remote MCP server. It is marked **unverified**: its tool descriptions come from a third party, are flagged as such in the TypeScript declarations and in the UI, and you are warned when they change. Every tool starts as _to confirm_.
 
 Company workspace admins can restrict both (see [Workspaces & roles](/docs/workspaces)).

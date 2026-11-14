@@ -9,6 +9,7 @@ export { toScriptValue } from './upstream.ts';
 export { detectAuth, type AuthDetection } from './detect.ts';
 /** Callback helpers for `src/routes/connectors/oauth/**` (not part of the service contract) */
 export { abandonUpstreamOAuth as abandonOAuth, clientMetadataDocument };
+export { handleOAuthCallback, OAuthCallbackError, withOAuthResult } from './callback.ts';
 /** Job `connectors.oauth_flows` (registered in `jobs/builtin.ts`) */
 export { purgeExpiredFlows };
 

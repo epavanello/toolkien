@@ -16,12 +16,14 @@ Every tool has one of three levels, as in Claude and Codex:
 
 ## Defaults
 
-| Source    | Annotation                 | Default                              |
-| --------- | -------------------------- | ------------------------------------ |
-| Directory | `readOnlyHint: true`       | Allow                                |
-| Directory | write or `destructiveHint` | Ask                                  |
-| Free URL  | any                        | Proposed, you confirm on first setup |
-| Any       | none                       | Treated as a write: Ask              |
+| Source                                          | Annotation                 | Default                              |
+| ----------------------------------------------- | -------------------------- | ------------------------------------ |
+| Directory (official, tested or documented)      | `readOnlyHint: true`       | Allow                                |
+| Directory (official, tested or documented)      | write or `destructiveHint` | Ask                                  |
+| Directory (community or needs review), free URL | any                        | Proposed, you confirm on first setup |
+| Any                                             | none                       | Treated as a write: Ask              |
+
+Only directory entries published by the service's own vendor and checked by a maintainer get the defaults straight away; community-maintained entries, entries still under review and free URLs get the same rule as a proposal, and each tool behaves as **Ask** until you confirm it.
 
 The bridge checks the level on **every call**, not only during discovery. When a tool's signature changes, an approved level goes back to _to confirm_ and the tool behaves as **Ask**.
 

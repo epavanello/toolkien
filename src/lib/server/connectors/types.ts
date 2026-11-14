@@ -40,6 +40,30 @@ export type {
  *   for unknown tool / invalid params, and the UI button.
  */
 
+/**
+ * (additive) Outcome of the upstream OAuth callback, sent back to the connectors page as
+ * `?oauth=<code>&connector=<id>` (a short code only: never tokens or the provider's error text).
+ * - `connected`: tokens stored, tools loading
+ * - `denied`: the user cancelled at the provider (`error=access_denied`)
+ * - `provider_error`: the provider answered with another error, or with neither code nor error
+ * - `expired`: the sign-in took longer than the flow lifetime
+ * - `exchange_failed`: the authorization server refused the code (or its answer failed checks)
+ * - `unreachable`: the authorization server could not be reached in time
+ * - `removed`: the connector was deleted during sign-in
+ * - `failed`: the connector's OAuth setup changed during sign-in
+ */
+export const OAUTH_RESULTS = [
+	'connected',
+	'denied',
+	'provider_error',
+	'expired',
+	'exchange_failed',
+	'unreachable',
+	'removed',
+	'failed'
+] as const;
+export type OAuthResult = (typeof OAUTH_RESULTS)[number];
+
 export type DirectoryEntry = {
 	/** Stable slug, stored in `connector.directory_id` */
 	id: string;
@@ -278,6 +302,10 @@ export interface ConnectorsService {
 	 * (additive) `opts.userId` is the signed-in user of the callback request: when given it must
 	 * be the user who started the flow (prevents completing someone else's flow); `opts.iss` is
 	 * the RFC 9207 `iss` parameter, checked against the discovered issuer.
+	 * (additive) Failures of a known flow of this user (expired, code refused, server
+	 * unreachable, connector removed or changed) throw `OAuthCallbackError` (`callback.ts`) with a
+	 * short `OAuthResult` code and the flow's `returnTo`; unknown/reused state (400), another
+	 * user's flow or lost access (403) stay HTTP errors.
 	 */
 	completeOAuth(
 		state: string,

@@ -8,6 +8,7 @@ import { dev } from '$app/env';
 import { BETTER_AUTH_SECRET, ORIGIN } from '$app/env/private';
 import { eq } from 'drizzle-orm';
 import { auth, MCP_RESOURCE } from '#lib/server/auth.ts';
+import { hasLiveGrant } from '#lib/server/clients/index.ts';
 import { db } from '#lib/server/db/index.ts';
 import { oauthClient, user } from '#lib/server/db/schema/index.ts';
 import * as limits from '#lib/server/limits/index.ts';
@@ -80,6 +81,8 @@ export const mcpEndpoint = createMcpEndpoint({
 		})(request),
 	loadClient,
 	loadUser,
+	hasLiveGrant: (userId, clientId) => hasLiveGrant(userId, clientId),
+	resourceMetadataUrl: `${ORIGIN}/.well-known/oauth-protected-resource/mcp`,
 	limits,
 	isAllowedOrigin: originPolicy(ORIGIN, dev)
 });

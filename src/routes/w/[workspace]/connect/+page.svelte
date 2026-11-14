@@ -6,6 +6,7 @@
 		ChoiceGrid,
 		CLIENT_ICONS,
 		ClientSetup,
+		ConnectedClients,
 		Page,
 		Section,
 		WelcomeChecklist,
@@ -60,6 +61,16 @@
 		{#if guide}
 			<Section variant="plain" title="Connect {guide.name}" id="setup">
 				<ClientSetup {guide} {status} {workspace} />
+			</Section>
+		{/if}
+		{#if status.clients.length > 0}
+			<Section
+				variant="plain"
+				title="Connected clients"
+				description="AI clients you signed in from. Disconnect one to revoke its access at once."
+				id="clients"
+			>
+				<ConnectedClients clients={status.clients} {workspace} />
 			</Section>
 		{/if}
 	</Boundary>
