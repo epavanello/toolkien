@@ -1,0 +1,21 @@
+{
+	"$schema": "../schema.json",
+	"id": "stripe",
+	"name": "Stripe",
+	"description": "Work with Stripe customers, payments, invoices, subscriptions and the Stripe docs.",
+	"homepage": "https://docs.stripe.com/mcp",
+	"url": "https://mcp.stripe.com",
+	"namespace": "stripe",
+	"category": "payments",
+	"tags": ["billing"],
+	"auth": {
+		"type": "oauth"
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Stripe also accepts a restricted API key as a bearer token: prefer a restricted key with read-only permissions when pasting a token."
+	},
+	"tools": {}
+}

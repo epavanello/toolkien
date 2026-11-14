@@ -1,0 +1,34 @@
+{
+	"$schema": "../schema.json",
+	"id": "exa",
+	"name": "Exa Search",
+	"description": "Web search and code context retrieval with Exa.",
+	"homepage": "https://docs.exa.ai/reference/exa-mcp",
+	"url": "https://mcp.exa.ai/mcp",
+	"namespace": "exa",
+	"category": "search",
+	"tags": ["web-search"],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"web_search_exa": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		},
+		"get_code_context_exa": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Free tier without a key (rate limited). Never put an API key in the URL query string."
+	}
+}

@@ -28,6 +28,12 @@ export type RunnerJob = {
 	/** `.d.ts` of the tools the script may call (from typegen) */
 	declarations: string;
 	limits: RunnerLimits;
+	/**
+	 * Optional replay cache for durable resume: calls whose `seq` is listed are answered by the
+	 * client with this response, without calling `onToolCall` (never sent to the runner). The
+	 * bridge may instead answer cached calls itself; both are equivalent.
+	 */
+	cachedResults?: ReadonlyMap<number, Exclude<ToolCallResponse, { kind: 'pause' }>>;
 };
 
 export type ToolCallRequest = {

@@ -1,0 +1,23 @@
+{
+	"$schema": "../schema.json",
+	"id": "hugging-face",
+	"name": "Hugging Face",
+	"description": "Search models, datasets, Spaces and papers on the Hugging Face Hub and call Gradio Spaces.",
+	"homepage": "https://huggingface.co/settings/mcp",
+	"url": "https://huggingface.co/mcp",
+	"namespace": "huggingFace",
+	"category": "search",
+	"tags": ["ml", "models"],
+	"auth": {
+		"type": "token",
+		"tokenHelp": "Create a read-only access token.",
+		"tokenUrl": "https://huggingface.co/settings/tokens"
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Works anonymously with fewer tools; a read token unlocks the user's settings and private repos."
+	},
+	"tools": {}
+}

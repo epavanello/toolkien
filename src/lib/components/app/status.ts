@@ -25,7 +25,18 @@ const TONES: Record<string, Tone> = {
 	pending_auth: 'pending',
 	error: 'error',
 	disabled: 'neutral',
-	suspended: 'error'
+	suspended: 'error',
+	// connector auth (per viewer) and directory verification
+	connected: 'success',
+	not_connected: 'pending',
+	verified: 'success',
+	community: 'neutral',
+	unverified: 'pending',
+	// members (2FA), invite links, kill switches
+	missing: 'pending',
+	used: 'neutral',
+	revoked: 'neutral',
+	released: 'neutral'
 };
 
 export const toneFor = (status: string): Tone => TONES[status] ?? 'neutral';

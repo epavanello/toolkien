@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { filterRows, paginate, type Column, type TableFilter } from './data-table.ts';
+import {
+	filterRows,
+	paginate,
+	type Column,
+	type TableFilter,
+	groupHeaderAt,
+	sortByGroup
+} from './data-table.ts';
 import { humanize, toneFor } from './status.ts';
 
 type Row = { id: string; name: string; status: string };
@@ -38,5 +45,30 @@ describe('data table helpers', () => {
 		expect(toneFor('pending_auth')).toBe('pending');
 		expect(toneFor('whatever')).toBe('neutral');
 		expect(humanize('pending_auth')).toBe('Pending auth');
+	});
+});
+
+describe('grouping', () => {
+	const rows = [
+		{ id: 'a', g: 'PostHog' },
+		{ id: 'b', g: '' },
+		{ id: 'c', g: 'Linear' },
+		{ id: 'd', g: 'PostHog' }
+	];
+	const group = (row: { g: string }) => row.g;
+
+	it('sorts by group, stable inside a group, empty last', () => {
+		expect(sortByGroup(rows, group).map((r) => r.id)).toEqual(['c', 'a', 'd', 'b']);
+		expect(sortByGroup(rows, undefined)).toBe(rows);
+	});
+
+	it('marks the first row of each group', () => {
+		const sorted = sortByGroup(rows, group);
+		expect(sorted.map((_, i) => groupHeaderAt(sorted, i, group))).toEqual([
+			'Linear',
+			'PostHog',
+			null,
+			''
+		]);
 	});
 });

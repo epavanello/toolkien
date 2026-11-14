@@ -70,17 +70,49 @@ export const auth = betterAuth({
 		passkey({ rpID: new URL(ORIGIN).hostname, rpName: brand.name, origin: ORIGIN }),
 		twoFactor({ issuer: brand.name }),
 		jwt(),
-		// OAuth 2.1 authorization server for MCP clients (refined by the mcp vertical)
+		/**
+		 * OAuth 2.1 authorization server for MCP clients (see docs/notes/mcp.md).
+		 * - Issuer `${ORIGIN}/api/auth`; RFC 8414 metadata path-inserted and at the root, RFC 9728
+		 *   protected-resource metadata for `/mcp` (routes in `src/routes/.well-known/**`).
+		 * - PKCE: only S256 exists and it is required for every client (public clients always,
+		 *   confidential ones through `clientRegistrationRequirePKCE`; CIMD cannot opt out).
+		 * - Resource indicator (RFC 8707): tokens carry `aud = MCP_RESOURCE` only when the client
+		 *   sends `resource`; `/mcp` verifies that audience, so a token without it is useless.
+		 * - Authorization responses carry `iss` (RFC 9207, always on in the provider).
+		 * - Refresh tokens rotate; reusing a rotated one after the 30 s retry window revokes the
+		 *   whole token family (reuse detection).
+		 */
 		mcp({
-			loginPage: '/login',
+			// The consent page is the single interaction entry: it sends signed-out users to
+			// `/login?redirectTo=…` and back, keeping the signed authorization query intact
+			loginPage: '/consent',
 			consentPage: '/consent',
 			resource: MCP_RESOURCE,
+			resources: [
+				{
+					identifier: MCP_RESOURCE,
+					name: brand.name,
+					accessTokenTtl: ACCESS_TOKEN_TTL_SECONDS,
+					refreshTokenTtl: REFRESH_TOKEN_TTL_SECONDS
+				}
+			],
+			// The config is the source of truth for the single MCP resource
+			resourceSeedMode: 'overwrite',
+			enforcePerClientResources: true,
+			scopes: ['openid', 'profile', 'email', 'offline_access'],
+			// Every token acts for a signed-in user: no client_credentials (no user, no workspace)
+			grantTypes: ['authorization_code', 'refresh_token'],
 			accessTokenExpiresIn: ACCESS_TOKEN_TTL_SECONDS,
 			refreshTokenExpiresIn: REFRESH_TOKEN_TTL_SECONDS,
-			// DCR is deprecated in MCP 2026-07-28 but still used by many clients
+			// Identical retries within 30 s get the same response; any other reuse kills the family
+			refreshTokenReuseInterval: 30,
+			codeExpiresIn: 5 * 60,
+			// DCR is deprecated in MCP 2026-07-28 (CIMD preferred) but most clients still use it
 			allowDynamicClientRegistration: true,
 			allowUnauthenticatedClientRegistration: true,
-			clientRegistrationRequirePKCE: true
+			clientRegistrationRequirePKCE: true,
+			// Native clients (Cursor, older Claude Code) omit application_type with loopback URIs
+			clientRegistrationDefaultApplicationType: 'infer'
 		}),
 		// Client ID Metadata Documents, fetched through the SSRF-safe transport
 		cimd({

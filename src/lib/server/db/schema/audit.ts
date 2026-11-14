@@ -14,10 +14,14 @@ export const AUDIT_EVENT_TYPES = [
 	'workspace.policy_changed',
 	'workspace.deletion_scheduled',
 	'workspace.deleted',
+	'workspace.updated',
+	'workspace.deletion_cancelled',
+	'workspace.ownership_transferred',
 	'member.invited',
 	'member.joined',
 	'member.role_changed',
 	'member.removed',
+	'invite.revoked',
 	'connector.added',
 	'connector.authenticated',
 	'connector.removed',
@@ -35,7 +39,9 @@ export const AUDIT_EVENT_TYPES = [
 	'kill_switch.activated',
 	'kill_switch.released',
 	'account.exported',
-	'account.deleted'
+	'account.deleted',
+	'platform.limits_changed',
+	'audit.exported'
 ] as const;
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
 

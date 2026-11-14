@@ -3,9 +3,10 @@
 
 	export type KeyValueItem = {
 		label: string;
-		value?: string | number | Date | null;
+		/** `string[]` renders as a bulleted list (`type: 'list'`) */
+		value?: string | number | Date | string[] | null;
 		/** How the value renders; `snippet` for anything custom */
-		type?: 'text' | 'mono' | 'datetime' | 'status';
+		type?: 'text' | 'mono' | 'datetime' | 'status' | 'list';
 		copy?: boolean;
 		snippet?: Snippet;
 	};
@@ -40,6 +41,10 @@
 		<dd class="min-w-0">
 			{#if item.snippet}
 				{@render item.snippet()}
+			{:else if Array.isArray(item.value)}
+				<ul class="list-inside list-disc">
+					{#each item.value as entry (entry)}<li>{entry}</li>{/each}
+				</ul>
 			{:else if item.value == null || item.value === ''}
 				<span class="text-muted-foreground">—</span>
 			{:else if item.type === 'mono'}

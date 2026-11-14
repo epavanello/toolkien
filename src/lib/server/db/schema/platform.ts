@@ -21,6 +21,13 @@ export const KILL_SWITCH_SCOPES = ['user', 'workspace', 'platform'] as const;
 export type KillSwitchScope = (typeof KILL_SWITCH_SCOPES)[number];
 
 /**
+ * Who pulled the switch: a workspace admin (from workspace settings, they may release it) or a
+ * platform admin (only platform admins release it).
+ */
+export const KILL_SWITCH_ORIGINS = ['workspace_admin', 'platform_admin'] as const;
+export type KillSwitchOrigin = (typeof KILL_SWITCH_ORIGINS)[number];
+
+/**
  * Kill switches at three levels. An active switch (no `releasedAt`) revokes sessions, client
  * OAuth tokens and running executions in its scope; connectors stay configured but suspended.
  * `targetId` is the user or workspace id, null for `platform`.
@@ -32,6 +39,7 @@ export const killSwitch = sqliteTable(
 		scope: text('scope', { enum: KILL_SWITCH_SCOPES }).notNull(),
 		targetId: text('target_id'),
 		reason: text('reason').notNull(),
+		origin: text('origin', { enum: KILL_SWITCH_ORIGINS }).notNull().default('platform_admin'),
 		activatedBy: text('activated_by').references(() => user.id, { onDelete: 'set null' }),
 		activatedAt: createdAt('activated_at'),
 		releasedBy: text('released_by').references(() => user.id, { onDelete: 'set null' }),

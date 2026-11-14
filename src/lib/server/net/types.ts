@@ -17,6 +17,8 @@
 export type UnsafeUrlReason =
 	| 'invalid_url'
 	| 'scheme'
+	/** Only 443 is allowed (the egress proxy tunnels nothing else) */
+	| 'port'
 	| 'credentials_in_url'
 	| 'blocked_address'
 	| 'dns_failure'

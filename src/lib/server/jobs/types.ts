@@ -20,3 +20,13 @@ export interface JobScheduler {
 	/** Runs one job now (tests, admin panel) */
 	runJob(name: string): Promise<void>;
 }
+
+/** A registered job and its last run, for the admin panel (additive, org-ops) */
+export type JobStatus = {
+	name: string;
+	intervalMs: number;
+	running: boolean;
+	lastRunAt: Date | null;
+	lastDurationMs: number | null;
+	lastOk: boolean | null;
+};

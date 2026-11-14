@@ -1,0 +1,40 @@
+{
+	"$schema": "../schema.json",
+	"id": "deepwiki",
+	"name": "DeepWiki",
+	"description": "Ask questions about public GitHub repositories and read their generated wikis.",
+	"homepage": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
+	"url": "https://mcp.deepwiki.com/mcp",
+	"namespace": "deepwiki",
+	"category": "knowledge",
+	"tags": ["docs", "code"],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"read_wiki_structure": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		},
+		"read_wiki_contents": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		},
+		"ask_question": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public repositories only, no authentication."
+	}
+}

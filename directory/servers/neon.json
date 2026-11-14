@@ -1,0 +1,24 @@
+{
+	"$schema": "../schema.json",
+	"id": "neon",
+	"name": "Neon",
+	"description": "Create and manage Neon Postgres projects, branches and run SQL.",
+	"homepage": "https://neon.com/docs/ai/neon-mcp-server",
+	"url": "https://mcp.neon.tech/mcp",
+	"namespace": "neon",
+	"category": "data",
+	"tags": ["postgres", "database"],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Neon hosted MCP server; OAuth with dynamic client registration, API key also accepted as bearer token."
+	},
+	"tools": {}
+}

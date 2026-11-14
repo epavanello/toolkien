@@ -1,0 +1,23 @@
+{
+	"$schema": "../schema.json",
+	"id": "github",
+	"name": "GitHub",
+	"description": "Repositories, issues, pull requests, Actions and code search through GitHub's official remote MCP server.",
+	"homepage": "https://github.com/github/github-mcp-server",
+	"url": "https://api.githubcopilot.com/mcp/",
+	"namespace": "github",
+	"category": "developer-tools",
+	"tags": ["git", "code", "issues"],
+	"auth": {
+		"type": "token",
+		"tokenHelp": "Create a fine-grained personal access token with only the repositories and permissions you need.",
+		"tokenUrl": "https://github.com/settings/personal-access-tokens/new"
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "URL from the official github-mcp-server README. GitHub OAuth needs a pre-registered GitHub App (no DCR/CIMD), so the entry uses a personal access token sent as a bearer token. The server reports read-only hints on its tools."
+	},
+	"tools": {}
+}

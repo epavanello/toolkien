@@ -12,6 +12,8 @@ export const ERROR_CODES = [
 	'RATE_LIMITED',
 	'SUSPENDED',
 	'POLICY_DENIED',
+	/** Owners/admins of company workspaces need 2FA or a passkey (UI links to account security) */
+	'SECOND_FACTOR_REQUIRED',
 	'NOT_IMPLEMENTED'
 ] as const;
 

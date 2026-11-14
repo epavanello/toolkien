@@ -1,0 +1,24 @@
+{
+	"$schema": "../schema.json",
+	"id": "supabase",
+	"name": "Supabase",
+	"description": "Manage Supabase projects: tables, SQL, migrations, edge functions, logs and docs.",
+	"homepage": "https://supabase.com/docs/guides/getting-started/mcp",
+	"url": "https://mcp.supabase.com/mcp",
+	"namespace": "supabase",
+	"category": "data",
+	"tags": ["postgres", "database"],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "The server supports `read_only=true` and `project_ref=…` query parameters to narrow access; consider them for shared connectors."
+	},
+	"tools": {}
+}

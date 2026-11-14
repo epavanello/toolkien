@@ -31,3 +31,59 @@ export interface LimitsService {
 	/** Throws an `App.Error` with code `SUSPENDED` when any switch in scope is active */
 	assertNotSuspended(scope: SuspensionScope): Promise<void>;
 }
+
+// ─── Org-ops extensions (additive) ──────────────────────────────────────────
+
+/**
+ * Limits beyond the original contract. Every field is editable from `/admin` (platform setting
+ * `limits`); env vars give the defaults.
+ */
+export type ExtendedLimits = Limits & {
+	/** Executions per workspace per minute (all members together) */
+	rateLimitWorkspaceExecPerMin: number;
+	/** Executions per client IP per minute */
+	rateLimitIpPerMin: number;
+	/** Executions a user may have waiting for a runner slot; more are refused (`RATE_LIMITED`) */
+	maxQueuedPerUser: number;
+	/** Audit retention (`AUDIT_RETENTION_DAYS` by default) */
+	auditRetentionDays: number;
+};
+
+export type LimitKey = keyof ExtendedLimits;
+
+export type KillSwitchSummary = {
+	id: string;
+	scope: 'user' | 'workspace' | 'platform';
+	targetId: string | null;
+	/** Display label of the target (user email, workspace name) when known */
+	targetLabel: string | null;
+	reason: string;
+	origin: 'workspace_admin' | 'platform_admin';
+	activatedAt: Date;
+	activatedByName: string | null;
+	releasedAt: Date | null;
+};
+
+export type ActivateKillSwitchInput = {
+	scope: 'user' | 'workspace' | 'platform';
+	/** User id or workspace id; omitted for `platform` */
+	targetId?: string;
+	reason: string;
+	origin: 'workspace_admin' | 'platform_admin';
+	actorUserId: string;
+};
+
+/** Notified after a switch is activated (executions module aborts in-flight runner jobs) */
+export type KillSwitchListener = (scope: SuspensionScope & { platform?: boolean }) => void;
+
+export type UsageDelta = {
+	executions?: number;
+	failedExecutions?: number;
+	toolCalls?: number;
+	approvalsRequested?: number;
+	executionMs?: number;
+};
+
+export type UsageRow = Required<UsageDelta> & { workspaceId: string; day: string };
+
+export type ConcurrencySnapshot = { running: number; queued: number; users: number };

@@ -1,0 +1,77 @@
+<script lang="ts">
+	import type { Thing, WithContext } from 'schema-dts';
+	import { page } from '$app/state';
+	import { brand } from '#lib/brand.ts';
+	import JsonLd from './json-ld.svelte';
+
+	/**
+	 * Every public page's head: title, description, canonical URL, Open Graph, Twitter card,
+	 * robots and optional JSON-LD (`schema-dts` types). App pages pass `noindex`.
+	 */
+	type Props = {
+		/** Page title; the brand is appended (`Docs · Toolkien`) unless `exactTitle` */
+		title: string;
+		description?: string;
+		exactTitle?: boolean;
+		/** Path or absolute URL; default: the current path without query or hash */
+		canonical?: string;
+		/** Absolute or root-relative image (1200×630); omitted when not set */
+		image?: string;
+		type?: 'website' | 'article';
+		noindex?: boolean;
+		/** `YYYY-MM-DD`, for articles (docs, legal) */
+		modified?: string;
+		jsonLd?: WithContext<Thing>[];
+	};
+
+	let {
+		title,
+		description,
+		exactTitle = false,
+		canonical,
+		image,
+		type = 'website',
+		noindex = false,
+		modified,
+		jsonLd = []
+	}: Props = $props();
+
+	const origin = $derived(page.url.origin);
+	const absolute = (value: string) => (/^https?:\/\//.test(value) ? value : `${origin}${value}`);
+	const fullTitle = $derived(exactTitle ? title : `${title} · ${brand.name}`);
+	const url = $derived(
+		absolute(canonical ?? (page.url.pathname === '/' ? '/' : page.url.pathname))
+	);
+</script>
+
+<svelte:head>
+	<title>{fullTitle}</title>
+	{#if description}<meta name="description" content={description} />{/if}
+	<meta
+		name="robots"
+		content={noindex
+			? 'noindex, nofollow'
+			: 'index, follow, max-image-preview:large, max-snippet:-1'}
+	/>
+	{#if !noindex}
+		<link rel="canonical" href={url} />
+		<meta property="og:type" content={type} />
+		<meta property="og:url" content={url} />
+		<meta property="og:site_name" content={brand.name} />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:title" content={fullTitle} />
+		{#if description}<meta property="og:description" content={description} />{/if}
+		{#if image}<meta property="og:image" content={absolute(image)} />{/if}
+		{#if modified}<meta property="article:modified_time" content={modified} />{/if}
+		<meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+		<meta name="twitter:title" content={fullTitle} />
+		{#if description}<meta name="twitter:description" content={description} />{/if}
+		{#if image}<meta name="twitter:image" content={absolute(image)} />{/if}
+	{/if}
+</svelte:head>
+
+{#if !noindex}
+	{#each jsonLd as item, index (index)}
+		<JsonLd {item} />
+	{/each}
+{/if}

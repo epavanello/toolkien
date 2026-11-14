@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { registerJob, runJob } from './index.ts';
+import { registerJob, runJob } from './scheduler.ts';
 
 describe('jobs', () => {
 	it('never overlaps runs of the same job and survives failures', async () => {

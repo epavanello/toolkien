@@ -25,8 +25,14 @@
 					options: { value: string; label: string }[];
 					value?: string;
 			  }
-			| { field: RemoteFormField<number>; type: 'number'; min?: number; max?: number }
-			| { field: RemoteFormField<boolean>; type: 'checkbox' }
+			| {
+					field: RemoteFormField<number>;
+					type: 'number';
+					min?: number;
+					max?: number;
+					value?: number;
+			  }
+			| { field: RemoteFormField<boolean>; type: 'checkbox'; checked?: boolean }
 		);
 </script>
 
@@ -51,7 +57,7 @@
 	data-invalid={issues.length > 0 || undefined}
 >
 	{#if props.type === 'checkbox'}
-		<input {id} class="size-4 accent-primary" {...props.field.as('checkbox')} />
+		<input {id} class="size-4 accent-primary" {...props.field.as('checkbox', props.checked)} />
 	{/if}
 	<Field.Label for={id} class={props.hideLabel ? 'sr-only' : ''}>
 		{props.label}{#if props.required}<span class="text-destructive" aria-hidden="true">*</span>{/if}
@@ -66,7 +72,12 @@
 			{...props.value !== undefined ? { value: props.value } : {}}
 		/>
 	{:else if props.type === 'select'}
-		<NativeSelect.Root {id} class="w-full" required={props.required} {...props.field.as('select')}>
+		<NativeSelect.Root
+			{id}
+			class="w-full"
+			required={props.required}
+			{...props.field.as('select', props.value)}
+		>
 			{#each props.options as option (option.value)}
 				<NativeSelect.Option value={option.value}>{option.label}</NativeSelect.Option>
 			{/each}
@@ -78,7 +89,7 @@
 			max={props.max}
 			placeholder={props.placeholder}
 			required={props.required}
-			{...props.field.as('number')}
+			{...props.field.as('number', props.value)}
 		/>
 	{:else if props.type !== 'checkbox'}
 		<Input

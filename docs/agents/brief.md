@@ -59,3 +59,10 @@ Rules:
 - `/mcp` is bearer-only (never cookies). CSP has `form-action 'self'`. Login keeps `redirectTo` for the OAuth flow. CIMD fetches go through `net.safeFetch`.
 - `(marketing)/+page.server.ts` redirects signed-in users to their workspace: keep that.
 - **Do not `git commit`** (parallel agents share the index); the integrator commits.
+
+## Product direction (added mid-build)
+
+- Open source (license AGPL-3.0, confirmed by the author) + managed micro-SaaS; self-hosting is first-class (`docs/self-hosting.md`, compose works outside Coolify).
+- Curated directory is community-contributed via pull requests: one file per server in top-level `directory/` (owned by connectors), schema-validated in tests.
+- Technical docs: `(marketing)/docs/**` as markdown pages (org-ops), security described thoroughly.
+- Landing: managed-service users first, self-hosters second.

@@ -1,0 +1,134 @@
+# Toolkien: the whole platform as ONE Docker Compose resource.
+#
+#   Self-hosted:  cp deploy/compose.env.example .env.production   # fill it
+#                 docker compose --env-file .env.production up -d --build
+#   Coolify:      Docker Compose build pack, "Raw Compose Deployment" ON (see docs/deploy-coolify.md)
+#
+# | service      | networks                   | volume        | exposed               |
+# | ------------ | -------------------------- | ------------- | --------------------- |
+# | app          | public, core, sandbox      | no            | yes (reverse proxy)   |
+# | openbao      | core                       | yes (raft)    | no                    |
+# | egress-proxy | core, public               | no            | no                    |
+# | runner       | sandbox (internal)         | no            | no                    |
+#
+# No Docker socket is mounted anywhere, no docker-in-docker. Only the app is reachable from
+# outside, through the reverse proxy (Traefik labels below, or APP_PUBLISH on loopback).
+
+name: toolkien
+
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '5' }
+
+services:
+  app:
+    <<: *hardening
+    build: { context: ., dockerfile: Dockerfile }
+    environment:
+      ORIGIN: ${ORIGIN:?set ORIGIN to the public URL, e.g. https://toolkien.example.com}
+      PORT: '3000'
+      # Behind exactly one reverse proxy (Traefik / Caddy): client IP for rate limits
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL (libsql://… for Turso)}
+      DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET (openssl rand -base64 32)}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      OPENBAO_ADDR: http://openbao:8200
+      # Empty until OpenBao is initialised (deploy/openbao/init.sh prints them)
+      OPENBAO_ROLE_ID: ${OPENBAO_ROLE_ID:-}
+      OPENBAO_SECRET_ID: ${OPENBAO_SECRET_ID:-}
+      OPENBAO_TRANSIT_KEY: ${OPENBAO_TRANSIT_KEY:-toolkien-tokens}
+      RUNNER_URL: ws://runner:8787
+      RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?set RUNNER_SHARED_SECRET (openssl rand -hex 32)}
+      EGRESS_PROXY_URL: http://toolkien:${EGRESS_PROXY_TOKEN:?set EGRESS_PROXY_TOKEN (openssl rand -hex 32)}@egress-proxy:3128
+      EXEC_TIMEOUT_MS: ${EXEC_TIMEOUT_MS:-120000}
+      EXEC_MAX_TOOL_CALLS: ${EXEC_MAX_TOOL_CALLS:-200}
+      EXEC_MAX_OUTPUT_BYTES: ${EXEC_MAX_OUTPUT_BYTES:-102400}
+      RATE_LIMIT_EXEC_PER_MIN: ${RATE_LIMIT_EXEC_PER_MIN:-60}
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-90}
+    tmpfs: ['/tmp:rw,nosuid,nodev,size=64m']
+    mem_limit: ${APP_MEMORY:-1g}
+    pids_limit: 512
+    # Self-hosted: a host reverse proxy (Caddy, nginx) forwards to this loopback port.
+    # Never bind it to 0.0.0.0: TLS and HSTS belong to the proxy.
+    ports: ['${APP_PUBLISH:-127.0.0.1:3000}:3000']
+    networks: [public, core, sandbox]
+    depends_on:
+      openbao: { condition: service_started }
+      egress-proxy: { condition: service_started }
+      runner: { condition: service_started }
+    labels:
+      # Coolify raw mode / any Traefik on the `public` network. Ignored without Traefik.
+      - traefik.enable=true
+      - traefik.docker.network=${PUBLIC_NETWORK:-toolkien_public}
+      - traefik.http.routers.toolkien-http.rule=Host(`${APP_DOMAIN:-localhost}`)
+      - traefik.http.routers.toolkien-http.entrypoints=http
+      - traefik.http.routers.toolkien-http.middlewares=toolkien-https
+      - traefik.http.middlewares.toolkien-https.redirectscheme.scheme=https
+      - traefik.http.routers.toolkien.rule=Host(`${APP_DOMAIN:-localhost}`)
+      - traefik.http.routers.toolkien.entrypoints=https
+      - traefik.http.routers.toolkien.tls=true
+      - traefik.http.routers.toolkien.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.toolkien.loadbalancer.server.port=3000
+
+  openbao:
+    <<: *hardening
+    build: { context: deploy/openbao }
+    # Sealed after every start: unseal with deploy/openbao/unseal.sh (docs/self-hosting.md)
+    tmpfs: ['/tmp:rw,nosuid,nodev,size=64m']
+    volumes: ['openbao-data:/openbao/data']
+    mem_limit: 512m
+    pids_limit: 256
+    networks: [core]
+
+  egress-proxy:
+    <<: *hardening
+    build: { context: egress }
+    environment:
+      EGRESS_PROXY_TOKEN: ${EGRESS_PROXY_TOKEN:?set EGRESS_PROXY_TOKEN}
+      EGRESS_MAX_CONNECTIONS: ${EGRESS_MAX_CONNECTIONS:-256}
+    mem_limit: 256m
+    pids_limit: 128
+    networks: [core, public]
+
+  runner:
+    <<: *hardening
+    build: { context: runner, dockerfile: Dockerfile }
+    environment:
+      RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?set RUNNER_SHARED_SECRET}
+      RUNNER_MAX_CONCURRENT: ${RUNNER_MAX_CONCURRENT:-4}
+    # Untrusted code: in-memory scratch, no capabilities, bounded CPU / memory / processes.
+    # gVisor, when installed on the host, adds a syscall sandbox: uncomment `runtime`.
+    # runtime: runsc
+    tmpfs: ['/tmp:rw,nosuid,nodev,size=256m,mode=1777']
+    cpus: ${RUNNER_CPUS:-2}
+    mem_limit: ${RUNNER_MEMORY:-2g}
+    memswap_limit: ${RUNNER_MEMORY:-2g}
+    pids_limit: 256
+    ulimits:
+      nofile: { soft: 1024, hard: 1024 }
+      core: 0
+    # Internal network only: the runner reaches the app (bridge) and nothing else
+    networks: [sandbox]
+
+networks:
+  # Internet-facing: reverse proxy → app, egress-proxy → upstreams. On Coolify (raw mode) set
+  # PUBLIC_NETWORK=coolify and PUBLIC_NETWORK_EXTERNAL=true to join the proxy's network.
+  public:
+    name: ${PUBLIC_NETWORK:-toolkien_public}
+    external: ${PUBLIC_NETWORK_EXTERNAL:-false}
+  # App ↔ OpenBao ↔ egress proxy. Internal: OpenBao has no route to the internet.
+  core:
+    internal: true
+  # App ↔ runner. Internal: the runner has no route anywhere but the app.
+  sandbox:
+    internal: true
+
+volumes:
+  openbao-data:

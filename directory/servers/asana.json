@@ -1,0 +1,21 @@
+{
+	"$schema": "../schema.json",
+	"id": "asana",
+	"name": "Asana",
+	"description": "Read and manage Asana tasks, projects and goals.",
+	"homepage": "https://developers.asana.com/docs/using-asanas-mcp-server",
+	"url": "https://mcp.asana.com/v2/mcp",
+	"namespace": "asana",
+	"category": "project-management",
+	"tags": ["tasks"],
+	"auth": {
+		"type": "oauth"
+	},
+	"verification": {
+		"status": "unverified",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "UNCERTAIN: v1 used the SSE endpoint https://mcp.asana.com/sse; the v2 Streamable HTTP endpoint and whether it allows dynamic client registration must be re-checked."
+	},
+	"tools": {}
+}

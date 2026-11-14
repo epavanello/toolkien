@@ -1,0 +1,29 @@
+{
+	"$schema": "../schema.json",
+	"id": "cloudflare-docs",
+	"name": "Cloudflare Docs",
+	"description": "Search the Cloudflare developer documentation.",
+	"homepage": "https://github.com/cloudflare/mcp-server-cloudflare",
+	"url": "https://docs.mcp.cloudflare.com/mcp",
+	"namespace": "cloudflareDocs",
+	"category": "knowledge",
+	"tags": ["docs"],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"search_cloudflare_documentation": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			},
+			"note": "Documentation search, no side effects."
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Public, no authentication."
+	}
+}

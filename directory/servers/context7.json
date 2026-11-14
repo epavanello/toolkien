@@ -1,0 +1,41 @@
+{
+	"$schema": "../schema.json",
+	"id": "context7",
+	"name": "Context7",
+	"description": "Up-to-date, version-specific library documentation and code examples.",
+	"homepage": "https://github.com/upstash/context7",
+	"url": "https://mcp.context7.com/mcp",
+	"namespace": "context7",
+	"category": "knowledge",
+	"tags": ["docs", "libraries"],
+	"auth": {
+		"type": "none"
+	},
+	"tools": {
+		"resolve-library-id": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		},
+		"get-library-docs": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			},
+			"note": "Older name; newer server versions may call it query-docs."
+		},
+		"query-docs": {
+			"annotations": {
+				"readOnlyHint": true,
+				"openWorldHint": true
+			}
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Works without a key (rate limited). Context7 API keys go in a custom header, which Toolkien does not support yet."
+	}
+}

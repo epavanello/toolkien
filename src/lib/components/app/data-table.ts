@@ -66,3 +66,28 @@ export function paginate<T>(rows: T[], page: number, pageSize: number) {
 		to: Math.min(current * pageSize, rows.length)
 	};
 }
+
+/**
+ * Stable sort by group label (empty labels last), so a grouped table shows each group's rows
+ * together; `withHeaders` marks the first row of every group on the current page.
+ */
+export function sortByGroup<T>(rows: T[], group: ((row: T) => string) | undefined): T[] {
+	if (!group) return rows;
+	return rows
+		.map((row, index) => ({ row, index, key: group(row) }))
+		.sort((a, b) =>
+			a.key === b.key ? a.index - b.index : !a.key ? 1 : !b.key ? -1 : a.key.localeCompare(b.key)
+		)
+		.map((entry) => entry.row);
+}
+
+/** Group label to render above `rows[index]`, or `null` when it continues the previous group */
+export function groupHeaderAt<T>(
+	rows: T[],
+	index: number,
+	group: ((row: T) => string) | undefined
+): string | null {
+	if (!group) return null;
+	const key = group(rows[index]);
+	return index === 0 || group(rows[index - 1]) !== key ? key : null;
+}

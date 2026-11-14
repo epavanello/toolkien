@@ -26,7 +26,13 @@ export type ToolTypeInput = {
 	outputSchema?: JsonSchema | null;
 	annotations?: ToolAnnotations | null;
 	unverified: boolean;
+	/** (additive) Connector display name and instance label, stated in the namespace JSDoc */
+	connectorName?: string | null;
+	instanceLabel?: string | null;
 };
+
+/** What the signature hash covers (descriptions and titles are not part of it) */
+export type SignatureInput = Pick<ToolTypeInput, 'inputSchema' | 'outputSchema' | 'annotations'>;
 
 export interface TypeGenerator {
 	/** Declaration of one tool as a member of its namespace object */
@@ -35,4 +41,14 @@ export interface TypeGenerator {
 	moduleDeclaration(tools: ToolTypeInput[]): Promise<string>;
 	/** `search_threads` / `search-threads` / `SearchThreads` → `searchThreads` */
 	toCamelCase(name: string): string;
+	/**
+	 * (additive) A namespace usable as `declare const`: camelCase, never a reserved word or a
+	 * global the scripts rely on (`delete` → `deleteTools`).
+	 */
+	toNamespace(name: string): string;
+	/**
+	 * (additive) SHA-256 hex of the canonical JSON (sorted keys) of input schema, output schema
+	 * and annotation hints. What permissions confirm.
+	 */
+	signatureHash(tool: SignatureInput): string;
 }

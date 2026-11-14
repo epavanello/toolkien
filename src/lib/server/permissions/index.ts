@@ -1,13 +1,14 @@
-import { notImplemented } from '#lib/server/not-implemented.ts';
-import type { PermissionsService } from './types.ts';
+import { record } from '#lib/server/audit/index.ts';
+import { db } from '#lib/server/db/index.ts';
+import { createPermissionsService } from './service.ts';
 
 export * from './types.ts';
+export { defaultLevel, isReadOnly, resolveEffectiveLevel, satisfiesFloor } from './resolve.ts';
 
-export const defaultLevel: PermissionsService['defaultLevel'] = () =>
-	notImplemented('permissions.defaultLevel');
-export const getEffectiveLevel: PermissionsService['getEffectiveLevel'] = async () =>
-	notImplemented('permissions.getEffectiveLevel');
-export const getEffectiveLevels: PermissionsService['getEffectiveLevels'] = async () =>
-	notImplemented('permissions.getEffectiveLevels');
-export const setLevel: PermissionsService['setLevel'] = async () =>
-	notImplemented('permissions.setLevel');
+const service = createPermissionsService({ db, audit: { record } });
+
+export const getEffectiveLevel = service.getEffectiveLevel;
+export const getEffectiveLevels = service.getEffectiveLevels;
+export const setLevel = service.setLevel;
+export const visibleToolIds = service.visibleToolIds;
+export const listToolPermissions = service.listToolPermissions;

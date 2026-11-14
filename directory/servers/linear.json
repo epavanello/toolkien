@@ -1,0 +1,24 @@
+{
+	"$schema": "../schema.json",
+	"id": "linear",
+	"name": "Linear",
+	"description": "Find, create and update Linear issues, projects, cycles and comments.",
+	"homepage": "https://linear.app/docs/mcp",
+	"url": "https://mcp.linear.app/mcp",
+	"namespace": "linear",
+	"category": "project-management",
+	"tags": ["issues", "tracking"],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Streamable HTTP endpoint from Linear docs (the older /sse endpoint is legacy). OAuth 2.1 with dynamic client registration."
+	},
+	"tools": {}
+}

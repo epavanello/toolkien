@@ -2,9 +2,16 @@
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
+
+	/**
+	 * Marks something whose self-description cannot be trusted: connectors added from a free URL
+	 * (default text) or, with `tooltip`, e.g. MCP clients that registered dynamically.
+	 */
+	let {
+		tooltip = 'Added from a URL outside the curated directory. Review its tools.'
+	}: { tooltip?: string } = $props();
 </script>
 
-<!-- Marks connectors added from a free URL: their tool descriptions are untrusted -->
 <Tooltip.Root>
 	<Tooltip.Trigger>
 		{#snippet child({ props })}
@@ -14,7 +21,5 @@
 			</Badge>
 		{/snippet}
 	</Tooltip.Trigger>
-	<Tooltip.Content
-		>Added from a URL outside the curated directory. Review its tools.</Tooltip.Content
-	>
+	<Tooltip.Content>{tooltip}</Tooltip.Content>
 </Tooltip.Root>

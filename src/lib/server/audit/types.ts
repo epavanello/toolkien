@@ -52,3 +52,50 @@ export interface AuditService {
 	/** Retention job: deletes events older than `days`; returns how many */
 	purgeOlderThan(days: number): Promise<number>;
 }
+
+// ─── Org-ops extensions (additive) ──────────────────────────────────────────
+
+/**
+ * Technical server logs (stdout/stderr) are separate from this audit log: they carry no personal
+ * data beyond ids, never content, and are kept 14 days by the container log rotation
+ * (see `docs/notes/org-ops.md` → Logs). This module only handles the audit trail.
+ */
+export const TECHNICAL_LOG_RETENTION_DAYS = 14;
+
+/** An event as the activity views show it: with the acting user's display name */
+export type AuditEventView = AuditEvent & { userName: string | null };
+
+/** Filters a page can send; the workspace and the user scope come from the guard */
+export type ActivityFilters = {
+	userId?: string;
+	connectorId?: string;
+	outcome?: AuditOutcome;
+	types?: AuditEventType[];
+	from?: Date;
+	to?: Date;
+};
+
+/**
+ * One row of the activity timeline: an execution with its events (tool calls, approvals), or a
+ * standalone event (login, permission change, member joined…).
+ */
+export type TimelineEntry =
+	| {
+			kind: 'execution';
+			id: string;
+			executionId: string;
+			/** Earliest event of the execution */
+			startedAt: Date;
+			/** Latest event of the execution */
+			lastAt: Date;
+			/** Outcome of the final `execution.*` event, else of the latest event */
+			outcome: AuditOutcome;
+			userId: string | null;
+			userName: string | null;
+			clientName: string | null;
+			durationMs: number | null;
+			toolCalls: number;
+			/** Newest first */
+			events: AuditEventView[];
+	  }
+	| { kind: 'event'; id: string; event: AuditEventView };

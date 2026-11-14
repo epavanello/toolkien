@@ -60,3 +60,70 @@ export interface WorkspacesService {
 	setActiveWorkspace(userId: string, clientId: string, workspaceId: string): Promise<void>;
 	getPolicy(workspaceId: string): Promise<WorkspacePolicy>;
 }
+
+// ─── Org-ops extensions (additive) ──────────────────────────────────────────
+
+/** Days between the owner's deletion request and the hard delete (purge job) */
+export const DELETION_GRACE_DAYS = 7;
+
+/** Roles an invite link or a role change may grant (`owner` only via transfer) */
+export type GrantableRole = Exclude<WorkspaceRole, 'owner'>;
+
+export type MemberSummary = {
+	userId: string;
+	/** `member` row id: opaque, used in audit metadata instead of the user id */
+	memberId: string;
+	name: string;
+	email: string;
+	role: WorkspaceRole;
+	joinedAt: Date;
+	/** 2FA or passkey configured; `null` when the viewer is not an admin */
+	secondFactor: boolean | null;
+};
+
+export type InviteLinkStatus = 'active' | 'expired' | 'revoked' | 'used';
+
+export type InviteLinkSummary = {
+	id: string;
+	role: GrantableRole;
+	email: string | null;
+	maxUses: number | null;
+	useCount: number;
+	expiresAt: Date;
+	createdAt: Date;
+	createdByName: string | null;
+	status: InviteLinkStatus;
+};
+
+export type CreateInviteInput = {
+	role: GrantableRole;
+	/** Only this email may accept (case-insensitive) */
+	email?: string | null;
+	maxUses?: number | null;
+	/** 1–30, default 7 */
+	expiresInDays?: number;
+};
+
+/** What the invite page shows before accepting; never reveals more than name and role */
+export type InvitePreview =
+	| { status: 'invalid' }
+	| {
+			status: Exclude<InviteLinkStatus, 'used'> | 'used' | 'email_mismatch' | 'already_member';
+			workspaceName: string;
+			workspaceSlug: string;
+			role: GrantableRole;
+	  };
+
+export type PolicyInput = Omit<WorkspacePolicy, 'workspaceId'>;
+
+/** Result of checking a connector addition against the admin policy (pure, see `checkConnectorPolicy`) */
+export type PolicyCheck = { allowed: true } | { allowed: false; reason: string };
+
+export type ConnectorPolicyInput = {
+	/** Workspace-wide (admin) connector vs one only for the acting member */
+	onlyForMe: boolean;
+	source: { type: 'directory'; directoryId: string } | { type: 'url'; url: string };
+};
+
+/** Owner-only deletion state of a company workspace */
+export type DeletionState = { scheduledAt: Date; purgeAt: Date } | null;

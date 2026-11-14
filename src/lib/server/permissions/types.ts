@@ -3,6 +3,7 @@ import type {
 	PermissionLevel,
 	ToolAnnotations
 } from '#lib/server/db/schema/index.ts';
+import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 
 export type { PermissionLevel };
 
@@ -50,6 +51,47 @@ export type EffectiveLevel = {
 	source: 'default' | 'policy' | 'workspace' | 'user';
 };
 
+/** One `permission_level` row as the resolver needs it (`null` = no row) */
+export type PermissionRowInput = {
+	level: PermissionLevel;
+	confirmedSignatureHash: string | null;
+} | null;
+
+/** Everything `resolveEffectiveLevel` needs about one tool for one user */
+export type ResolveLevelInput = DefaultLevelInput & {
+	/** Signature hash of the tool's current version */
+	signatureHash: string;
+	/** `workspace_policy.permission_floor` */
+	policyFloor: PermissionLevel | null;
+	/** Admin row (`user_id IS NULL`): per-tool floor and workspace default */
+	workspaceRow: PermissionRowInput;
+	/** The user's own row */
+	userRow: PermissionRowInput;
+};
+
+/** One row of the permissions page (metadata only) */
+export type ToolPermission = {
+	toolId: string;
+	path: string;
+	connectorId: string;
+	connectorName: string;
+	source: ConnectorSource;
+	unverified: boolean;
+	readOnly: boolean;
+	destructive: boolean;
+	/** The upstream sent no read/destructive hint (treated as a write) */
+	unannotated: boolean;
+	effective: EffectiveLevel;
+	/** Level from the default table (proposed level for free URLs) */
+	defaultLevel: PermissionLevel;
+	/** Level the user would get without floors and confirmation (row or default) */
+	chosen: PermissionLevel;
+	userLevel: PermissionLevel | null;
+	workspaceLevel: PermissionLevel | null;
+	/** Most restrictive of policy floor and workspace row: the user cannot go below it */
+	floor: PermissionLevel;
+};
+
 export interface PermissionsService {
 	/** Pure: default level from the origin table above */
 	defaultLevel(input: DefaultLevelInput): PermissionLevel;
@@ -72,4 +114,8 @@ export interface PermissionsService {
 		toolId: string;
 		level: PermissionLevel;
 	}): Promise<void>;
+	/** Tools of `toolIds` that are not blocked for the user (discovery and declarations) */
+	visibleToolIds(workspaceId: string, userId: string, toolIds: string[]): Promise<string[]>;
+	/** Every non-removed tool the actor can see, with its levels (permissions page) */
+	listToolPermissions(actor: WorkspaceActor): Promise<ToolPermission[]>;
 }

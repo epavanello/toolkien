@@ -49,7 +49,11 @@
 	const styles = $derived(pageVariants({ variant }));
 </script>
 
-<svelte:head><title>{title}</title></svelte:head>
+<!-- App pages (workspace, approvals, invitations, admin) never belong in search results -->
+<svelte:head>
+	<title>{title}</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
 
 <div class={styles.root()} data-slot="page">
 	<header class={styles.header()}>

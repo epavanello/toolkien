@@ -5,6 +5,7 @@
 	import { resolve } from '$app/paths';
 	import { authClient } from '#lib/auth-client.ts';
 	import AuthHeading from '#lib/components/app/auth-heading.svelte';
+	import SeoHead from '#lib/components/seo/seo-head.svelte';
 	import { FormField, RemoteForm } from '#lib/components/app/index.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { login } from '#lib/functions/auth.remote.ts';
@@ -19,6 +20,11 @@
 		else await goto(data.redirectTo, { invalidateAll: true });
 	}
 </script>
+
+<SeoHead
+	title="Sign in"
+	description="Sign in to Toolkien, the gateway MCP server for all your remote MCP servers."
+/>
 
 <AuthHeading title="Sign in">
 	No account? <a href={resolve('/(auth)/signup')}>Create one</a>

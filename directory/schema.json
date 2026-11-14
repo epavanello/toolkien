@@ -1,0 +1,175 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"properties": {
+		"$schema": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string",
+			"maxLength": 60,
+			"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+		},
+		"name": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 60
+		},
+		"description": {
+			"type": "string",
+			"minLength": 10,
+			"maxLength": 300
+		},
+		"homepage": {
+			"type": "string",
+			"format": "uri"
+		},
+		"url": {
+			"type": "string",
+			"format": "uri"
+		},
+		"namespace": {
+			"type": "string",
+			"maxLength": 40,
+			"pattern": "^[a-z][A-Za-z0-9]*$"
+		},
+		"category": {
+			"type": "string",
+			"enum": [
+				"developer-tools",
+				"project-management",
+				"knowledge",
+				"data",
+				"payments",
+				"search",
+				"monitoring",
+				"design",
+				"communication",
+				"other"
+			]
+		},
+		"tags": {
+			"default": [],
+			"maxItems": 10,
+			"type": "array",
+			"items": {
+				"type": "string",
+				"maxLength": 30,
+				"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+			}
+		},
+		"auth": {
+			"type": "object",
+			"properties": {
+				"type": {
+					"type": "string",
+					"enum": ["oauth", "token", "none"]
+				},
+				"scopes": {
+					"maxItems": 20,
+					"type": "array",
+					"items": {
+						"type": "string",
+						"pattern": "^[\\x21\\x23-\\x5b\\x5d-\\x7e]+$"
+					}
+				},
+				"oauth": {
+					"type": "object",
+					"properties": {
+						"registration": {
+							"minItems": 1,
+							"type": "array",
+							"items": {
+								"type": "string",
+								"enum": ["cimd", "dcr", "preregistered"]
+							}
+						},
+						"issuer": {
+							"type": "string",
+							"format": "uri"
+						}
+					},
+					"additionalProperties": false
+				},
+				"tokenHelp": {
+					"type": "string",
+					"maxLength": 300
+				},
+				"tokenUrl": {
+					"type": "string",
+					"format": "uri"
+				}
+			},
+			"required": ["type"],
+			"additionalProperties": false
+		},
+		"tools": {
+			"default": {},
+			"type": "object",
+			"propertyNames": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 128
+			},
+			"additionalProperties": {
+				"type": "object",
+				"properties": {
+					"annotations": {
+						"type": "object",
+						"properties": {
+							"title": {
+								"type": "string",
+								"maxLength": 100
+							},
+							"readOnlyHint": {
+								"type": "boolean"
+							},
+							"destructiveHint": {
+								"type": "boolean"
+							},
+							"idempotentHint": {
+								"type": "boolean"
+							},
+							"openWorldHint": {
+								"type": "boolean"
+							}
+						},
+						"additionalProperties": false
+					},
+					"note": {
+						"type": "string",
+						"maxLength": 500
+					}
+				},
+				"additionalProperties": false
+			}
+		},
+		"verification": {
+			"type": "object",
+			"properties": {
+				"status": {
+					"type": "string",
+					"enum": ["verified", "community", "unverified"]
+				},
+				"by": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 60
+				},
+				"on": {
+					"type": "string",
+					"format": "date",
+					"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+				},
+				"notes": {
+					"type": "string",
+					"maxLength": 1000
+				}
+			},
+			"required": ["status", "by", "on"],
+			"additionalProperties": false
+		}
+	},
+	"required": ["id", "name", "description", "url", "namespace", "category", "auth", "verification"],
+	"additionalProperties": false
+}

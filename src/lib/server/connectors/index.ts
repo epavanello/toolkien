@@ -1,23 +1,42 @@
-import { notImplemented } from '#lib/server/not-implemented.ts';
+import { building } from '$app/env';
+import { registerJob } from '#lib/server/jobs/index.ts';
+import { listDirectoryEntries } from './directory.ts';
+import * as discovery from './discovery.ts';
+import { abandonUpstreamOAuth, clientMetadataDocument, purgeExpiredFlows } from './oauth.ts';
+import * as service from './service.ts';
 import type { ConnectorsService } from './types.ts';
 
 export type * from './types.ts';
+export { toScriptValue } from './upstream.ts';
+/** Callback helpers for `src/routes/connectors/oauth/**` (not part of the service contract) */
+export { abandonUpstreamOAuth as abandonOAuth, clientMetadataDocument };
 
-export const listDirectory: ConnectorsService['listDirectory'] = () => [];
-export const list: ConnectorsService['list'] = async () => [];
-export const add: ConnectorsService['add'] = async () => notImplemented('connectors.add');
-export const remove: ConnectorsService['remove'] = async () => notImplemented('connectors.remove');
-export const startOAuth: ConnectorsService['startOAuth'] = async () =>
-	notImplemented('connectors.startOAuth');
-export const completeOAuth: ConnectorsService['completeOAuth'] = async () =>
-	notImplemented('connectors.completeOAuth');
-export const setToken: ConnectorsService['setToken'] = async () =>
-	notImplemented('connectors.setToken');
-export const syncTools: ConnectorsService['syncTools'] = async () =>
-	notImplemented('connectors.syncTools');
-export const searchTools: ConnectorsService['searchTools'] = async () => [];
-export const describeTools: ConnectorsService['describeTools'] = async () => [];
-export const declarationsFor: ConnectorsService['declarationsFor'] = async () => '';
-export const resolveTool: ConnectorsService['resolveTool'] = async () => null;
-export const callTool: ConnectorsService['callTool'] = async () =>
-	notImplemented('connectors.callTool');
+export const listDirectory: ConnectorsService['listDirectory'] = listDirectoryEntries;
+export const list: ConnectorsService['list'] = service.list;
+export const get: ConnectorsService['get'] = service.get;
+export const add: ConnectorsService['add'] = service.add;
+export const remove: ConnectorsService['remove'] = service.remove;
+export const rename: ConnectorsService['rename'] = service.rename;
+export const disconnect: ConnectorsService['disconnect'] = service.disconnect;
+export const startOAuth: ConnectorsService['startOAuth'] = service.startOAuth;
+export const completeOAuth: ConnectorsService['completeOAuth'] = service.completeOAuth;
+export const setToken: ConnectorsService['setToken'] = service.setToken;
+export const syncTools: ConnectorsService['syncTools'] = service.syncTools;
+export const refreshStale: ConnectorsService['refreshStale'] = service.refreshStale;
+export const searchTools: ConnectorsService['searchTools'] = discovery.searchTools;
+export const describeTools: ConnectorsService['describeTools'] = discovery.describeTools;
+export const declarationsFor: ConnectorsService['declarationsFor'] = discovery.declarationsFor;
+export const resolveTool: ConnectorsService['resolveTool'] = discovery.resolveTool;
+export const callTool: ConnectorsService['callTool'] = service.callTool;
+
+if (!building) {
+	try {
+		registerJob({
+			name: 'connectors.oauth_flows',
+			intervalMs: 60 * 60 * 1000,
+			run: () => purgeExpiredFlows()
+		});
+	} catch {
+		// Already registered (module re-evaluated by HMR)
+	}
+}

@@ -59,6 +59,12 @@ export const connector = sqliteTable(
 		/** Streamable HTTP endpoint of the upstream MCP server (https only) */
 		url: text('url').notNull(),
 		name: text('name').notNull(),
+		/**
+		 * Instance label when the same server is added more than once (one per account or
+		 * project: PostHog "DevMotion", PostHog "Devpost"). Shown next to the name, indexed for
+		 * search and stated in the generated `.d.ts`.
+		 */
+		label: text('label'),
 		/** camelCase namespace in the generated TypeScript (`gmail` in `gmail.searchThreads`) */
 		namespace: text('namespace').notNull(),
 		/** Free URLs are unverified: descriptions are flagged in `.d.ts` and UI */
@@ -70,6 +76,12 @@ export const connector = sqliteTable(
 		/** Kill switch: configured but unusable until cleared */
 		suspendedAt: timestamp('suspended_at'),
 		lastSyncedAt: timestamp('last_synced_at'),
+		/** MCP protocol version negotiated on the last sync (`2026-07-28`, `2025-11-25`, …) */
+		protocolVersion: text('protocol_version'),
+		/** Upstream `serverInfo` name/version reported on the last sync (metadata only) */
+		serverInfo: json<{ name: string; version: string } | null>('server_info'),
+		/** Upstream advertises `tools.listChanged`: a watcher listens for changes */
+		toolsListChanged: integer('tools_list_changed', { mode: 'boolean' }).notNull().default(false),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt(),
 		updatedAt: updatedAt()
@@ -147,6 +159,43 @@ export const upstreamOAuthClient = sqliteTable('upstream_oauth_client', {
 	createdAt: createdAt(),
 	updatedAt: updatedAt()
 });
+
+/**
+ * An upstream OAuth authorization in progress (PKCE). The browser carries only `state`; the
+ * table stores its SHA-256, the sealed code verifier and who started it, so the callback can
+ * check the same signed-in user finishes it. Single use, deleted on callback, expires in 10 min.
+ */
+export const upstreamOAuthFlow = sqliteTable(
+	'upstream_oauth_flow',
+	{
+		id: id(),
+		stateHash: text('state_hash').notNull().unique(),
+		connectorId: text('connector_id')
+			.notNull()
+			.references(() => connector.id, { onDelete: 'cascade' }),
+		workspaceId: text('workspace_id')
+			.notNull()
+			.references(() => organization.id, { onDelete: 'cascade' }),
+		/** Who started the flow (must be the one completing it) */
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		/** Credential owner: `null` = the shared credential of the connector */
+		credentialUserId: text('credential_user_id').references(() => user.id, {
+			onDelete: 'cascade'
+		}),
+		...sealed('codeVerifier'),
+		redirectUri: text('redirect_uri').notNull(),
+		/** RFC 8707 resource indicator sent with the authorization request */
+		resource: text('resource'),
+		scope: text('scope'),
+		/** Local path to return to after the callback (validated with `safeRedirectPath`) */
+		returnTo: text('return_to').notNull(),
+		expiresAt: timestamp('expires_at').notNull(),
+		createdAt: createdAt()
+	},
+	(t) => [index('upstream_oauth_flow_expires_idx').on(t.expiresAt)]
+);
 
 /**
  * Stable identity of an upstream tool inside a connector. Definitions live in `tool_version`;

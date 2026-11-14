@@ -1,0 +1,24 @@
+{
+	"$schema": "../schema.json",
+	"id": "sentry",
+	"name": "Sentry",
+	"description": "Query Sentry issues, events, releases and projects; run Seer analysis.",
+	"homepage": "https://docs.sentry.io/product/sentry-mcp/",
+	"url": "https://mcp.sentry.dev/mcp",
+	"namespace": "sentry",
+	"category": "monitoring",
+	"tags": ["errors", "observability"],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Sentry hosted MCP server; OAuth via Sentry with dynamic client registration."
+	},
+	"tools": {}
+}

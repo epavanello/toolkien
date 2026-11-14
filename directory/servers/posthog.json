@@ -1,0 +1,21 @@
+{
+	"$schema": "../schema.json",
+	"id": "posthog",
+	"name": "PostHog",
+	"description": "Query PostHog insights, feature flags, experiments, errors and run HogQL.",
+	"homepage": "https://posthog.com/docs/model-context-protocol",
+	"url": "https://mcp.posthog.com/mcp",
+	"namespace": "posthog",
+	"category": "data",
+	"tags": ["analytics", "feature-flags"],
+	"auth": {
+		"type": "oauth"
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "A personal API key (scoped) also works as a bearer token."
+	},
+	"tools": {}
+}

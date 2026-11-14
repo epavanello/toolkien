@@ -1,0 +1,19 @@
+{
+	"nodeModulesDir": "none",
+	"tasks": {
+		"start": "deno run --allow-net --allow-env=EGRESS_PROXY_TOKEN,EGRESS_ALLOW_ANONYMOUS,EGRESS_HOST,EGRESS_PORT,EGRESS_MAX_CONNECTIONS,EGRESS_HEADER_TIMEOUT_MS,EGRESS_CONNECT_TIMEOUT_MS,EGRESS_IDLE_TIMEOUT_MS,EGRESS_MAX_TUNNEL_MS main.ts",
+		"test": "deno test --allow-net --allow-read=.,.. test/"
+	},
+	"imports": {
+		"@std/assert": "jsr:@std/assert@^1.0.0"
+	},
+	"fmt": {
+		"useTabs": true,
+		"singleQuote": true,
+		"lineWidth": 100,
+		"exclude": [
+			"src/ip.ts"
+		],
+		"trailingCommas": "never"
+	}
+}

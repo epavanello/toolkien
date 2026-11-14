@@ -1,0 +1,15 @@
+.git
+.svelte-kit
+build
+node_modules
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+runner
+egress
+docs
+deploy/openbao
+deploy/backup
+.vscode

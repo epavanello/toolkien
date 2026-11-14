@@ -1,0 +1,24 @@
+{
+	"$schema": "../schema.json",
+	"id": "notion",
+	"name": "Notion",
+	"description": "Search, read and edit Notion pages and databases of the connected workspace.",
+	"homepage": "https://developers.notion.com/docs/mcp",
+	"url": "https://mcp.notion.com/mcp",
+	"namespace": "notion",
+	"category": "knowledge",
+	"tags": ["docs", "wiki", "databases"],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"verification": {
+		"status": "community",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-14",
+		"notes": "Notion hosted MCP server, OAuth with dynamic client registration."
+	},
+	"tools": {}
+}

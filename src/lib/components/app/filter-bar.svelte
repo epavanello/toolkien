@@ -18,6 +18,8 @@
 	 */
 	type Props = {
 		search?: string;
+		/** `false` hides the search box (filters only) */
+		searchable?: boolean;
 		searchPlaceholder?: string;
 		filters?: FilterDefinition[];
 		values?: Record<string, string>;
@@ -26,6 +28,7 @@
 
 	let {
 		search = $bindable(''),
+		searchable = true,
 		searchPlaceholder = 'Search…',
 		filters = [],
 		values = $bindable({}),
@@ -34,15 +37,17 @@
 </script>
 
 <Toolbar {end}>
-	<InputGroup.Root class="h-8 w-full max-w-xs">
-		<InputGroup.Addon><Search /></InputGroup.Addon>
-		<InputGroup.Input
-			type="search"
-			bind:value={search}
-			placeholder={searchPlaceholder}
-			aria-label={searchPlaceholder}
-		/>
-	</InputGroup.Root>
+	{#if searchable}
+		<InputGroup.Root class="h-8 w-full max-w-xs">
+			<InputGroup.Addon><Search /></InputGroup.Addon>
+			<InputGroup.Input
+				type="search"
+				bind:value={search}
+				placeholder={searchPlaceholder}
+				aria-label={searchPlaceholder}
+			/>
+		</InputGroup.Root>
+	{/if}
 	{#each filters as filter (filter.key)}
 		<NativeSelect.Root
 			size="sm"

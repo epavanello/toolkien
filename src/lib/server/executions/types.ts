@@ -64,6 +64,24 @@ export type PendingApproval = ApprovalPrompt & {
 	createdAt: Date;
 };
 
+/** The three answers offered to the human (elicitation and approval page) */
+export const APPROVAL_CHOICES = ['approve_once', 'approve_tool', 'reject'] as const;
+export type ApprovalChoice = (typeof APPROVAL_CHOICES)[number];
+
+/** Where the human answered: an MCP elicitation in the client, or the Toolkien page */
+export type ApprovalChannel = 'elicitation' | 'web';
+
+/** One approval as the approval page shows it (preview only while pending) */
+export type ApprovalView = PendingApproval & {
+	scope: ApprovalScope | null;
+	decidedAt: Date | null;
+	executionStatus: ExecutionStatus;
+	/** Pending, not expired, and the viewer may decide */
+	canDecide: boolean;
+	/** The viewer is an admin deciding for another member */
+	onBehalfOfOtherUser: boolean;
+};
+
 export interface ExecutionsService {
 	start(input: {
 		actor: WorkspaceActor;
@@ -83,7 +101,26 @@ export interface ExecutionsService {
 		approvalId: string;
 		deciderUserId: string;
 		decision: ApprovalDecision;
+		/** Defaults to `web` */
+		channel?: ApprovalChannel;
 	}): Promise<void>;
+	/**
+	 * For the MCP layer once the human answered an elicitation (or a retried request carries the
+	 * answer): decides with `channel: 'elicitation'` and resumes the execution, returning the new
+	 * outcome. `userId` is the verified token's user, never something the model sent.
+	 */
+	answerApproval(input: {
+		userId: string;
+		approvalId: string;
+		choice: ApprovalChoice;
+	}): Promise<ExecutionOutcome>;
+	/** Approval page: the execution's user, or an admin/owner of its workspace; else NOT_FOUND */
+	getApproval(input: { approvalId: string; viewerUserId: string }): Promise<ApprovalView>;
+	/**
+	 * Kill switch: aborts running executions in scope on this instance (`{}` = platform: all of
+	 * them); returns how many. Paused ones are refused on resume by `assertNotSuspended`.
+	 */
+	abortRunning(scope: { userId?: string; workspaceId?: string }): number;
 	/** Job: expires stale approvals and paused executions, wiping their state */
 	expireStale(now?: Date): Promise<{ approvals: number; executions: number }>;
 }

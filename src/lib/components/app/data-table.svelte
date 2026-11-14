@@ -11,7 +11,15 @@
 	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 	import * as Table from '#lib/components/ui/table/index.js';
 	import ActionsMenu from './actions-menu.svelte';
-	import { cellValue, filterRows, paginate, type Column, type TableFilter } from './data-table.ts';
+	import {
+		cellValue,
+		filterRows,
+		groupHeaderAt,
+		paginate,
+		sortByGroup,
+		type Column,
+		type TableFilter
+	} from './data-table.ts';
 	import EmptyState from './empty-state.svelte';
 	import FilterBar from './filter-bar.svelte';
 	import Mono from './mono.svelte';
@@ -38,6 +46,11 @@
 		/** Extra controls at the right of the filter bar (primary action) */
 		toolbar?: Snippet;
 		onRowClick?: (row: T) => void;
+		/**
+		 * Groups rows under a header row (e.g. connector instances by directory server); rows
+		 * are sorted by group, keeping their order inside a group. Empty labels go last.
+		 */
+		group?: (row: T) => string;
 		/** Accessible name of the table */
 		label: string;
 	};
@@ -55,6 +68,7 @@
 		empty = { title: 'Nothing here yet' },
 		toolbar,
 		onRowClick,
+		group,
 		label
 	}: Props = $props();
 
@@ -62,7 +76,9 @@
 	let values = $state<Record<string, string>>({});
 	let page = $state(1);
 
-	const filtered = $derived(filterRows(rows ?? [], columns, search, filters, values));
+	const filtered = $derived(
+		sortByGroup(filterRows(rows ?? [], columns, search, filters, values), group)
+	);
 	const current = $derived(paginate(filtered, page, pageSize));
 	const narrowed = $derived(search.trim() !== '' || Object.values(values).some(Boolean));
 
@@ -95,6 +111,7 @@
 		<FilterBar
 			bind:search={() => search, (value) => ((search = value), (page = 1))}
 			bind:values={() => values, (value) => ((values = value), (page = 1))}
+			{searchable}
 			{searchPlaceholder}
 			{filters}
 			end={toolbar}
@@ -148,7 +165,18 @@
 						</Table.Cell>
 					</Table.Row>
 				{:else}
-					{#each current.rows as row (rowKey(row))}
+					{#each current.rows as row, index (rowKey(row))}
+						{@const header = groupHeaderAt(current.rows, index, group)}
+						{#if header !== null}
+							<Table.Row class="bg-muted/30 hover:bg-muted/30">
+								<Table.Cell
+									colspan={columns.length}
+									class="h-8 px-3 text-xs font-medium text-muted-foreground"
+								>
+									{header || 'Other'}
+								</Table.Cell>
+							</Table.Row>
+						{/if}
 						<Table.Row
 							class={onRowClick ? 'cursor-pointer' : ''}
 							tabindex={onRowClick ? 0 : undefined}
