@@ -1,0 +1,43 @@
+/**
+ * MCP server contract (owner: mcp).
+ *
+ * - One remote MCP server at `${ORIGIN}/mcp`, Streamable HTTP, protocol 2026-07-28 with
+ *   version negotiation (2025-11-25 accepted). Stateless: no `Mcp-Session-Id`, no GET stream.
+ * - Bearer tokens only (issued by Better Auth `mcp()`): audience = `${ORIGIN}/mcp`, PKCE S256,
+ *   15-minute access tokens. Cookies are ignored on `/mcp` (the hooks skip session lookup).
+ * - Exactly these tools are exposed; there is NO approve tool. Descriptions teach the flow:
+ *   search → describe → execute.
+ * - Every `tools_search` and `execute` result names the active workspace.
+ * - `workspace_switch` requires human confirmation (elicitation, or a confirmation link) and
+ *   records `workspace.switched`.
+ * - Elicitation is used only when the client declared the capability; otherwise the out-of-band
+ *   approval page is returned.
+ */
+export const MCP_TOOL_NAMES = [
+	'workspace_list',
+	'workspace_switch',
+	'tools_search',
+	'tools_describe',
+	'execute',
+	'execution_status'
+] as const;
+export type McpToolName = (typeof MCP_TOOL_NAMES)[number];
+
+export const MCP_PROTOCOL_VERSIONS = ['2026-07-28', '2025-11-25'] as const;
+export type McpProtocolVersion = (typeof MCP_PROTOCOL_VERSIONS)[number];
+
+/** Verified access-token identity of one MCP request */
+export type McpRequestContext = {
+	userId: string;
+	/** OAuth `client_id` (CIMD URL or registered id) */
+	clientId: string;
+	clientName: string | null;
+	scopes: string[];
+};
+
+export type McpClientCapabilities = {
+	elicitation: { form: boolean; url: boolean };
+};
+
+/** Handles one HTTP request to `/mcp` after the bearer token was verified */
+export type HandleMcpRequest = (request: Request, ctx: McpRequestContext) => Promise<Response>;

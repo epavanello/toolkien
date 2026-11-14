@@ -22,7 +22,7 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
+		"auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/schema/auth.ts --yes && prettier --write src/lib/server/db/schema/auth.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -46,11 +46,14 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
 		"globals": "^17.6.0",
+		"mdsvex": "^0.12.8",
 		"mode-watcher": "^1.1.0",
 		"playwright": "^1.60.0",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
 		"prettier-plugin-tailwindcss": "^0.8.0",
+		"rehype-slug": "^6.0.0",
+		"schema-dts": "^2.1.0",
 		"shadcn-svelte": "^1.8.1",
 		"svelte": "^5.57.2",
 		"svelte-check": "^4.6.0",

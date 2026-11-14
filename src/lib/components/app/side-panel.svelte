@@ -1,0 +1,53 @@
+<script lang="ts" module>
+	import { tv, type VariantProps } from 'tailwind-variants';
+
+	export const sidePanelVariants = tv({
+		base: 'flex w-full flex-col gap-0 p-0',
+		variants: { size: { md: 'sm:max-w-md', lg: 'sm:max-w-xl', xl: 'sm:max-w-3xl' } },
+		defaultVariants: { size: 'lg' }
+	});
+
+	export type SidePanelSize = VariantProps<typeof sidePanelVariants>['size'];
+</script>
+
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+	import * as Sheet from '#lib/components/ui/sheet/index.js';
+
+	/** Details of a table row, sliding in from the right; `footer` holds the actions */
+	type Props = {
+		open?: boolean;
+		title: string;
+		description?: string;
+		size?: SidePanelSize;
+		meta?: Snippet;
+		footer?: Snippet;
+		children: Snippet;
+	};
+
+	let {
+		open = $bindable(false),
+		title,
+		description,
+		size,
+		meta,
+		footer,
+		children
+	}: Props = $props();
+</script>
+
+<Sheet.Root bind:open>
+	<Sheet.Content class={sidePanelVariants({ size })}>
+		<Sheet.Header class="border-b px-4 py-3 pr-12">
+			<div class="flex flex-wrap items-center gap-2">
+				<Sheet.Title>{title}</Sheet.Title>
+				{#if meta}{@render meta()}{/if}
+			</div>
+			{#if description}<Sheet.Description>{description}</Sheet.Description>{/if}
+		</Sheet.Header>
+		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">{@render children()}</div>
+		{#if footer}<Sheet.Footer class="flex-row justify-end border-t px-4 py-3"
+				>{@render footer()}</Sheet.Footer
+			>{/if}
+	</Sheet.Content>
+</Sheet.Root>

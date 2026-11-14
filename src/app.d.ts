@@ -1,15 +1,18 @@
-import type { User, Session } from 'better-auth';
+import type { ErrorCode } from '#lib/core/errors.ts';
+import type { AuthSession } from '#lib/server/auth.ts';
 
 // See https://svelte.dev/docs/kit/types#app.d.ts
-// for information about these interfaces
 declare global {
 	namespace App {
-		interface Locals {
-			user?: User;
-			session?: Session;
+		interface Error {
+			code: ErrorCode;
+			message: string;
 		}
-
-		// interface Error {}
+		interface Locals {
+			/** Cookie session user; always null on `/mcp` (bearer tokens only) and when suspended */
+			user: AuthSession['user'] | null;
+			session: AuthSession['session'] | null;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}
