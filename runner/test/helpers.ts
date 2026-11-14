@@ -21,6 +21,30 @@ declare const crm: {
 };
 `;
 
+/**
+ * A tool without an output schema, as typegen declares it (`ToolTextResult` mirrors
+ * `TEXT_RESULT_DECLARATIONS` in `src/lib/server/typegen/declarations.ts`)
+ */
+export const TEXT_DECLARATIONS = `
+interface ToolTextResult {
+	readonly text: string;
+	readonly content: ContentBlock[];
+	readonly structuredContent?: unknown;
+	json<T = unknown>(): T;
+}
+type ContentBlock =
+	| { type: 'text'; text: string }
+	| { type: 'image' | 'audio'; data: string; mimeType: string }
+	| { type: 'resource_link'; uri: string; name: string; mimeType?: string; description?: string }
+	| { type: 'resource'; resource: { uri: string; mimeType?: string; text?: string; blob?: string } };
+declare const resend: {
+	/** @returns No output schema: returns text content. Read \`.text\`; call \`.json()\` only if the text is JSON. */
+	listDomains(args: {}): Promise<ToolTextResult>;
+	/** @returns No output schema: returns text content. Read \`.text\`; call \`.json()\` only if the text is JSON. */
+	getStats(args: {}): Promise<ToolTextResult>;
+};
+`;
+
 export const LIMITS: RunnerLimits = {
 	timeoutMs: 10_000,
 	maxToolCalls: 50,

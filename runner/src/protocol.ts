@@ -17,7 +17,10 @@
  *                      { t: 'log', text }
  *                      { t: 'done', json, size, truncated }    `json` = JSON text of the result
  *                      { t: 'error', name, message, stack, code?, path? }
- *   supervisor → child { t: 'ret', id, ok: true, value } | { t: 'ret', id, ok: false, code, message }
+ *   supervisor → child { t: 'ret', id, ok: true, value, text? } | { t: 'ret', id, ok: false, code, message }
+ *
+ * `text: true`: the tool has no output schema; `value` is `{ content, structuredContent? }` and the
+ * prelude hands the script a `ToolTextResult` (`text`, `content`, `json()`).
  *
  * Keep the app-side copy (`src/lib/server/runner/protocol.ts`) in sync.
  */
@@ -37,7 +40,8 @@ export type RunnerJob = {
 };
 
 export type ToolCallResponse =
-	{ kind: 'result'; value: unknown } | { kind: 'error'; code: string; message: string };
+	| { kind: 'result'; value: unknown; text?: boolean }
+	| { kind: 'error'; code: string; message: string };
 
 export type RunnerFailureCode =
 	| 'type_error'
@@ -79,7 +83,7 @@ export type ChildToSupervisor =
 	  };
 
 export type SupervisorToChild =
-	| { t: 'ret'; id: number; ok: true; value: unknown }
+	| { t: 'ret'; id: number; ok: true; value: unknown; text?: true }
 	| { t: 'ret'; id: number; ok: false; code: string; message: string };
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -118,7 +122,11 @@ export function parseJob(value: unknown): RunnerJob | string {
 /** Validates a tool response from the app (`pause` is a separate frame) */
 export function parseToolResponse(value: unknown): ToolCallResponse | null {
 	if (!isObject(value)) return null;
-	if (value.kind === 'result') return { kind: 'result', value: value.value };
+	if (value.kind === 'result') {
+		return value.text === true
+			? { kind: 'result', value: value.value, text: true }
+			: { kind: 'result', value: value.value };
+	}
 	if (
 		value.kind === 'error' &&
 		typeof value.code === 'string' &&

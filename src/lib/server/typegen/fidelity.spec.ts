@@ -8,6 +8,9 @@
  * 3. Round trip through the TypeScript checker: for each object reachable through properties,
  *    the declared members, their optionality and enum literal sets match the schema.
  *
+ * 4. Tools without an output schema return `ToolTextResult` and say so; the others return the
+ *    structured type (checked by the round trip).
+ *
  * It also bounds the size of the declarations against the raw JSON the server sent.
  * `TYPEGEN_FIXTURES=/dir` adds private corpora (e.g. tool lists of connected servers);
  * `TYPEGEN_REPORT=1` prints a size table.
@@ -16,7 +19,15 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { functionNames, moduleDeclaration, sanitizeComment, toNamespace } from './index.ts';
+import {
+	functionNames,
+	moduleDeclaration,
+	NO_OUTPUT_SCHEMA_NOTE,
+	sanitizeComment,
+	TEXT_RESULT_DECLARATIONS,
+	TEXT_RESULT_TYPE,
+	toNamespace
+} from './index.ts';
 import type { ToolTypeInput } from './types.ts';
 
 type McpTool = {
@@ -370,6 +381,16 @@ describe.each(fixtures)('fidelity: $file', (fixture) => {
 		});
 		expect(problems).toEqual([]);
 
+		// Without an output schema the result is text, typed and documented as such
+		const notText = fixture.tools.flatMap((tool, i) => {
+			const result = aliases.get(`Result${i}`)!;
+			const isText = result.aliasSymbol === undefined && result.symbol?.name === TEXT_RESULT_TYPE;
+			return isText === !tool.outputSchema ? [] : [`${tool.name}: ${checker.typeToString(result)}`];
+		});
+		expect(notText).toEqual([]);
+		const textTools = fixture.tools.filter((tool) => !tool.outputSchema).length;
+		expect(dts.split(NO_OUTPUT_SCHEMA_NOTE).length - 1).toBe(textTools);
+
 		// `TYPEGEN_COMPARE=/dir` with `<file>.d.ts` renderings of another typegen version: facts it lost
 		const previous =
 			process.env.TYPEGEN_COMPARE &&
@@ -388,12 +409,48 @@ describe.each(fixtures)('fidelity: $file', (fixture) => {
 		report.push(
 			`${fixture.file.padEnd(22)} ${String(fixture.tools.length).padStart(3)} tools  raw ${String(raw.length).padStart(7)} B ≈${String(Math.round(raw.length / 4)).padStart(6)} tok  d.ts ${String(dts.length).padStart(7)} B ≈${String(Math.round(dts.length / 4)).padStart(6)} tok  ${(dts.length / raw.length).toFixed(2)}×`
 		);
-		// Concise: never much larger than what the server sent, despite JSDoc framing
-		expect(dts.length).toBeLessThan(raw.length * 1.3);
+		// Concise: never much larger than what the server sent, despite JSDoc framing. The
+		// `ToolTextResult` declarations are a constant, declared once per script: not counted
+		expect(dts.replace(TEXT_RESULT_DECLARATIONS, '').length).toBeLessThan(raw.length * 1.3);
 	});
 
 	it('is deterministic', async () => {
 		expect(await moduleDeclaration([...inputs].reverse())).toBe(await moduleDeclaration(inputs));
+	});
+});
+
+describe('field report: Resend-like connector', () => {
+	const fixture = fixtures.find((f) => f.file === 'resendLike.json')!;
+	const inputs = toInputs(fixture);
+
+	it('keeps instruction-like descriptions and bookkeeping parameters verbatim and required', async () => {
+		const dts = await moduleDeclaration(inputs);
+		expect(dts).toContain('ask the user for the `from` address and an optional `replyTo`');
+		expect(dts).toContain(
+			'Conversation id returned by your first call to this server. Leave empty on the first call; reuse the returned value afterwards.'
+		);
+		const { diagnostics } = compile(dts, inputs);
+		expect(diagnostics).toEqual([]);
+		// Required upstream stays required: leaving out the bookkeeping fields is a type error
+		const missing = compile(
+			`${dts}\nasync function probe() { await resend.sendEmail({ to: ['a@b.c'], subject: 's', text: 't' }); }`,
+			[]
+		).diagnostics;
+		expect(missing.join('\n')).toMatch(/context.*llm_model.*conversation_id|missing the following/);
+	});
+
+	it('types text results as ToolTextResult and structured ones from the schema', async () => {
+		const dts = await moduleDeclaration(inputs);
+		expect(dts).toMatch(/listDomains\(args: \{[\s\S]*?\}\): Promise<ToolTextResult>;/);
+		expect(dts).toMatch(/sendEmail\(args: \{[\s\S]*?\}\): Promise<ToolTextResult>;/);
+		expect(dts).toMatch(/getEmail\(args: \{[\s\S]*?\}\): Promise<\{/);
+		const misuse = compile(
+			`${dts}\nasync function probe() { const d = await resend.listDomains({ context: 'c', llm_model: 'm', conversation_id: '' }); return d.status; }`,
+			[]
+		).diagnostics;
+		expect(misuse.join('\n')).toContain(
+			"Property 'status' does not exist on type 'ToolTextResult'"
+		);
 	});
 });
 

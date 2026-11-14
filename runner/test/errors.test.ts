@@ -3,7 +3,7 @@
  * column, code excerpt), what (expected vs actual, the tool and the error code) and what to do.
  */
 import { assert, assertEquals, assertMatch, assertStringIncludes } from '@std/assert';
-import { DECLARATIONS, defaultTools, run } from './helpers.ts';
+import { DECLARATIONS, defaultTools, run, TEXT_DECLARATIONS } from './helpers.ts';
 
 Deno.test('uncaught tool errors name the tool, the script line and what to do', async () => {
 	const r = await run(
@@ -111,12 +111,25 @@ Deno.test(
 		);
 		assertStringIncludes(r.message, 'hint: In the arguments of `crm.addNote`');
 		assertMatch(r.message, /script\.ts:5:8 - error TS18046/);
-		assertStringIncludes(
-			r.message,
-			'hint: Tool results without an output schema are typed `unknown`'
-		);
+		assertStringIncludes(r.message, 'hint: This value is typed `unknown`');
 	}
 );
+
+Deno.test('reading fields off a text result gets the no-output-schema hint', async () => {
+	const r = await run('const d = await resend.listDomains({});\nreturn d.status;', {
+		declarations: TEXT_DECLARATIONS
+	});
+	assertEquals(r.status, 'failed');
+	if (r.status !== 'failed') return;
+	assertMatch(
+		r.message,
+		/script\.ts:2:10 - error TS2339: Property 'status' does not exist on type 'ToolTextResult'/
+	);
+	assertStringIncludes(
+		r.message,
+		'hint: This tool has no output schema: its result is `ToolTextResult`'
+	);
+});
 
 Deno.test('long lines show a window around the error column', async () => {
 	const r = await run(`const s = '${'x'.repeat(400)}'; return s + undefinedName;`);

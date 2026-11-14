@@ -44,7 +44,15 @@ export type ToolCallRequest = {
 };
 
 export type ToolCallResponse =
-	| { kind: 'result'; value: unknown }
+	| {
+			kind: 'result';
+			value: unknown;
+			/**
+			 * (additive) The tool has no output schema: `value` is `{ content, structuredContent? }`
+			 * (bridge `textResultValue`) and the sandbox hands the script a `ToolTextResult`.
+			 */
+			text?: boolean;
+	  }
 	/** Shown to the script as a thrown error with this message */
 	| { kind: 'error'; code: string; message: string }
 	/**

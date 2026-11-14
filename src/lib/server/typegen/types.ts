@@ -9,8 +9,9 @@ import type { JsonSchema, ToolAnnotations } from '#lib/server/db/schema/index.ts
  *   module (collisions get the connector prefix) before calling typegen.
  * - Descriptions become JSDoc; annotations become `@readOnly` / `@destructive` / `@idempotent`
  *   / `@openWorld` tags. Unverified connectors get an `@unverified` tag and a warning line.
- * - Without `outputSchema` the return type is `Promise<unknown>` and the JSDoc tells the agent
- *   to inspect the result.
+ * - Without `outputSchema` the return type is `Promise<ToolTextResult>` (`text`, `content`,
+ *   `json()`, declared once per module and implemented by the sandbox prelude) and the JSDoc
+ *   says so. With one, the structured result is typed from the schema.
  * - Output is deterministic (same input → same text) so it can be cached and hashed.
  * - Upstream text is untrusted: it must be escaped so it can never close a comment (`*\/`)
  *   or inject declarations.
@@ -37,8 +38,12 @@ export type SignatureInput = Pick<ToolTypeInput, 'inputSchema' | 'outputSchema' 
 export interface TypeGenerator {
 	/** Declaration of one tool as a member of its namespace object */
 	toolDeclaration(tool: ToolTypeInput): Promise<string>;
-	/** Full `.d.ts` module for a set of tools (one `declare const` per namespace) */
-	moduleDeclaration(tools: ToolTypeInput[]): Promise<string>;
+	/**
+	 * Full `.d.ts` module for a set of tools (one `declare const` per namespace). (additive)
+	 * `sharedTypes: false` leaves out `ToolTextResult` / `ContentBlock` when another module shown
+	 * alongside already declares them.
+	 */
+	moduleDeclaration(tools: ToolTypeInput[], options?: { sharedTypes?: boolean }): Promise<string>;
 	/** `search_threads` / `search-threads` / `SearchThreads` → `searchThreads` */
 	toCamelCase(name: string): string;
 	/**

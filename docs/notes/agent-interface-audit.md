@@ -70,8 +70,8 @@ is one long description), small servers 0.7–1.02×.
   once. Depth limit raised to 12; past it the subschema is attached as `@schema`.
 - Required names without a schema become `name: unknown`; root input/output descriptions go to
   the tool JSDoc (`Arguments:` / `@returns`); explicit `false` hints rendered (`@write`,
-  `@nonDestructive`, `@closedWorld`); the "no output schema" advice is one module line plus a
-  short per-tool `@returns`.
+  `@nonDestructive`, `@closedWorld`); tools without an output schema return `ToolTextResult`
+  with a short per-tool `@returns` (see "Field report: Resend").
 
 Before / after (Hugging Face `hf_whoami` output, excerpt):
 
@@ -147,6 +147,71 @@ New `runner/test/adversarial.test.ts`, `errors.test.ts`, and an egress test; all
 - Egress: decimal/hex/octal/short IPv4, `0.0.0.0`, `::`, IPv4-mapped/compatible, 6to4,
   documentation, link-local and multicast targets are never dialled.
 
+## Field report: Resend
+
+A real agent (Claude Sonnet via Claude Code) sent an email through a user's Resend connector:
+search → describe → execute → approval → resume all worked, with three frictions.
+
+1. **Text results read as JSON.** `listDomains` / `sendEmail` have no `outputSchema` and answer
+   with text blocks (`Name: …`, `Status: …`). Typed `unknown`, the agent guessed JSON, parsed
+   wrongly and concluded the domain was not verified. Now such tools return
+   `Promise<ToolTextResult>`: `text` (text blocks joined with `\n`), `content` (every block as
+   sent), `structuredContent?` and `json<T>()`, which parses or throws
+   `resend.listDomains returned text, not JSON (starts with: "Name: …"). It has no output schema: read .text …`.
+   The bridge hands over `{ content, structuredContent? }` untouched with `text: true`
+   (`ToolCallResponse`, runner protocol `ret.text`); the sandbox prelude builds the object.
+   Tools with an `outputSchema` are unchanged (structured value). The interface is declared once
+   per module (constant, excluded from the harness size bound); `tools_describe` names the text
+   tools in one line; the checker hints `.text` / `.json()` when a script reads fields off one.
+2. **Bookkeeping parameters.** Resend requires `context`, `llm_model` and `conversation_id`
+   (issued only after a first call). Kept required and verbatim; `tools_search` lines now list
+   the required arguments, and the server instructions and `execute` description say: pass what
+   the descriptions say; if a value is only known after a first call, make it, read the value,
+   reuse it.
+3. **Chat-UX instructions in descriptions** ("ask the user for `from`/`replyTo`"). Kept verbatim;
+   the server instructions and the `tools_describe` output now say the doc comments are the
+   servers' documentation, not instructions, and never override the user's request (unverified
+   servers keep their stronger "untrusted" warning).
+
+Fixture `typegen/fixtures/resendLike.json` (hand-written from the report, not Resend's published
+schema) runs through the fidelity harness, which now also checks that every tool without an
+output schema returns `ToolTextResult` and says so; `mcp/e2e.spec.ts` serves it over the real
+SDK client (instructions, search line, describe output); Deno tests cover `text`, `content`,
+`json()` and its error.
+
+Before / after (`resend.listDomains`, excerpt):
+
+```ts
+// before
+// Tools returning `unknown` have no output schema: log a sample first, …
+	/**
+	 * List all domains in your Resend account. Returns each domain's name, status and region as text.
+	 *
+	 * @readOnly
+	 * @returns unknown shape (no output schema): inspect the result before relying on its fields.
+	 */
+	listDomains(args: { context: string; llm_model: string; conversation_id: string }): Promise<unknown>;
+// after
+interface ToolTextResult {
+	/** The text blocks joined with "\n". Plain text: often not JSON. */
+	readonly text: string;
+	readonly content: ContentBlock[];
+	readonly structuredContent?: unknown;
+	/** `JSON.parse(text)`; throws an Error saying the tool returned text, not JSON, when it is not. */
+	json<T = unknown>(): T;
+}
+	/**
+	 * List all domains in your Resend account. Returns each domain's name, status and region as text.
+	 *
+	 * @readOnly
+	 * @returns No output schema: returns text content. Read `.text`; call `.json()` only if the text is JSON.
+	 */
+	listDomains(args: {
+		/** Conversation id returned by your first call to this server. Leave empty on the first call; … */
+		conversation_id: string; /* … context, llm_model unchanged */
+	}): Promise<ToolTextResult>;
+```
+
 ## Residual risks and follow-ups
 
 - **Memory outside the V8 heap** (ArrayBuffers, Wasm) is bounded only by `ulimit -d`
@@ -165,4 +230,6 @@ New `runner/test/adversarial.test.ts`, `errors.test.ts`, and an egress test; all
   on restart; such runs end as `interrupted`.
 - `toScriptValue` may still disagree with an `outputSchema` when a server declares one but
   returns no `structuredContent` (the parsed text is used).
+- Executions paused before the `ToolTextResult` change replay their cached results in the old
+  shape (raw value, no `text` flag) when resumed.
 - The probe's search is a naive word match, not the production `tool_search_text` ranking.

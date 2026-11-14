@@ -118,6 +118,14 @@ export const summaryOf = (
 	return `${record.unverified ? '[unverified] ' : ''}${instance}${line}`;
 };
 
+/** Top-level required argument names, as the input schema lists them (search results show them) */
+export const requiredOf = (schema: unknown): string[] => {
+	const required = (schema as { required?: unknown } | null)?.required;
+	return Array.isArray(required)
+		? required.filter((name): name is string => typeof name === 'string')
+		: [];
+};
+
 export const toTypeInput = (record: ToolRecord): ToolTypeInput => ({
 	path: record.path,
 	namespace: record.namespace,
@@ -166,6 +174,7 @@ export async function searchTools(
 	return allowed.slice(0, cap).map((row) => ({
 		path: row.path,
 		summary: summaryOf(row),
+		required: requiredOf(row.inputSchema),
 		connectorName: row.connectorName,
 		unverified: row.unverified,
 		namespace: row.namespace,
@@ -195,14 +204,22 @@ export async function describeTools(
 		byNamespace.set(row.namespace, [...(byNamespace.get(row.namespace) ?? []), row]);
 	}
 	const result: ToolDescription[] = [];
+	// `ToolTextResult` is declared in the first module that needs it, not once per namespace
+	let sharedTypes = true;
 	for (const row of ordered) {
 		const group = byNamespace.get(row.namespace)!;
+		let declaration = '';
+		if (group[0] === row) {
+			declaration = await moduleDeclaration(group.map(toTypeInput), { sharedTypes });
+			if (group.some((item) => !item.outputSchema)) sharedTypes = false;
+		}
 		result.push({
 			path: row.path,
-			declaration: group[0] === row ? await moduleDeclaration(group.map(toTypeInput)) : '',
+			declaration,
 			connectorName: row.connectorName,
 			namespace: row.namespace,
-			accountHint: row.label
+			accountHint: row.label,
+			textResult: !row.outputSchema
 		});
 	}
 	return result;

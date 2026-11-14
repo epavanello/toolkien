@@ -56,6 +56,21 @@ export function argumentsPreview(args: unknown): string {
 	return clip(lines.join('\n'), MAX_PREVIEW_CHARS);
 }
 
+/**
+ * Value of a result from a tool without an output schema (`ToolCallResponse.text`): every content
+ * block as the server sent it, plus `structuredContent` if it sent one anyway. Nothing is parsed
+ * or dropped here; the sandbox prelude wraps it as `ToolTextResult` (`text`, `content`, `json()`).
+ */
+export type TextResultValue = { content: unknown[]; structuredContent?: unknown };
+
+export const textResultValue = (result: {
+	content: unknown[];
+	structuredContent?: unknown;
+}): TextResultValue =>
+	result.structuredContent === undefined
+		? { content: result.content }
+		: { content: result.content, structuredContent: result.structuredContent };
+
 /** Sealed payload of `approval.preview_*` (`text` is dropped once decided) */
 export type SealedPreview = { argsHash: string; text?: string };
 

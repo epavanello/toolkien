@@ -365,8 +365,22 @@ describe('free URL with a pasted token', () => {
 		expect(declarations).toMatch(
 			/listIssues\(args\?: \{[\s\S]*\}\): Promise<\{\s+issues: string\[\];\s+\}>;/
 		);
-		expect(declarations).toMatch(/createIssue\(args: \{[\s\S]*\}\): Promise<unknown>;/);
-		expect(declarations).toContain('inspect the result');
+		expect(declarations).toMatch(/createIssue\(args: \{[\s\S]*\}\): Promise<ToolTextResult>;/);
+		expect(declarations).toContain('No output schema: returns text content.');
+		expect(declarations.match(/interface ToolTextResult \{/g)).toHaveLength(1);
+		// Search lists required arguments; describe flags text results
+		const create = (await connectors.searchTools(bob, 'create issue')).find((h) =>
+			h.path.endsWith('.createIssue')
+		);
+		expect(create?.required).toEqual(['title']);
+		const described = await connectors.describeTools(
+			bob,
+			[...hits, create!].map((h) => h.path)
+		);
+		expect(Object.fromEntries(described.map((d) => [d.path.split('.')[1], d.textResult]))).toEqual({
+			listIssues: false,
+			createIssue: true
+		});
 	});
 
 	it('calls tools with the shared credential and hides blocked tools', async () => {

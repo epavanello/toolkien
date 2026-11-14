@@ -250,6 +250,8 @@ export type ToolSearchHit = {
 	namespace?: string;
 	/** (additive, mcp) Which account/instance this is (label, project, email), shown to the agent */
 	accountHint?: string | null;
+	/** (additive, mcp) Top-level required argument names, verbatim from the input schema */
+	required?: string[];
 };
 
 export type ResolvedTool = {
@@ -282,6 +284,8 @@ export type ToolDescription = {
 	namespace?: string;
 	/** (additive, mcp) Which account/instance this is (label, project, email), shown to the agent */
 	accountHint?: string | null;
+	/** (additive, mcp) No output schema: the tool returns `ToolTextResult` (text content) */
+	textResult?: boolean;
 };
 
 export type UpstreamCallResult =

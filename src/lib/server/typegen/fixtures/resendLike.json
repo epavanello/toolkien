@@ -1,0 +1,99 @@
+{
+	"server": "resend",
+	"url": "https://resend.example/mcp",
+	"fetchedAt": "2026-11-14",
+	"note": "Hand-written from a field report (an agent sending email through a Resend connector), not Resend's published schema: tools without outputSchema that answer with plain-text blocks, required bookkeeping parameters (one only issued after a first call) and descriptions written as chat-UX instructions.",
+	"tools": [
+		{
+			"name": "list-domains",
+			"description": "List all domains in your Resend account. Returns each domain's name, status and region as text.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"context": {
+						"type": "string",
+						"description": "Why you are calling this tool, in one sentence (used for analytics)."
+					},
+					"llm_model": {
+						"type": "string",
+						"description": "The model making this call, e.g. \"claude-sonnet\"."
+					},
+					"conversation_id": {
+						"type": "string",
+						"description": "Conversation id returned by your first call to this server. Leave empty on the first call; reuse the returned value afterwards."
+					}
+				},
+				"required": ["context", "llm_model", "conversation_id"]
+			},
+			"annotations": { "readOnlyHint": true }
+		},
+		{
+			"name": "send-email",
+			"description": "Send an email using Resend.\n\nBefore sending, ask the user for the `from` address and an optional `replyTo` if they have not provided them. Always confirm the recipients with the user.",
+			"inputSchema": {
+				"type": "object",
+				"properties": {
+					"to": {
+						"type": "array",
+						"items": { "type": "string", "format": "email" },
+						"minItems": 1,
+						"maxItems": 50,
+						"description": "Recipient email addresses."
+					},
+					"subject": { "type": "string", "description": "Email subject line." },
+					"text": { "type": "string", "description": "Plain text body." },
+					"html": { "type": "string", "description": "HTML body (optional)." },
+					"from": {
+						"type": "string",
+						"description": "Sender address on a verified domain. Ask the user if not provided."
+					},
+					"replyTo": {
+						"type": "array",
+						"items": { "type": "string", "format": "email" },
+						"description": "Reply-to addresses. Ask the user whether they want one."
+					},
+					"scheduledAt": {
+						"type": "string",
+						"description": "When to send, in natural language or ISO 8601 (e.g. \"in 1 hour\")."
+					},
+					"context": {
+						"type": "string",
+						"description": "Why you are calling this tool, in one sentence (used for analytics)."
+					},
+					"llm_model": {
+						"type": "string",
+						"description": "The model making this call, e.g. \"claude-sonnet\"."
+					},
+					"conversation_id": {
+						"type": "string",
+						"description": "Conversation id returned by your first call to this server. Leave empty on the first call; reuse the returned value afterwards."
+					}
+				},
+				"required": ["to", "subject", "text", "context", "llm_model", "conversation_id"]
+			},
+			"annotations": { "readOnlyHint": false, "destructiveHint": false, "openWorldHint": true }
+		},
+		{
+			"name": "get-email",
+			"description": "Retrieve an email by id (has an output schema: structured result).",
+			"inputSchema": {
+				"type": "object",
+				"properties": { "id": { "type": "string", "description": "Email id." } },
+				"required": ["id"]
+			},
+			"outputSchema": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string" },
+					"last_event": {
+						"type": "string",
+						"enum": ["queued", "sent", "delivered", "bounced"],
+						"description": "Latest delivery event."
+					}
+				},
+				"required": ["id", "last_event"]
+			},
+			"annotations": { "readOnlyHint": true }
+		}
+	]
+}

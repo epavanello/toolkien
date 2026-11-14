@@ -255,6 +255,13 @@ function hintFor(d: ts.Diagnostic, ctx: HintContext): string | null {
 				const near = closest(node.text, members);
 				return `\`${ns}\` has no tool \`${node.text}\`.${near.length ? ` Did you mean ${near.map((n) => `\`${ns}.${n}\``).join(' or ')}?` : ''} Its tools: ${members.slice(0, 40).join(', ')}${members.length > 40 ? ', …' : ''}. Blocked tools are not declared.`;
 			}
+			if (
+				parent &&
+				ts.isPropertyAccessExpression(parent) &&
+				checker.getTypeAtLocation(parent.expression).getSymbol()?.getName() === 'ToolTextResult'
+			) {
+				return 'This tool has no output schema: its result is `ToolTextResult`, text as the server wrote it (often not JSON). Read `.text` (or `.content`); call `.json()` only if the text is JSON.';
+			}
 			return null;
 		}
 		case 18046: // 'x' is of type 'unknown'
@@ -265,7 +272,7 @@ function hintFor(d: ts.Diagnostic, ctx: HintContext): string | null {
 			if (declaration && ts.isCatchClause(declaration.parent)) {
 				return '`catch (e)` gives `unknown`: use `(e as ToolCallError).code` / `.path`, or `(e as Error).message`.';
 			}
-			return 'Tool results without an output schema are typed `unknown`: log a sample first, then narrow it (`const r = (await ns.tool(args)) as { items: Item[] }`) or check fields at runtime.';
+			return 'This value is typed `unknown` (e.g. `.json()` without a type argument, or an untyped part of a schema): log a sample first, then narrow it (`const r = x as { items: Item[] }`) or check fields at runtime.';
 		}
 	}
 	const call = enclosingToolCall(node, ctx.namespaces);

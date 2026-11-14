@@ -22,6 +22,7 @@ import {
 	argumentsPreview,
 	hashArgs,
 	readSealed,
+	textResultValue,
 	writeSealed,
 	type SealedPreview
 } from './content.ts';
@@ -35,9 +36,10 @@ export type BridgeDeps = {
 	audit: Pick<AuditService, 'record'>;
 	limits: Pick<LimitsService, 'getLimits' | 'assertNotSuspended'>;
 	/**
-	 * Maps a successful upstream result to the value the script receives (connectors'
-	 * `toScriptValue`, so runtime values match the generated `.d.ts`). Defaults to
-	 * `structuredContent ?? content`.
+	 * Maps a successful upstream result of a tool WITH an output schema to the value the script
+	 * receives (connectors' `toScriptValue`, so runtime values match the generated `.d.ts`).
+	 * Defaults to `structuredContent ?? content`. Tools without one always get
+	 * `textResultValue` with `text: true` (the sandbox's `ToolTextResult`).
 	 */
 	toScriptValue?: (result: Extract<UpstreamCallResult, { ok: true }>) => unknown;
 	now?: () => Date;
@@ -409,14 +411,17 @@ export function createBridge(deps: BridgeDeps): HandleToolCall {
 		}
 		const durationMs = Math.round(performance.now() - started);
 
-		const outcome: CachedCall['outcome'] = upstream.ok
-			? {
-					kind: 'result',
-					value: deps.toScriptValue
-						? deps.toScriptValue(upstream)
-						: (upstream.structuredContent ?? upstream.content)
-				}
-			: await errorOutcome(ctx, path, upstream);
+		const outcome: CachedCall['outcome'] = !upstream.ok
+			? await errorOutcome(ctx, path, upstream)
+			: tool.outputSchema
+				? {
+						kind: 'result',
+						value: deps.toScriptValue
+							? deps.toScriptValue(upstream)
+							: (upstream.structuredContent ?? upstream.content)
+					}
+				: // No output schema: the blocks as sent, wrapped as `ToolTextResult` in the sandbox
+					{ kind: 'result', value: textResultValue(upstream), text: true };
 		await storeOutcome(exec, seq, { argsHash, outcome }, durationMs);
 
 		await record({

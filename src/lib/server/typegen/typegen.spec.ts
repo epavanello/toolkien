@@ -314,15 +314,17 @@ describe('sanitizeComment', () => {
 });
 
 describe('toolDeclaration', () => {
-	it('renders a member with JSDoc, args and unknown return', async () => {
+	it('renders a member with JSDoc, args and a text result without output schema', async () => {
 		const text = await toolDeclaration(tool());
 		expect(text).toContain('Search Gmail threads.');
 		expect(text).toContain('searchThreads(args: {');
 		expect(text).toContain('query: string;');
 		expect(text).toContain('limit?: number;');
 		expect(text).toContain('@default 10');
-		expect(text).toContain('}): Promise<unknown>;');
-		expect(text).toContain('@returns unknown shape (no output schema)');
+		expect(text).toContain('}): Promise<ToolTextResult>;');
+		expect(text).toContain(
+			'@returns No output schema: returns text content. Read `.text`; call `.json()` only if the text is JSON.'
+		);
 	});
 
 	it('types the result from outputSchema and drops the inspect note', async () => {
@@ -366,7 +368,7 @@ describe('toolDeclaration', () => {
 		const text = await toolDeclaration(
 			tool({ inputSchema: { type: 'object', properties: {} }, functionName: 'listLabels' })
 		);
-		expect(text).toContain('listLabels(args?: Record<string, unknown>): Promise<unknown>;');
+		expect(text).toContain('listLabels(args?: Record<string, unknown>): Promise<ToolTextResult>;');
 	});
 
 	it('is deterministic', async () => {
@@ -419,7 +421,7 @@ describe('moduleDeclaration', () => {
 			`async function main() {
 				const sent = await gmail.sendMessage({ to: ['a@b.c'], body: 'hi' });
 				const id: string = sent.id;
-				const found: unknown = await gmail.searchThreads({ query: 'x' });
+				const found: string = (await gmail.searchThreads({ query: 'x' })).text;
 				await acmeWiki.getPage({ 'page-id': '1' });
 				return [id, found];
 			}`
@@ -440,6 +442,39 @@ describe('moduleDeclaration', () => {
 		expect(errors.some((e) => e.includes("not assignable to type 'string[]'"))).toBe(true);
 		expect(errors.some((e) => e.includes("'query'"))).toBe(true);
 		expect(errors.some((e) => e.includes("Cannot find name 'pwned'"))).toBe(true);
+	});
+
+	it('declares ToolTextResult once for tools without output schema, typed as text', async () => {
+		const text = await moduleDeclaration(tools);
+		expect(text.match(/interface ToolTextResult \{/g)).toHaveLength(1);
+		expect(text).toContain('searchThreads(args: {');
+		expect(text).toContain('}): Promise<ToolTextResult>;');
+		expect(
+			typeCheck(
+				text,
+				`async function main() {
+					const r = await gmail.searchThreads({ query: 'x' });
+					const t: string = r.text;
+					const first = r.content[0];
+					const parsed = r.json<{ id: string }>();
+					return [t, first?.type === 'text' ? first.text : null, parsed.id];
+				}`
+			)
+		).toEqual([]);
+		// Not a structured object: reading upstream fields straight off it is a type error
+		const errors = typeCheck(
+			text,
+			`async function main() { const r = await gmail.searchThreads({ query: 'x' }); return r.status; }`
+		);
+		expect(errors.some((e) => e.includes("'status' does not exist on type 'ToolTextResult'"))).toBe(
+			true
+		);
+		// Only tools with an output schema: nothing to declare
+		expect(await moduleDeclaration([tools[1]])).not.toContain('ToolTextResult');
+		// Shown next to another module that already declares them
+		expect(await moduleDeclaration(tools, { sharedTypes: false })).not.toContain(
+			'interface ToolTextResult'
+		);
 	});
 });
 

@@ -504,7 +504,9 @@ export class JobRun {
 		this.#pending.delete(seq);
 		const frame: SupervisorToChild =
 			response.kind === 'result'
-				? { t: 'ret', id, ok: true, value: response.value ?? null }
+				? response.text
+					? { t: 'ret', id, ok: true, value: response.value ?? null, text: true }
+					: { t: 'ret', id, ok: true, value: response.value ?? null }
 				: { t: 'ret', id, ok: false, code: response.code, message: response.message };
 		this.#stdin?.write(encoder.encode(JSON.stringify(frame) + '\n')).catch(() => {});
 	}

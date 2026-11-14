@@ -13,7 +13,8 @@ import { createBridge } from './service.ts';
 import type { HandleToolCall } from './types.ts';
 
 export type * from './types.ts';
-export { argumentsPreview, hashArgs, stableStringify } from './content.ts';
+export { argumentsPreview, hashArgs, stableStringify, textResultValue } from './content.ts';
+export type { TextResultValue } from './content.ts';
 
 export const handleToolCall: HandleToolCall = createBridge({
 	db,

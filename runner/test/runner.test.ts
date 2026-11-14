@@ -1,7 +1,15 @@
 import { assert, assertEquals, assertMatch, assertStringIncludes } from '@std/assert';
 import { createHandler } from '../src/server.ts';
 import type { RunnerResult, SupervisorToApp, ToolCallResponse } from '../src/protocol.ts';
-import { DECLARATIONS, LIMITS, type MockTool, run, SECRET, testConfig } from './helpers.ts';
+import {
+	DECLARATIONS,
+	LIMITS,
+	type MockTool,
+	run,
+	SECRET,
+	TEXT_DECLARATIONS,
+	testConfig
+} from './helpers.ts';
 
 Deno.test('happy path: tool calls, logs and result', async () => {
 	const calls: { seq: number; path: string; args: unknown }[] = [];
@@ -27,6 +35,79 @@ Deno.test('happy path: tool calls, logs and result', async () => {
 		]
 	);
 	assertEquals(calls[0]!.args, { query: 'ada' });
+});
+
+const textTools: Record<string, MockTool> = {
+	'resend.listDomains': () => ({
+		kind: 'result',
+		text: true,
+		value: {
+			content: [
+				{ type: 'text', text: 'Name: example.com\nStatus: verified' },
+				{ type: 'text', text: 'Name: other.dev\nStatus: pending' }
+			]
+		}
+	}),
+	'resend.getStats': () => ({
+		kind: 'result',
+		text: true,
+		value: { content: [{ type: 'text', text: '{"sent": 3}' }], structuredContent: { sent: 3 } }
+	})
+};
+
+Deno.test('tools without output schema return ToolTextResult: text, content, json()', async () => {
+	const r = await run(
+		`const domains = await resend.listDomains({});
+		const stats = await resend.getStats({});
+		let error = '';
+		try { domains.json(); } catch (e) { error = (e as Error).message; }
+		console.log(domains.text.split('\\n')[1]);
+		return {
+			text: domains.text,
+			blocks: domains.content.length,
+			verified: /Status: verified/.test(domains.text),
+			stats: stats.json<{ sent: number }>().sent,
+			structured: stats.structuredContent,
+			error,
+			serialised: JSON.parse(JSON.stringify(domains))
+		};`,
+		{ declarations: TEXT_DECLARATIONS, tools: textTools }
+	);
+	assertEquals(r.status, 'completed');
+	if (r.status !== 'completed') return;
+	assertEquals(r.logs, 'Status: verified');
+	const result = r.result as Record<string, unknown>;
+	assertEquals(
+		result.text,
+		'Name: example.com\nStatus: verified\nName: other.dev\nStatus: pending'
+	);
+	assertEquals(result.blocks, 2);
+	assertEquals(result.verified, true);
+	assertEquals(result.stats, 3);
+	assertEquals(result.structured, { sent: 3 });
+	assertEquals(
+		result.error,
+		'resend.listDomains returned text, not JSON (starts with: "Name: example.com Status: verified Name: other.dev Status: pending"). It has no output schema: read `.text` (and `.content`) instead of `.json()`.'
+	);
+	// Returned as is, it is plain data: the blocks and their joined text, no methods
+	assertEquals(result.serialised, {
+		text: 'Name: example.com\nStatus: verified\nName: other.dev\nStatus: pending',
+		content: [
+			{ type: 'text', text: 'Name: example.com\nStatus: verified' },
+			{ type: 'text', text: 'Name: other.dev\nStatus: pending' }
+		]
+	});
+});
+
+Deno.test('an uncaught json() on text names the tool and the script line', async () => {
+	const r = await run('const d = await resend.listDomains({});\nreturn d.json();', {
+		declarations: TEXT_DECLARATIONS,
+		tools: textTools
+	});
+	assertEquals(r.status, 'failed');
+	if (r.status !== 'failed') return;
+	assertStringIncludes(r.message, 'resend.listDomains returned text, not JSON');
+	assertMatch(r.message, /at script\.ts:2:\d+/);
 });
 
 Deno.test('type errors return diagnostics mapped to the script lines', async () => {

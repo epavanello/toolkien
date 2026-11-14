@@ -53,7 +53,8 @@ function mockRunner(programs: Record<string, Program>) {
 				if (response.kind === 'error') {
 					throw Object.assign(new Error(response.message), { code: response.code });
 				}
-				return response.value;
+				// The sandbox wraps text results as `ToolTextResult`; the fake keeps the marker visible
+				return response.text ? { textResult: response.value } : response.value;
 			};
 			try {
 				const result = await program(call, (line) => (logs += `${line}\n`));
@@ -209,7 +210,8 @@ async function seedResolved(
 		source: 'directory',
 		unverified: false,
 		inputSchema: { type: 'object' },
-		outputSchema: null
+		// Structured results (the fake upstream answers `structuredContent`); text tools set null
+		outputSchema: { type: 'object' }
 	};
 }
 
@@ -388,6 +390,22 @@ describe('long runs (soft wait)', () => {
 });
 
 describe('executions + bridge', () => {
+	it('hands results of tools without an output schema over as text blocks, verbatim', async () => {
+		tools = tools.map((t) =>
+			t.path === 'gh.listIssues' && t.workspaceId === ws ? { ...t, outputSchema: null } : t
+		);
+		const { service, connectors } = makeSystem(t.db, PROGRAMS);
+		const content = [
+			{ type: 'text', text: 'Name: example.com' },
+			{ type: 'text', text: 'Status: verified' }
+		];
+		connectors.failNext({ ok: true, content });
+		const outcome = await service.start({ actor: actor(), clientId: 'claude', code: 'read' });
+		expect(outcome.status).toBe('completed');
+		// Nothing parsed or dropped: the sandbox builds `ToolTextResult` (`text`, `json()`) from it
+		expect(outcome.result).toEqual({ textResult: { content } });
+	});
+
 	it('runs read-only calls without approval and wipes content at the end', async () => {
 		const { service, connectors, audit } = makeSystem(t.db, PROGRAMS);
 		const outcome = await service.start({ actor: actor(), clientId: 'claude', code: 'read' });

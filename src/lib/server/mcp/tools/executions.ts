@@ -135,6 +135,8 @@ export function registerExecutionTools(
 			'`const a = await posthogDevmotion.query({ query: "select count() from events" }); const b = await posthogDevpost.query({ query: "select count() from events" }); return { devmotion: a, devpost: b };`.',
 			'Type errors against the declarations come back immediately, before anything runs, with the line, a caret and a hint. The return value and console.log output come back, truncated past the output limit: filter or summarize inside the script.',
 			'A failed tool call throws `ToolCallError` (`e.code`, `e.path`, `e.message` with the server text): catch it to continue. Runtime errors report the script line.',
+			'Tools without an output schema return `ToolTextResult`: read `.text` (often plain text, not JSON); call `.json()` only if the text is JSON.',
+			'Some upstream tools require bookkeeping fields (e.g. conversation ids); pass what their descriptions say, and if a value is only known after a first call, make the first call, read it from the result, then reuse it.',
 			'Long scripts answer `running` after about 45 s: then call execution_status with the executionId to get the result.',
 			'No network, filesystem or environment access: only the declared tool functions.',
 			"Some tool calls need the user's approval: the user decides in a dialog or on a Toolkien link, then call execution_status. You can never approve on the user's behalf."

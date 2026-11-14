@@ -31,6 +31,8 @@ const mapSet = Map.prototype.set;
 const mapDelete = Map.prototype.delete;
 const stringSlice = String.prototype.slice;
 const stringIndexOf = String.prototype.indexOf;
+const stringReplace = String.prototype.replace;
+const isArray = Array.isArray;
 const byteLength = (text) => apply(encode, encoder, [text]).length;
 
 for (const name of [
@@ -109,6 +111,61 @@ class ToolCallError extends Error {
 }
 Object.defineProperty(globalThis, 'ToolCallError', { value: ToolCallError, enumerable: false });
 
+/**
+ * What a tool without an output schema returns (declared by typegen as `ToolTextResult`): the
+ * content blocks as the server sent them, their text joined, and `json()` that parses the text or
+ * says plainly that the tool returned text. Own enumerable fields only, so returning or logging
+ * it shows `{ text, content }`.
+ */
+class ToolTextResult {
+	#path;
+	constructor(path, value) {
+		const content =
+			value !== null && typeof value === 'object' && isArray(value.content) ? value.content : [];
+		let text = '';
+		let first = true;
+		for (let i = 0; i < content.length; i++) {
+			const block = content[i];
+			if (
+				block !== null &&
+				typeof block === 'object' &&
+				block.type === 'text' &&
+				typeof block.text === 'string'
+			) {
+				text = first ? block.text : `${text}\n${block.text}`;
+				first = false;
+			}
+		}
+		this.#path = path;
+		this.text = text;
+		this.content = content;
+		if (value !== null && typeof value === 'object' && value.structuredContent !== undefined) {
+			this.structuredContent = value.structuredContent;
+		}
+	}
+
+	json() {
+		const text = String(this.text);
+		try {
+			return parse(text);
+		} catch (cause) {
+			const start = apply(stringReplace, apply(stringSlice, text, [0, 80]), [/\s+/g, ' ']);
+			const what =
+				text.length === 0
+					? 'no text content'
+					: `text, not JSON (starts with: "${start}${text.length > 80 ? '…' : ''}")`;
+			throw new Error(
+				`${this.#path} returned ${what}. It has no output schema: read \`.text\` (and \`.content\`) instead of \`.json()\`.`,
+				{ cause }
+			);
+		}
+	}
+}
+/** A reply value as the script sees it (`text`: no output schema, see `protocol.ts`) */
+function replyValue(message, path) {
+	return message.text === true ? new ToolTextResult(path, message.value) : message.value;
+}
+
 let nextId = 1;
 const pending = new Map();
 
@@ -127,7 +184,7 @@ async function readReplies() {
 			const waiter = apply(mapGet, pending, [message.id]);
 			if (!waiter) continue;
 			apply(mapDelete, pending, [message.id]);
-			if (message.ok) waiter.resolve(message.value);
+			if (message.ok) waiter.resolve(replyValue(message, waiter.path));
 			else {
 				const error = new ToolCallError(message.code, message.message, waiter.path);
 				// The stack of the call site in the script, not of this reader loop
