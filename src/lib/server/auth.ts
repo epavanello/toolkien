@@ -53,6 +53,10 @@ export const auth = betterAuth({
 	secret: building ? crypto.randomUUID() + crypto.randomUUID() : BETTER_AUTH_SECRET,
 	trustedOrigins: [ORIGIN],
 	disabledPaths: SERVER_ONLY_PATHS,
+	// Behind the reverse proxy (Traefik, nginx) the socket address is the proxy's: rate limits
+	// would put every client in one bucket. `X-Real-IP` is overwritten by the proxy with the
+	// connecting client, unlike the client-controlled left side of `X-Forwarded-For`.
+	advanced: { ipAddress: { ipAddressHeaders: ['x-real-ip'] } },
 	database: drizzleAdapter(db, { provider: 'sqlite' }),
 	user: {
 		additionalFields: {

@@ -4,6 +4,11 @@ vi.mock('#lib/server/db/index.ts', async () => {
 	const { createTestDb } = await import('#lib/server/workspaces/test-db.ts');
 	return { db: await createTestDb() };
 });
+// The admin list comes from the environment: pin it so the developer's `.env` can't change results
+vi.mock('#lib/server/limits/admins.ts', () => ({
+	isPlatformAdminEmail: (email: string | null | undefined) =>
+		email?.trim().toLowerCase() === 'admin@example.com'
+}));
 vi.mock('#lib/server/executions/index.ts', () => ({
 	cancel: vi.fn(async () => {}),
 	abortRunning: vi.fn(() => 0)
