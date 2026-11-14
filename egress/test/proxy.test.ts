@@ -106,25 +106,23 @@ Deno.test('IPv6 literals and AAAA records are supported', async () => {
 
 Deno.test('refuses private, loopback, metadata, mapped and internal destinations', async () => {
 	await withProxy(async (proxy, dialled) => {
-		for (
-			const target of [
-				'127.0.0.1:443',
-				'10.0.0.5:443',
-				'172.17.0.1:443',
-				'169.254.169.254:443',
-				'100.64.0.1:443',
-				'[::1]:443',
-				'[fd00:ec2::254]:443',
-				'[::ffff:10.0.0.1]:443',
-				'[64:ff9b::a9fe:a9fe]:443',
-				'openbao:443',
-				'localhost:443',
-				'vault.internal:443',
-				'rebind.example.com:443',
-				'metadata.example.com:443',
-				'mapped.example.com:443'
-			]
-		) {
+		for (const target of [
+			'127.0.0.1:443',
+			'10.0.0.5:443',
+			'172.17.0.1:443',
+			'169.254.169.254:443',
+			'100.64.0.1:443',
+			'[::1]:443',
+			'[fd00:ec2::254]:443',
+			'[::ffff:10.0.0.1]:443',
+			'[64:ff9b::a9fe:a9fe]:443',
+			'openbao:443',
+			'localhost:443',
+			'vault.internal:443',
+			'rebind.example.com:443',
+			'metadata.example.com:443',
+			'mapped.example.com:443'
+		]) {
 			assertEquals(await statusOf(proxy, connect(target)), 'HTTP/1.1 403 Forbidden', target);
 		}
 		assertEquals(dialled, []);

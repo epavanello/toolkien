@@ -113,4 +113,6 @@ memory. Read the release notes before upgrades that touch OpenBao or the databas
 - [ ] Both backups running, copied off-site, restore tested.
 - [ ] Owners and admins of company workspaces use a passkey or 2FA (enforced by the app).
 - [ ] Transit key rotation left on (90 days); `rotate.sh trim` after each rotation.
-- [ ] Container logs rotated (compose sets 10 MB × 5); the OpenBao audit log goes to stdout.
+- [ ] Container logs kept at most 14 days (compose rotates by size, 10 MB × 5; for an age limit
+      use journald with `MaxRetentionSec=14day`, see `deploy-coolify.md` § 5b); the OpenBao
+      audit log goes to stdout.

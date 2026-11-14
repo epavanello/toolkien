@@ -11,9 +11,7 @@
 		"useTabs": true,
 		"singleQuote": true,
 		"lineWidth": 100,
-		"exclude": [
-			"src/ip.ts"
-		],
+		"exclude": ["src/ip.ts"],
 		"trailingCommas": "never"
 	}
 }

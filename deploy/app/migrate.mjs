@@ -11,7 +11,9 @@ if (!url) {
 }
 const client = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
 try {
-	await migrate(drizzle(client), { migrationsFolder: new URL('../../drizzle', import.meta.url).pathname });
+	await migrate(drizzle(client), {
+		migrationsFolder: new URL('../../drizzle', import.meta.url).pathname
+	});
 	console.log('[migrate] up to date');
 } catch (error) {
 	// Never print the URL or token; the driver's message names the failing statement only

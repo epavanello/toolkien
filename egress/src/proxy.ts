@@ -89,7 +89,7 @@ function checkAuth(header: string | undefined, token: string | undefined) {
 	if (!token) return;
 	const match = header?.match(/^Basic\s+([A-Za-z0-9+/=]+)$/i);
 	if (!match) throw new Denied('auth');
-	let decoded = '';
+	let decoded: string;
 	try {
 		decoded = atob(match[1]!);
 	} catch {
@@ -269,7 +269,8 @@ export function startProxy(options: ProxyOptions = {}): ProxyServer {
 		maxTunnelMs: options.maxTunnelMs ?? 15 * 60_000,
 		resolve: options.resolve ?? systemResolver,
 		dial: options.dial ?? systemDialer,
-		log: options.log ??
+		log:
+			options.log ??
 			((event: string, fields: Record<string, string | number> = {}) =>
 				console.log(JSON.stringify({ event, ...fields })))
 	};

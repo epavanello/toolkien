@@ -136,6 +136,23 @@ scp server:/var/backups/toolkien/db/toolkien-db-<stamp>.sql.gz.age .
 deploy/backup/restore-test.sh toolkien-db-<stamp>.sql.gz.age ~/keys/toolkien-db.key
 ```
 
+## 5b. Technical logs (14 days)
+
+Container stdout/stderr are the technical logs: ids and reason codes, no personal data beyond
+ids, no content. The retention promise is **14 days**. Docker's `json-file` driver (set in
+`docker-compose.yml`, 10 MB × 5 per container) rotates by size only, so on a busy instance logs
+may go sooner and on a quiet one they may stay longer. To enforce the age limit, send container
+logs to journald and cap journald's age on the host:
+
+```sh
+# /etc/docker/daemon.json → {"log-driver": "journald"}   (and drop `logging:` from the compose file)
+# /etc/systemd/journald.conf → MaxRetentionSec=14day
+systemctl restart systemd-journald docker
+```
+
+Or keep `json-file` and add a daily host cron that deletes rotated files older than 14 days. Any
+log shipping (Coolify, Loki…) must apply the same 14-day retention.
+
 ## 6. Verify
 
 - `https://<domain>` loads; sign up; your personal workspace opens.

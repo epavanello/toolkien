@@ -73,7 +73,7 @@ export const variables = defineEnvVars({
 	// ─── Runner and egress ──────────────────────────────────────────────────
 	RUNNER_URL: {
 		description:
-			'Runner supervisor URL on the internal `sandbox` network (e.g. `http://runner:8787`).',
+			'Runner supervisor URL on the internal `sandbox` network (`ws://runner:8787` in compose). Empty in development: the app starts a local supervisor with the `deno` binary.',
 		schema: optional
 	},
 	RUNNER_SHARED_SECRET: {

@@ -3,13 +3,10 @@
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
-# Same pnpm major as development (package.json has no `packageManager` field yet)
-ARG PNPM_VERSION=10.32.1
 ENV CI=true PNPM_HOME=/pnpm PATH=/pnpm:$PATH COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
-# Locked install when the lockfile is committed (it should be: pinned, verified dependencies)
-RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# pnpm version from package.json `packageManager` (corepack); locked, verified dependencies
+RUN corepack enable && pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
