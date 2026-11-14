@@ -1,13 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { createClient } from '@libsql/client';
-import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '#lib/server/db/schema/index.ts';
+import { createMigratedTestDb } from '#lib/server/db/testing.ts';
 
 /**
- * Test-only: a fresh in-memory database with the current schema (pushed with drizzle-kit, so it
- * includes columns not yet in a migration) plus the custom SQL objects (audit append-only
- * trigger). Use it with `vi.mock('#lib/server/db/index.ts', ...)`:
+ * Test-only: a fresh database with every migration applied (FTS5 tool search, audit
+ * append-only trigger included). Use it with `vi.mock('#lib/server/db/index.ts', ...)`:
  *
  * ```ts
  * vi.mock('#lib/server/db/index.ts', async () => {
@@ -17,21 +13,7 @@ import * as schema from '#lib/server/db/schema/index.ts';
  * ```
  */
 export async function createTestDb() {
-	const client = createClient({ url: ':memory:' });
-	const db = drizzle(client, { schema });
-	const { pushSQLiteSchema } = await import('drizzle-kit/api');
-	const { apply } = await pushSQLiteSchema(schema, db);
-	await apply();
-	// The append-only trigger (FTS5 is skipped: not every libSQL build in CI ships it)
-	const custom = readFileSync(
-		join(process.cwd(), 'drizzle/0001_search_and_audit_guards.sql'),
-		'utf8'
-	);
-	const trigger = custom
-		.split('--> statement-breakpoint')
-		.find((s) => s.includes('CREATE TRIGGER'));
-	if (trigger) await client.execute(trigger);
-	return db;
+	return (await createMigratedTestDb('toolkien-workspaces')).db;
 }
 
 type TestDb = Awaited<ReturnType<typeof createTestDb>>;

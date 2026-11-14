@@ -1,14 +1,9 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { createClient } from '@libsql/client';
-import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '#lib/server/db/schema/index.ts';
+import { createMigratedTestDb } from '#lib/server/db/testing.ts';
 
 /**
- * Test-only database for the connectors module: the current schema pushed with drizzle-kit
- * plus the FTS5 `tool_search` table from the custom migration. A temp file, not `:memory:`
- * (libSQL opens a new connection for transactions, which would see an empty memory DB).
+ * Test-only database for the connectors module: every migration applied (FTS5 `tool_search`
+ * included), in a temp file.
  *
  * ```ts
  * vi.mock('#lib/server/db/index.ts', async () => {
@@ -18,20 +13,7 @@ import * as schema from '#lib/server/db/schema/index.ts';
  * ```
  */
 export async function createConnectorsTestDb() {
-	const dir = mkdtempSync(join(tmpdir(), 'toolkien-connectors-'));
-	const client = createClient({ url: `file:${join(dir, 'test.db')}` });
-	const db = drizzle(client, { schema });
-	const { pushSQLiteSchema } = await import('drizzle-kit/api');
-	const { apply } = await pushSQLiteSchema(schema, db);
-	await apply();
-	const custom = readFileSync(
-		join(process.cwd(), 'drizzle/0001_search_and_audit_guards.sql'),
-		'utf8'
-	);
-	for (const statement of custom.split('--> statement-breakpoint')) {
-		if (statement.includes('tool_search')) await client.execute(statement);
-	}
-	return db;
+	return (await createMigratedTestDb('toolkien-connectors')).db;
 }
 
 /** Inserts a user, a workspace and memberships; returns their ids */

@@ -347,6 +347,7 @@ CREATE TABLE `connector` (
 	`directory_id` text,
 	`url` text NOT NULL,
 	`name` text NOT NULL,
+	`label` text,
 	`namespace` text NOT NULL,
 	`unverified` integer DEFAULT false NOT NULL,
 	`auth_type` text NOT NULL,
@@ -354,6 +355,9 @@ CREATE TABLE `connector` (
 	`status_message` text,
 	`suspended_at` integer,
 	`last_synced_at` integer,
+	`protocol_version` text,
+	`server_info` text,
+	`tools_list_changed` integer DEFAULT false NOT NULL,
 	`created_by` text,
 	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
@@ -434,6 +438,30 @@ CREATE TABLE `upstream_oauth_client` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `upstream_oauth_client_connector_id_unique` ON `upstream_oauth_client` (`connector_id`);--> statement-breakpoint
+CREATE TABLE `upstream_oauth_flow` (
+	`id` text PRIMARY KEY NOT NULL,
+	`state_hash` text NOT NULL,
+	`connector_id` text NOT NULL,
+	`workspace_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`credential_user_id` text,
+	`code_verifier_ciphertext` blob,
+	`code_verifier_nonce` blob,
+	`code_verifier_key_version` integer,
+	`redirect_uri` text NOT NULL,
+	`resource` text,
+	`scope` text,
+	`return_to` text NOT NULL,
+	`expires_at` integer NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`connector_id`) REFERENCES `connector`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`workspace_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`credential_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `upstream_oauth_flow_state_hash_unique` ON `upstream_oauth_flow` (`state_hash`);--> statement-breakpoint
+CREATE INDEX `upstream_oauth_flow_expires_idx` ON `upstream_oauth_flow` (`expires_at`);--> statement-breakpoint
 CREATE TABLE `permission_level` (
 	`id` text PRIMARY KEY NOT NULL,
 	`workspace_id` text NOT NULL,
@@ -550,6 +578,7 @@ CREATE TABLE `kill_switch` (
 	`scope` text NOT NULL,
 	`target_id` text,
 	`reason` text NOT NULL,
+	`origin` text DEFAULT 'platform_admin' NOT NULL,
 	`activated_by` text,
 	`activated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	`released_by` text,
