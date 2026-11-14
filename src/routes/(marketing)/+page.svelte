@@ -118,6 +118,9 @@
 	title="Add a tool once. Use it from every client."
 	description="Company and personal tools live in one place. Claude, ChatGPT, Codex, Cursor and VS Code all reach them through one connection, in parallel, and a new tool shows up in all of them."
 >
+	<BrandImage name="connect-once" class="mx-auto w-full max-w-4xl rounded-xl">
+		{#snippet fallback()}{/snippet}
+	</BrandImage>
 	<Compare before={connectOnce.before} after={connectOnce.after} note={connectOnce.note} />
 </MarketingSection>
 
@@ -138,6 +141,9 @@
 	title="Share company tools, not tokens"
 	description="A company workspace gives colleagues the same tools, under the rules you set, with every call on the record."
 >
+	<BrandImage name="team-hall" class="w-full rounded-xl">
+		{#snippet fallback()}{/snippet}
+	</BrandImage>
 	<FeatureGrid items={teams} columns={2} />
 </MarketingSection>
 
@@ -180,7 +186,9 @@
 	title={brand.alternates[0]}
 	description="One connection per client. Switch workspaces when you ask to, and always see where your agent is operating."
 >
-	<BrandArt name="gate" />
+	<BrandImage name="forge-mood" class="mx-auto w-full max-w-3xl rounded-xl">
+		{#snippet fallback()}<BrandArt name="gate" />{/snippet}
+	</BrandImage>
 	<div class="flex flex-wrap justify-center gap-2">
 		<Button size="lg" icon={ArrowRight} iconAtEnd href={signup}>Create a free account</Button>
 		<Button size="lg" variant="ghost" href={resolve('/(marketing)/docs')}>Read the docs</Button>
