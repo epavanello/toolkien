@@ -34,6 +34,9 @@ services:
   app:
     <<: *hardening
     build: { context: ., dockerfile: Dockerfile }
+    # Always rebuild on `up`: Coolify raw mode runs `docker compose up` without `--build`, which
+    # would otherwise keep serving the first image ever built
+    pull_policy: build
     environment:
       ORIGIN: ${ORIGIN:?set ORIGIN to the public URL, e.g. https://toolkien.example.com}
       PORT: '3000'
@@ -90,6 +93,7 @@ services:
   egress-proxy:
     <<: *hardening
     build: { context: egress }
+    pull_policy: build
     environment:
       EGRESS_PROXY_TOKEN: ${EGRESS_PROXY_TOKEN:?set EGRESS_PROXY_TOKEN}
       EGRESS_MAX_CONNECTIONS: ${EGRESS_MAX_CONNECTIONS:-256}
@@ -100,6 +104,7 @@ services:
   runner:
     <<: *hardening
     build: { context: runner, dockerfile: Dockerfile }
+    pull_policy: build
     environment:
       RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?set RUNNER_SHARED_SECRET}
       RUNNER_MAX_CONCURRENT: ${RUNNER_MAX_CONCURRENT:-4}

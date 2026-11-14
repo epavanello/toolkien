@@ -16,6 +16,8 @@ name: toolkien-vault
 services:
   openbao:
     build: { context: . }
+    # Rebuild on `up` (Coolify raw mode does not pass `--build`)
+    pull_policy: build
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
