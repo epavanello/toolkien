@@ -168,3 +168,46 @@
 [data-slot='sheet-content'] {
 	z-index: 40;
 }
+
+/*
+ * Shiki output (`#lib/server/highlight.ts`): colors are CSS variables for both themes, picked by
+ * mode-watcher's `.dark` class. Used by `CodeBlock` and markdown code fences.
+ */
+pre.shiki {
+	overflow-x: auto;
+	background-color: transparent;
+	color: var(--foreground);
+}
+.shiki span {
+	color: var(--shiki-light);
+}
+.dark .shiki span {
+	color: var(--shiki-dark);
+}
+.code-block pre.shiki {
+	margin: 0;
+	padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+	font-family: var(--font-mono);
+	font-size: 0.8125rem;
+	line-height: 1.625;
+}
+.prose pre.shiki {
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+	background-color: color-mix(in oklab, var(--muted) 40%, transparent);
+	font-size: 0.8125rem;
+}
+/* Twoslash hovers are absolutely positioned: a scrolling `pre` would clip them, so lines wrap */
+pre.shiki.twoslash {
+	overflow: visible;
+	white-space: pre-wrap;
+}
+/* Twoslash popups use the app's popover tokens (light and dark) */
+.twoslash {
+	--twoslash-popup-bg: var(--popover);
+	--twoslash-popup-color: var(--popover-foreground);
+	--twoslash-border-color: var(--border);
+	--twoslash-docs-color: var(--muted-foreground);
+	--twoslash-docs-font: var(--font-sans);
+	--twoslash-code-font: var(--font-mono);
+}

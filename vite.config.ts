@@ -6,6 +6,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { mdsvex } from 'mdsvex';
 import rehypeSlug from 'rehype-slug';
 import { join } from 'node:path';
+import { highlightMarkdown } from './src/lib/server/highlight.ts';
 
 export default defineConfig({
 	plugins: [
@@ -16,6 +17,8 @@ export default defineConfig({
 			preprocess: [
 				mdsvex({
 					extensions: ['.md'],
+					// Same Shiki module as `CodeBlock`; ```ts twoslash fences get type hovers
+					highlight: { highlighter: highlightMarkdown },
 					rehypePlugins: [rehypeSlug],
 					layout: {
 						_: join(import.meta.dirname, 'src/lib/components/markdown/markdown-layout.svelte')

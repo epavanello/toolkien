@@ -3,7 +3,14 @@
 
 	export const sidePanelVariants = tv({
 		base: 'flex w-full flex-col gap-0 p-0',
-		variants: { size: { md: 'sm:max-w-md', lg: 'sm:max-w-xl', xl: 'sm:max-w-3xl' } },
+		// Same variant as the sheet's own `data-[side=right]:sm:max-w-sm`, so the size wins
+		variants: {
+			size: {
+				md: 'data-[side=right]:sm:max-w-md',
+				lg: 'data-[side=right]:sm:max-w-xl',
+				xl: 'data-[side=right]:sm:max-w-3xl'
+			}
+		},
 		defaultVariants: { size: 'lg' }
 	});
 

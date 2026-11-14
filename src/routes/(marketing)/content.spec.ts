@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { compile } from 'mdsvex';
 import { describe, expect, it } from 'vitest';
 import { docsMarkdown, legalMarkdown, splitFrontmatter } from './content.ts';
 import { DOCS_PAGES } from './docs/nav.ts';
@@ -31,5 +34,24 @@ describe('public content', () => {
 		expect(paths).toContain('/docs/security');
 		expect(paths).toContain('/legal/privacy');
 		expect(new Set(paths).size).toBe(paths.length);
+	});
+
+	it('has valid frontmatter (title and description) in every markdown page', async () => {
+		const files = [
+			...readdirSync('src/routes/(marketing)', { recursive: true, encoding: 'utf8' })
+				.filter((file) => file.endsWith('.md'))
+				.map((file) => join('src/routes/(marketing)', file)),
+			...readdirSync('legal')
+				.filter((file) => file.endsWith('.md'))
+				.map((file) => join('legal', file))
+		];
+		expect(files.length).toBeGreaterThan(5);
+		for (const file of files) {
+			// A YAML error (e.g. an unquoted `: ` in a description) silently drops every field
+			const result = await compile(readFileSync(file, 'utf8'), { highlight: false });
+			const fm = (result?.data?.fm ?? {}) as Record<string, unknown>;
+			expect(typeof fm.title, file).toBe('string');
+			expect(typeof fm.description, file).toBe('string');
+		}
 	});
 });

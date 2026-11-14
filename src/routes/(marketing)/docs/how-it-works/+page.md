@@ -1,6 +1,6 @@
 ---
 title: How it works
-description: Code mode in Toolkien: search tools, read their TypeScript types, then run one sandboxed script.
+description: 'Code mode in Toolkien: search tools, read their TypeScript types, then run one sandboxed script.'
 updated: 2026-11-14
 ---
 
@@ -38,7 +38,16 @@ declare namespace github {
 
 `execute` runs a TypeScript script. It is type-checked against the declarations first, so mistakes come back immediately. Then it runs in a fresh, permission-less Deno process: the script can only call the generated functions, and every call goes through the **bridge**, which checks permissions on each call, decrypts the credential in memory and calls the upstream server through the egress proxy.
 
-```ts
+```ts twoslash
+type Issue = { number: number; title: string; state: 'open' | 'closed' };
+declare namespace github {
+	function listIssues(input: { repo: string; state?: 'open' | 'closed' }): Promise<Issue[]>;
+}
+declare namespace slack {
+	function postMessage(input: { channel: string; text: string }): Promise<{ ts: string }>;
+}
+export {};
+// ---cut---
 const issues = await github.listIssues({ repo: 'acme/web', state: 'open' });
 await slack.postMessage({ channel: '#triage', text: `${issues.length} open issues` });
 ```

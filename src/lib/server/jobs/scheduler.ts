@@ -13,9 +13,10 @@ export const runJob: JobScheduler['runJob'] = async (name) => {
 	let ok = true;
 	try {
 		await job.run();
-	} catch {
+	} catch (error) {
 		ok = false;
-		console.error(`[jobs] ${name} failed`);
+		// Jobs handle ids and counters only; the error class and message name what broke
+		console.error(`[jobs] ${name} failed:`, error instanceof Error ? error.message : error);
 	} finally {
 		running.delete(name);
 		history.set(name, {

@@ -11,6 +11,8 @@
 </script>
 
 <script lang="ts">
+	// Hover popups of ```ts twoslash fences (CSS only, no client script)
+	import '@shikijs/twoslash/style-rich.css';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';

@@ -75,10 +75,12 @@
 		"@libsql/client": "^0.17.3",
 		"@modelcontextprotocol/client": "^2.4.0",
 		"@modelcontextprotocol/server": "^2.4.0",
+		"@shikijs/twoslash": "^4.6.0",
 		"date-fns": "^4.4.0",
 		"drizzle-orm": "^0.45.2",
 		"json-schema-to-typescript": "^16.0.0",
 		"runed": "^0.38.0",
+		"shiki": "^4.6.0",
 		"undici": "^8.12.4",
 		"zod": "^4.6.7"
 	}

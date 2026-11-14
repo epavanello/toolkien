@@ -48,7 +48,11 @@
 		</Section>
 
 		{#if view.canDecide}
-			<CodeBlock label="Main arguments" code={view.argumentsPreview || '(no arguments)'} />
+			<CodeBlock
+				label="Main arguments"
+				lang="text"
+				code={view.argumentsPreview || '(no arguments)'}
+			/>
 			{#if view.onBehalfOfOtherUser}
 				<EmptyState
 					title="You are answering as a workspace admin"
