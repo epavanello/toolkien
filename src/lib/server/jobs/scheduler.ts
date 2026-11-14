@@ -26,8 +26,11 @@ export const runJob: JobScheduler['runJob'] = async (name) => {
 	}
 };
 
+/**
+ * Registers (or, with the same name, replaces) a job. Replacing keeps the timer: dev HMR
+ * re-evaluates `builtin.ts` while this module and its timers live on.
+ */
 export const registerJob: JobScheduler['registerJob'] = (job) => {
-	if (jobs.has(job.name)) throw new Error(`Job already registered: ${job.name}`);
 	jobs.set(job.name, job);
 };
 

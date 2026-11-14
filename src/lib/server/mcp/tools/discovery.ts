@@ -173,7 +173,9 @@ export function registerDiscoveryTools(
 			if (described.length > 0) {
 				parts.push(
 					'```ts',
-					...described.flatMap((item) => [`// ${instanceLabel(item)}`, item.declaration.trim()]),
+					...described
+						.filter((item) => item.declaration.trim())
+						.flatMap((item) => [`// ${instanceLabel(item)}`, item.declaration.trim()]),
 					'```'
 				);
 			}

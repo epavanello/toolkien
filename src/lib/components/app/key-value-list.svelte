@@ -23,7 +23,8 @@
 		variants: {
 			columns: {
 				1: 'grid-cols-[minmax(8rem,auto)_1fr]',
-				2: 'grid-cols-[minmax(8rem,auto)_1fr] lg:grid-cols-[minmax(8rem,auto)_1fr_minmax(8rem,auto)_1fr]'
+				// Two pairs per row only when the list itself is wide (side panels stay single)
+				2: 'grid-cols-[minmax(8rem,auto)_1fr] @2xl:grid-cols-[minmax(8rem,auto)_1fr_minmax(8rem,auto)_1fr]'
 			}
 		},
 		defaultVariants: { columns: 1 }
@@ -35,27 +36,29 @@
 	let { items, columns }: Props = $props();
 </script>
 
-<dl class={variants({ columns })} data-slot="key-value-list">
-	{#each items as item (item.label)}
-		<dt class="text-muted-foreground">{item.label}</dt>
-		<dd class="min-w-0">
-			{#if item.snippet}
-				{@render item.snippet()}
-			{:else if Array.isArray(item.value)}
-				<ul class="list-inside list-disc">
-					{#each item.value as entry (entry)}<li>{entry}</li>{/each}
-				</ul>
-			{:else if item.value == null || item.value === ''}
-				<span class="text-muted-foreground">—</span>
-			{:else if item.type === 'mono'}
-				<Mono value={String(item.value)} copy={item.copy} truncate />
-			{:else if item.type === 'datetime'}
-				<span class="tabular-nums">{formatDateTime(item.value)}</span>
-			{:else if item.type === 'status'}
-				<StatusBadge status={String(item.value)} />
-			{:else}
-				{item.value instanceof Date ? formatDateTime(item.value) : item.value}
-			{/if}
-		</dd>
-	{/each}
-</dl>
+<div class="@container">
+	<dl class={variants({ columns })} data-slot="key-value-list">
+		{#each items as item (item.label)}
+			<dt class="text-muted-foreground">{item.label}</dt>
+			<dd class="min-w-0">
+				{#if item.snippet}
+					{@render item.snippet()}
+				{:else if Array.isArray(item.value)}
+					<ul class="list-inside list-disc">
+						{#each item.value as entry (entry)}<li>{entry}</li>{/each}
+					</ul>
+				{:else if item.value == null || item.value === ''}
+					<span class="text-muted-foreground">—</span>
+				{:else if item.type === 'mono'}
+					<Mono value={String(item.value)} copy={item.copy} truncate />
+				{:else if item.type === 'datetime'}
+					<span class="tabular-nums">{formatDateTime(item.value)}</span>
+				{:else if item.type === 'status'}
+					<StatusBadge status={String(item.value)} />
+				{:else}
+					{item.value instanceof Date ? formatDateTime(item.value) : item.value}
+				{/if}
+			</dd>
+		{/each}
+	</dl>
+</div>

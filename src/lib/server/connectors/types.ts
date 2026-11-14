@@ -198,7 +198,10 @@ export type ResolvedTool = {
 
 export type ToolDescription = {
 	path: string;
-	/** `.d.ts` text for this tool (from typegen) */
+	/**
+	 * `.d.ts` text (from typegen). Tools of one namespace share one declaration: the first
+	 * described tool of a namespace carries it for all of them, the others have `''`.
+	 */
 	declaration: string;
 	/** (additive, mcp) Connector instance the tool belongs to */
 	connectorName?: string;

@@ -158,3 +158,13 @@
 		@apply font-sans;
 	}
 }
+
+/*
+ * Side panels (sheets) sit one level below dialogs and popovers: a dialog opened from a panel
+ * (Connect, Rename, Remove…) must cover it whatever order the portals were mounted in.
+ * Unlayered on purpose, so it wins over the `z-50` utility of the generated sheet.
+ */
+[data-slot='sheet-overlay'],
+[data-slot='sheet-content'] {
+	z-index: 40;
+}

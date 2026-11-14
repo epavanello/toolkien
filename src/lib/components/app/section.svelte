@@ -50,7 +50,7 @@
 				{#if title}<h2 class={styles.title()}>{title}</h2>{/if}
 				{#if description}<p class={styles.description()}>{description}</p>{/if}
 			</div>
-			{#if actions}<div class="flex items-center gap-2">{@render actions()}</div>{/if}
+			{#if actions}<div class="flex flex-wrap items-center gap-2">{@render actions()}</div>{/if}
 		</header>
 	{/if}
 	<div class={styles.body()}>{@render children()}</div>

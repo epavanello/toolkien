@@ -184,18 +184,22 @@ export async function describeTools(
 ): Promise<ToolDescription[]> {
 	const rows = await recordsByPath(actor, paths);
 	const byPath = new Map(rows.map((row) => [row.path, row]));
+	const ordered = [...new Set(paths)].flatMap((path) => byPath.get(path) ?? []);
+	// One declaration per namespace (two `declare const ns` blocks would not type-check)
+	const byNamespace = new Map<string, ToolRecord[]>();
+	for (const row of ordered) {
+		byNamespace.set(row.namespace, [...(byNamespace.get(row.namespace) ?? []), row]);
+	}
 	const result: ToolDescription[] = [];
-	for (const path of paths) {
-		const row = byPath.get(path);
-		if (row && !result.some((r) => r.path === path)) {
-			result.push({
-				path,
-				declaration: await moduleDeclaration([toTypeInput(row)]),
-				connectorName: row.connectorName,
-				namespace: row.namespace,
-				accountHint: row.label
-			});
-		}
+	for (const row of ordered) {
+		const group = byNamespace.get(row.namespace)!;
+		result.push({
+			path: row.path,
+			declaration: group[0] === row ? await moduleDeclaration(group.map(toTypeInput)) : '',
+			connectorName: row.connectorName,
+			namespace: row.namespace,
+			accountHint: row.label
+		});
 	}
 	return result;
 }

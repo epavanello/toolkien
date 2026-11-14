@@ -1,3 +1,4 @@
+import { dev } from '$app/env';
 import { error } from '@sveltejs/kit';
 import { and, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { record } from '#lib/server/audit/index.ts';
@@ -261,7 +262,9 @@ export const add: ConnectorsService['add'] = async (actor, input) => {
 				code: 'INVALID_INPUT'
 			});
 		}
-		if (safe.protocol !== 'https:')
+		// `assertSafeUrl` only lets plain http through to loopback in development (local MCP
+		// servers); everywhere else upstreams are https
+		if (safe.protocol !== 'https:' && !(dev && safe.protocol === 'http:'))
 			error(400, 'Only https URLs are allowed.', { code: 'INVALID_INPUT' });
 		safe.hash = '';
 		url = safe.href;
