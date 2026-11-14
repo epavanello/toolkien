@@ -20,6 +20,7 @@
 <script lang="ts">
 	import { cn } from '#lib/utils.js';
 	import { ANVIL_PATH, MARK_RINGS } from './paths.ts';
+	import { InView } from './in-view.svelte.ts';
 	import Rings from './rings.svelte';
 
 	type Props = {
@@ -30,6 +31,11 @@
 		clients?: string[];
 		serversCaption?: string;
 		clientsCaption?: string;
+		/**
+		 * `gate` only: the rings draw in on first view and a slow ember glow breathes behind the
+		 * gateway (paused off screen, static with reduced motion). For landing bands, not the app.
+		 */
+		animated?: boolean;
 		class?: string;
 	};
 
@@ -39,8 +45,14 @@
 		clients = ['Claude', 'ChatGPT', 'Codex', 'Cursor', 'VS Code'],
 		serversCaption = 'your tools, added once',
 		clientsCaption = 'every AI client',
+		animated = false,
 		class: className
 	}: Props = $props();
+
+	const id = $props.id();
+	const view = new InView(0.5);
+	const draw = $derived(animated ? (view.seen ? true : view.mounted ? 'hold' : false) : false);
+	const watchView = (node: Element) => (animated ? view.attach(node) : undefined);
 
 	const spark = (x: number, y: number, s: number) =>
 		`M${x} ${y - s}L${x + s} ${y}L${x} ${y + s}L${x - s} ${y}Z`;
@@ -87,6 +99,8 @@
 		class={cn('brand-art h-20 w-auto', className)}
 		aria-hidden="true"
 		data-slot="brand-art"
+		data-paused={animated && !view.visible ? '' : undefined}
+		{@attach watchView}
 	>
 		{#if name === 'forge' || name === 'crack'}
 			<path class="line faint" d="M10 66H110" />
@@ -124,10 +138,19 @@
 			<path class="surface line" d="M112 38H88L84 42L88 46H112Z" />
 			<path class="hot" d={spark(92, 52, 3)} />
 		{:else}
+			{#if animated && name === 'gate'}
+				<defs>
+					<radialGradient id="{id}-glow">
+						<stop offset="0" stop-color="var(--ember)" stop-opacity="0.55" />
+						<stop offset="1" stop-color="var(--ember)" stop-opacity="0" />
+					</radialGradient>
+				</defs>
+				<circle class="glow" cx="64" cy="40" r="34" fill="url(#{id}-glow)" />
+			{/if}
 			<path class="wire" d="M8 18C30 18 34 40 50 40M8 40H50M8 62C30 62 34 40 50 40" />
 			<rect class="tile" x="50" y="26" width="28" height="28" rx="6" />
 			<svg x="51" y="27" width="26" height="26" viewBox="0 0 32 32">
-				<Rings geometry={MARK_RINGS} a="var(--paper)" b="var(--ember)" />
+				<Rings geometry={MARK_RINGS} a="var(--paper)" b="var(--ember)" {draw} />
 			</svg>
 			{#if name === 'gate'}
 				<path class="flow" d="M78 40H112" />
@@ -239,8 +262,22 @@
 			stroke-dashoffset: -11;
 		}
 	}
+	.glow {
+		opacity: 0.35;
+		animation: glow 6s ease-in-out infinite;
+	}
+	[data-paused] .flow,
+	[data-paused] .glow {
+		animation-play-state: paused;
+	}
+	@keyframes glow {
+		50% {
+			opacity: 0.9;
+		}
+	}
 	@media (prefers-reduced-motion: reduce) {
-		.flow {
+		.flow,
+		.glow {
 			animation: none;
 		}
 	}

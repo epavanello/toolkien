@@ -8,6 +8,7 @@ export {
 	type ComparePanel,
 	type CompareVisual
 } from './compare.svelte';
+export { default as ConvergeFlow, type FlowClient, type FlowTool } from './converge-flow.svelte';
 export { default as DocsShell } from './docs-shell.svelte';
 export { default as FeatureGrid } from './feature-grid.svelte';
 export { default as Hallmark } from './hallmark.svelte';

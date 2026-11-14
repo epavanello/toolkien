@@ -8,8 +8,14 @@ import Power from '@lucide/svelte/icons/power';
 import ShieldCheck from '@lucide/svelte/icons/shield-check';
 import SquareTerminal from '@lucide/svelte/icons/square-terminal';
 import Users from '@lucide/svelte/icons/users';
+import { resolve } from '$app/paths';
 import { CLIENT_ICONS } from '#lib/components/app/client-icons.ts';
-import type { ComparePanel, Feature, PathCard } from '#lib/components/marketing/index.ts';
+import type {
+	ComparePanel,
+	Feature,
+	FlowClient,
+	PathCard
+} from '#lib/components/marketing/index.ts';
 import { LICENSE } from './site.ts';
 
 /**
@@ -29,6 +35,29 @@ export const worksWith = [
 	{ label: 'Cursor', icon: CLIENT_ICONS.cursor },
 	{ label: 'VS Code', icon: CLIENT_ICONS.vscode },
 	{ label: 'any MCP client', icon: CLIENT_ICONS.other }
+];
+
+/**
+ * The hero diagram: directory servers on the left (logo and name come from the directory in
+ * `+page.server.ts`), each with a sample call shown on hover; clients on the right.
+ */
+export const convergeTools = [
+	{ id: 'github', call: 'github.listIssues()' },
+	{ id: 'linear', call: 'linear.createIssue()' },
+	{ id: 'notion', call: 'notion.search()' },
+	{ id: 'sentry', call: 'sentry.getIssue()' },
+	{ id: 'stripe', call: 'stripe.listInvoices()' },
+	{ id: 'supabase', call: 'supabase.executeSql()' }
+];
+
+const connectClients = resolve('/(marketing)/docs/connect-clients');
+
+export const convergeClients: FlowClient[] = [
+	{ label: 'Claude', icon: CLIENT_ICONS.claude, href: connectClients },
+	{ label: 'ChatGPT', icon: CLIENT_ICONS.chatgpt, href: connectClients },
+	{ label: 'Codex', icon: CLIENT_ICONS.codex, href: connectClients },
+	{ label: 'Cursor', icon: CLIENT_ICONS.cursor, href: connectClients },
+	{ label: 'VS Code', icon: CLIENT_ICONS.vscode, href: connectClients }
 ];
 
 /*

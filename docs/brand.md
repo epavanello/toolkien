@@ -79,16 +79,14 @@ Every text pair passes WCAG AA (ember on paper 4.98:1, paper on ember 4.98:1, da
 
 `node scripts/brand-images.ts` renders `static/og.png` (brand card), `static/og/docs/<slug>.png` (one per docs page; a spec checks they exist), the PNG icons (192, 512, maskable 512, apple-touch 180) and the `static/brand/*.svg` files. `/icon.svg` is served from the same geometry. Re-run after changing the brand or the docs nav.
 
-## Image prompts
+## Motion
 
-Generated illustrations are optional: drop a file in `src/lib/assets/brand/<name>.webp` and `BrandImage` picks it up at build time; until then the SVG fallback renders. Names: `hero`, `forge-mood`, `connect-once`, `team-hall`. Keep them under 200 KB (WebP, quality ~80).
+Raster illustrations were tried and dropped: generated images read as generic and could not follow the theme. The brand draws with SVG and animates it, in the spirit of Supabase's landing: subtle, precise, technical.
 
-Shared negative prompt (append to every prompt): _no text, no letters, no runes, no inscriptions, no logos, no recognisable characters, no hobbits, elves, wizards or hooded figures, no volcano, no single gold ring, no map, no film stills, no photorealistic people, no watermark, no purple, no neon cyberpunk._
-
-1. **`hero`** (aspect 4:3, 1600×1200): _A calm toolsmith's workshop seen from slightly above, rendered as a refined editorial illustration with flat colour planes and fine ink linework. In the centre an anvil on a dark iron block; resting on it, two large interlocking metal rings, the left one pale steel, the right one glowing ember orange. Thin copper wires run from a neat rack of small labelled-less tool cases on the left into the rings, and fan out on the right towards five small glowing screens. A few square sparks rise. Palette: ink #11151b, iron #262b33, paper #fdfcf9, ember #ef6a1a, brass #e4b750. Generous negative space on the left for text, soft ember glow, no harsh contrast._
-2. **`forge-mood`** (aspect 16:9, 1920×1080, section background): _Close-up of a blacksmith's anvil in a dim workshop, two interlocking rings cooling on it, one still ember-hot. Painterly but clean, low detail in the corners so text can sit on top. Palette as above, mostly ink and iron with one ember light source from the right. Quiet, premium, editorial._
-3. **`connect-once`** (aspect 3:2, 1500×1000): _Isometric line illustration on warm paper #fdfcf9: on the left six small tool boxes on a shelf, each connected by a single copper wire to a central iron hub shaped like two interlocking rings; from the hub, five wires go to five different devices (laptop, terminal window, chat window, code editor, phone). Ink #11151b lines, ember #ef6a1a for the wires, brass #e4b750 for small highlights. Technical, precise, friendly._
-4. **`team-hall`** (aspect 3:2, 1500×1000): _A bright guild workshop with long workbenches where several abstract faceless figures (simple rounded shapes, no faces) work at laptops; above them a single iron beam carries copper wires to every bench, with a small brass approval stamp on a desk in the foreground. Flat editorial illustration, paper background #fdfcf9, ink #11151b lines, ember #ef6a1a accents. Calm, collaborative, trustworthy._
+- **Hero (`ConvergeFlow`)**: real directory logos on the left, the rings hub, generic client marks on the right. Ember packets run along the wires on an 11 s CSS cycle: tools flow to the hub and fan out to every client, then one script goes in and fans out into a call per tool (code mode), and one answer comes back. Hover or focus a chip to trace its paths and see a sample call; chips are links.
+- **Before / after (`Compare`)**: plays once when scrolled into view. The slow side accumulates its round trips or setups while the counters climb; the fast side settles in under a second. A new tool is added: one setup per client without Toolkien, lit in every client at once with it. Numbers stay labelled "illustrative" until measured.
+- **Logo**: the rings draw themselves in on load in the site header (`Logo draw`); the closing band's `gate` art (`BrandArt animated`) draws its rings on first view under a slow ember glow.
+- Rules: CSS transforms, opacity and `stroke-dashoffset` only, no per-frame JavaScript except the two counters; loops pause off screen and in hidden tabs (`InView`); `prefers-reduced-motion` shows the final, static frame; no layout shift (SSR renders the final state). Motion stays on the site: the app gets none.
 
 ## IP and trademark guardrails
 

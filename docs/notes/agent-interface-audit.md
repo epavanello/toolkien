@@ -22,15 +22,15 @@ egress. Code touched: `typegen/**`, `runner/**`, `executions/**`, `bridge/**`, `
   runner and real upstream calls (DeepWiki, Microsoft Learn), plus fake `crm` (read / write →
   ask / destructive → blocked) and `analytics` (PostHog-like, no output schema). Four
   `claude -p --model claude-haiku-5-5` runs (≈ $0.01 total):
-  1. *Summarise retention insights* → search, describe, first script failed type-check on an
+  1. _Summarise retention insights_ → search, describe, first script failed type-check on an
      `unknown` result, the hint led to a working second script; correct answer (7, max 1962).
-  2. *Combine CRM + Microsoft Learn + write* in one script → typed first try, paused on
+  2. _Combine CRM + Microsoft Learn + write_ in one script → typed first try, paused on
      `crm.addNote`, link given to the user, resumed after approval with `execution_status`;
      the Microsoft Learn call was replayed from cache, the note written once.
-  3. *Delete a contact (blocked) + read a missing insight* → upstream `isError` surfaced with
+  3. _Delete a contact (blocked) + read a missing insight_ → upstream `isError` surfaced with
      tool, line and hint; agent caught it. Found two issues (fixed below): repeated hints, wrong
      hint on `catch (e)`.
-  4. *55 s script* → `execute` answered `running` at 45 s, `execution_status` returned the
+  4. _55 s script_ → `execute` answered `running` at 45 s, `execution_status` returned the
      result.
 
 ## Fidelity harness (`typegen/fidelity.spec.ts`)
@@ -56,9 +56,9 @@ is one long description), small servers 0.7–1.02×.
 - Descriptions kept whole up to 64 KB (was 500 / 2 000 chars), with an explicit "N more
   characters cut" notice beyond.
 - Constraints as JSON Schema tags: `@integer @minimum @maximum @exclusive* @multipleOf
-  @minLength @maxLength @pattern @format @minItems @maxItems @uniqueItems @minProperties
-  @maxProperties @contentMediaType @contentEncoding @default @example @deprecated @readOnly
-  @writeOnly`; zod's ±2^53−1 bounds are dropped as noise.
+@minLength @maxLength @pattern @format @minItems @maxItems @uniqueItems @minProperties
+@maxProperties @contentMediaType @contentEncoding @default @example @deprecated @readOnly
+@writeOnly`; zod's ±2^53−1 bounds are dropped as noise.
 - Everything else verbatim as `@schema {…}` (`not`, `if`/`then`, `propertyNames`,
   `patternProperties`, typed `additionalProperties` beside properties, `discriminator`, `x-*`).
 - Inline docs for array items, union branches (`oneOf` const + title → labelled enum), map
@@ -99,7 +99,7 @@ result: { …; truncated?: boolean; }
   maps them to the agent's lines with the code excerpt and caller frames (no prelude or
   scratch paths).
 - **Tool errors**: `ToolCallError` has `code`, `path` and message `<path> failed [<code>]:
-  <server text>`; the stack points at the script's call site; uncaught ones get a hint per code
+<server text>`; the stack points at the script's call site; uncaught ones get a hint per code
   (`blocked`, `approval_rejected`, `auth_required`, `invalid_params`, `upstream_error`, …).
 - **Bridge messages** say what to do (`blocked` → do not retry, tell the user; rejected →
   ask the user; tool-call limit names `EXEC_MAX_TOOL_CALLS`).

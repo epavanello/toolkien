@@ -62,6 +62,17 @@
 
 	let failed = $state<string | null>(null);
 	const image = $derived(src && failed !== src ? src : null);
+	/**
+	 * Falls back to the monogram when the image fails. An attachment instead of `onerror`: an
+	 * event attribute would be rendered inline by SSR, which the CSP blocks. It also catches an
+	 * error that happened before hydration (`complete` with no pixels).
+	 */
+	const watchFailure = (url: string) => (img: HTMLImageElement) => {
+		const fail = () => (failed = url);
+		if (img.complete && img.naturalWidth === 0) fail();
+		img.addEventListener('error', fail);
+		return () => img.removeEventListener('error', fail);
+	};
 	const styles = $derived(
 		serviceLogoVariants({ size, tone: image ? undefined : monogramTone(name) })
 	);
@@ -76,7 +87,7 @@
 				class={styles.image()}
 				loading="lazy"
 				decoding="async"
-				onerror={() => (failed = image)}
+				{@attach watchFailure(image)}
 			/>
 		{:else}
 			{monogram(name)}

@@ -39,6 +39,8 @@
 		tile?: boolean;
 		/** Accessible name; pass `''` when the surrounding link or text already names it */
 		label?: string;
+		/** Draw the rings in once on load (site header); static with reduced motion */
+		draw?: boolean;
 		class?: string;
 	};
 
@@ -47,6 +49,7 @@
 		size,
 		tile = false,
 		label = brand.name,
+		draw = false,
 		class: className
 	}: Props = $props();
 
@@ -64,12 +67,12 @@
 		{#if tile}
 			<span class={styles.tile()}>
 				<svg viewBox="0 0 32 32" class="size-full" aria-hidden="true">
-					<Rings geometry={MARK_RINGS} a="var(--paper)" b="var(--ember)" />
+					<Rings geometry={MARK_RINGS} a="var(--paper)" b="var(--ember)" {draw} />
 				</svg>
 			</span>
 		{:else}
 			<svg viewBox="0 0 32 32" class={styles.mark()} aria-hidden="true">
-				<Rings geometry={MARK_RINGS} a="currentColor" b="var(--primary)" />
+				<Rings geometry={MARK_RINGS} a="currentColor" b="var(--primary)" {draw} />
 			</svg>
 		{/if}
 	{:else}
@@ -80,7 +83,7 @@
 			aria-hidden="true"
 		>
 			<path d={WORDMARK.letters} fill="currentColor" />
-			<Rings geometry={WORDMARK.rings} a="currentColor" b="var(--primary)" />
+			<Rings geometry={WORDMARK.rings} a="currentColor" b="var(--primary)" {draw} />
 		</svg>
 	{/if}
 </span>

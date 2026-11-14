@@ -11,7 +11,7 @@
 <header class="sticky top-0 z-30 border-b bg-background/90 backdrop-blur" data-slot="site-header">
 	<div class="mx-auto flex h-14 max-w-6xl items-center gap-8 px-4 sm:px-6">
 		<a href={resolve('/(marketing)')} class="rounded-sm" aria-label="Toolkien home">
-			<Logo label="" />
+			<Logo label="" draw />
 		</a>
 		<nav aria-label="Main" class="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
 			{#each links as link (link.href)}
