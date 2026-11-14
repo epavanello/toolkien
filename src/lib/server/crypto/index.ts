@@ -4,7 +4,8 @@ import {
 	OPENBAO_ROLE_ID,
 	OPENBAO_SECRET_ID,
 	OPENBAO_TRANSIT_KEY,
-	TOOLKIEN_DEV_MASTER_KEY
+	TOOLKIEN_DEV_MASTER_KEY,
+	TOOLKIEN_MASTER_KEY
 } from '$app/env/private';
 import { db } from '#lib/server/db/index.ts';
 import { CryptoError } from './aead.ts';
@@ -12,17 +13,28 @@ import { createEnvelopeCrypto, type EnvelopeCrypto } from './envelope.ts';
 import { OpenBaoClient } from './openbao.ts';
 import { drizzleKeyStore, drizzleResealer, workspacesWithKeys } from './store.ts';
 import type { Sealed, WorkspaceCrypto } from './types.ts';
-import { devWrapper, transitWrapper, type KeyWrapper } from './wrappers.ts';
+import { devWrapper, masterKeyWrapper, transitWrapper, type KeyWrapper } from './wrappers.ts';
 
 export type { Sealed, WorkspaceCrypto } from './types.ts';
 export { CryptoError } from './aead.ts';
 
-// Production refuses to boot without OpenBao: the development master key is never an option
-if (!building && !dev && !OPENBAO_ADDR) {
-	throw new CryptoError('OPENBAO_ADDR is required in production (envelope encryption)');
+// Production needs a real key provider: OpenBao, or an explicit TOOLKIEN_MASTER_KEY. The
+// development master key is never an option there.
+if (!building && !dev && !OPENBAO_ADDR && !TOOLKIEN_MASTER_KEY) {
+	throw new CryptoError('Set OPENBAO_ADDR (recommended) or TOOLKIEN_MASTER_KEY in production');
 }
 
 function createWrapper(): KeyWrapper {
+	// An explicit master key wins over the compose file's default OPENBAO_ADDR, but never
+	// silently over configured OpenBao credentials: data wrapped by one cannot be read by the other
+	if (TOOLKIEN_MASTER_KEY) {
+		if (OPENBAO_ROLE_ID || OPENBAO_SECRET_ID) {
+			throw new CryptoError(
+				'TOOLKIEN_MASTER_KEY and OpenBao credentials are both set: keep only one key provider'
+			);
+		}
+		return masterKeyWrapper(TOOLKIEN_MASTER_KEY, 'static');
+	}
 	if (OPENBAO_ADDR) {
 		if (!OPENBAO_ROLE_ID || !OPENBAO_SECRET_ID) {
 			throw new CryptoError('OPENBAO_ROLE_ID and OPENBAO_SECRET_ID are required with OPENBAO_ADDR');
@@ -39,7 +51,7 @@ function createWrapper(): KeyWrapper {
 	if (!dev) throw new CryptoError('The development master key is refused in production');
 	if (!TOOLKIEN_DEV_MASTER_KEY) {
 		throw new CryptoError(
-			'Set OPENBAO_ADDR, or TOOLKIEN_DEV_MASTER_KEY for development (openssl rand -base64 32)'
+			'Set OPENBAO_ADDR, TOOLKIEN_MASTER_KEY, or TOOLKIEN_DEV_MASTER_KEY for development (openssl rand -base64 32)'
 		);
 	}
 	return devWrapper(TOOLKIEN_DEV_MASTER_KEY);

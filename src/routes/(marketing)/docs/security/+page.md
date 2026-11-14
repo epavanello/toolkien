@@ -22,14 +22,14 @@ Toolkien holds credentials to your services and runs code written by a language 
 
 ## Architecture and network isolation
 
-Toolkien runs as one Docker Compose stack. Only the app is reachable from the internet.
+Toolkien runs as two Docker Compose stacks: the app stack and, apart, OpenBao. Only the app is reachable from the internet.
 
-| Service                                       | Networks               | Exposed                       |
-| --------------------------------------------- | ---------------------- | ----------------------------- |
-| App (SvelteKit: web, API, MCP server, bridge) | public, core, sandbox  | Yes, behind the reverse proxy |
-| OpenBao (secrets)                             | core                   | No                            |
-| Egress proxy                                  | core, public           | No                            |
-| Runner (Deno)                                 | sandbox, internal only | No                            |
+| Service                                       | Networks                     | Exposed                       |
+| --------------------------------------------- | ---------------------------- | ----------------------------- |
+| App (SvelteKit: web, API, MCP server, bridge) | public, core, sandbox, vault | Yes, behind the reverse proxy |
+| OpenBao (secrets, own stack)                  | vault, internal only         | No                            |
+| Egress proxy                                  | core, public                 | No                            |
+| Runner (Deno)                                 | sandbox, internal only       | No                            |
 
 The runner's network is internal: it can reach **only** the bridge in the app, never the internet, the database or OpenBao. No container mounts the Docker socket and there is no docker-in-docker. Containers run read-only with `/tmp` in memory, all capabilities dropped, `no-new-privileges`, and CPU, memory and process limits.
 
@@ -38,7 +38,8 @@ The runner's network is internal: it can reach **only** the bridge in the app, n
 - Each workspace has its own **data key**. Upstream tokens are encrypted with AES-256-GCM using that key, with the workspace id as associated data: a row copied to another workspace no longer decrypts.
 - Data keys are stored only **wrapped** by OpenBao's transit engine, with a derived key whose context is the workspace id. The master key never leaves OpenBao.
 - The app authenticates to OpenBao with AppRole and short-lived tokens; its policy allows only encrypt, decrypt and rewrap on that one key.
-- OpenBao runs with integrated raft storage, never in dev mode, with an audit device on (sensitive values hashed). Keys are rotated and data keys rewrapped in the background without downtime. Unseal keys are kept offline.
+- OpenBao runs with integrated raft storage, never in dev mode, with an audit device on (sensitive values hashed). Keys are rotated and data keys rewrapped in the background without downtime. Unseal keys are kept offline. It is a separate stack on its own internal network, so deploying the app never restarts (and seals) it.
+- Self-hosters may instead use a local master key (`TOOLKIEN_MASTER_KEY`) for small private instances. It still protects a stolen database, but anyone who reads the app's environment can decrypt everything. The managed service always uses OpenBao.
 - Decryption happens only in the bridge, in memory, at call time. Tokens never appear in logs, errors, responses or the UI.
 
 ## The runner sandbox

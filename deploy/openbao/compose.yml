@@ -1,0 +1,40 @@
+# OpenBao for Toolkien, as its own stack: deploy it once and leave it alone.
+#
+# Kept apart from the app stack on purpose: OpenBao is sealed after every restart and needs key
+# holders to unseal it, so app deploys must never recreate it. It restarts only when you
+# redeploy THIS stack or the server reboots.
+#
+#   Self-hosted:  docker compose -f deploy/openbao/compose.yml up -d --build   (before the app)
+#   Coolify:      separate Docker Compose resource, base directory `/deploy/openbao`,
+#                 compose file `/compose.yml`, Raw Compose Deployment ON, auto-deploy OFF
+#
+# It creates the `toolkien_vault` network (internal: no route to the internet). The app stack
+# joins it as an external network and reaches OpenBao at http://openbao:8200.
+
+name: toolkien-vault
+
+services:
+  openbao:
+    build: { context: . }
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '5' }
+    # Sealed after every start: unseal with /openbao/scripts/unseal.sh
+    tmpfs: ['/tmp:rw,nosuid,nodev,size=64m']
+    volumes: ['openbao-data:/openbao/data']
+    mem_limit: 512m
+    pids_limit: 256
+    networks:
+      vault: { aliases: [openbao] }
+
+networks:
+  vault:
+    name: ${VAULT_NETWORK:-toolkien_vault}
+    internal: true
+
+volumes:
+  openbao-data:

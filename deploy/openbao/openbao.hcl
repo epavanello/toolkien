@@ -1,5 +1,5 @@
 # OpenBao server for Toolkien. Never dev mode.
-# The container only joins the internal `core` network and publishes no port, so this
+# The container only joins the internal `vault` network and publishes no port, so this
 # listener is reachable from the app (and nothing on the internet).
 
 ui            = false
@@ -17,7 +17,7 @@ listener "tcp" {
   address         = "0.0.0.0:8200"
   cluster_address = "0.0.0.0:8201"
   # Plain HTTP on the internal network only (no published port). Put TLS here before ever
-  # exposing the listener beyond `core`.
+  # exposing the listener beyond `vault`.
   tls_disable = true
 }
 

@@ -70,7 +70,7 @@ export const variables = defineEnvVars({
 	// ─── Secrets (OpenBao transit) ──────────────────────────────────────────
 	OPENBAO_ADDR: {
 		description:
-			'OpenBao address on the internal `core` network (e.g. `http://openbao:8200`). When unset, dev uses `TOOLKIEN_DEV_MASTER_KEY`.',
+			'OpenBao address on the internal `vault` network (e.g. `http://openbao:8200`). When unset, dev uses `TOOLKIEN_DEV_MASTER_KEY`.',
 		schema: optional
 	},
 	OPENBAO_ROLE_ID: { description: 'AppRole `role_id` of the `app` policy.', schema: optional },
@@ -79,6 +79,11 @@ export const variables = defineEnvVars({
 		description:
 			'Name of the derived transit key that wraps workspace data keys (workspace id is the derivation context).',
 		schema: (value) => value?.trim() || 'toolkien-tokens'
+	},
+	TOOLKIEN_MASTER_KEY: {
+		description:
+			'Alternative to OpenBao for simple self-hosting: base64 32-byte master key that wraps data keys. Weaker (anyone who reads the environment can decrypt everything); takes precedence over `OPENBAO_ADDR` and refuses to start if OpenBao credentials are also set.',
+		schema: optional
 	},
 	TOOLKIEN_DEV_MASTER_KEY: {
 		description:

@@ -10,11 +10,14 @@ import {
 import type { OpenBaoClient } from './openbao.ts';
 
 /**
- * Wraps and unwraps workspace data keys. Production: OpenBao transit (the master key never
- * leaves OpenBao). Development: a local master key from `TOOLKIEN_DEV_MASTER_KEY`.
+ * Wraps and unwraps workspace data keys.
+ * - `openbao`: OpenBao transit, the master key never leaves OpenBao (recommended).
+ * - `static`: a master key from `TOOLKIEN_MASTER_KEY` in the app environment (simpler
+ *   self-hosting, weaker: whoever reads the environment can unwrap every data key).
+ * - `dev`: `TOOLKIEN_DEV_MASTER_KEY`, development only.
  */
 export interface KeyWrapper {
-	readonly kind: 'openbao' | 'dev';
+	readonly kind: 'openbao' | 'static' | 'dev';
 	wrap(workspaceId: string, dek: Uint8Array): Promise<string>;
 	unwrap(workspaceId: string, wrapped: string): Promise<Uint8Array>;
 	/** Re-wraps with the latest master key version; returns the input when already current */
@@ -34,31 +37,38 @@ export function transitWrapper(client: OpenBaoClient): KeyWrapper {
 	};
 }
 
-const DEV_PREFIX = 'dev:v1:';
+const MASTER_KEY_ENV = { static: 'TOOLKIEN_MASTER_KEY', dev: 'TOOLKIEN_DEV_MASTER_KEY' } as const;
 
-/** HKDF(master, info = workspace id) per workspace, AES-GCM with the workspace id as AAD */
-export function devWrapper(masterKeyBase64: string): KeyWrapper {
+/**
+ * Local master key: HKDF(master, info = workspace id) per workspace, AES-GCM with the workspace
+ * id as AAD. `static` and `dev` use distinct prefixes and HKDF labels, so a development key can
+ * never open production data and vice versa.
+ */
+export function masterKeyWrapper(masterKeyBase64: string, kind: 'static' | 'dev'): KeyWrapper {
 	const master = fromBase64(masterKeyBase64);
 	if (master.byteLength !== KEY_BYTES) {
-		throw new CryptoError('TOOLKIEN_DEV_MASTER_KEY must be 32 bytes, base64 encoded');
+		throw new CryptoError(`${MASTER_KEY_ENV[kind]} must be 32 bytes, base64 encoded`);
 	}
-	const kek = (workspaceId: string) => deriveAesKey(master, 'toolkien-dev-kek', workspaceId);
+	const prefix = `${kind}:v1:`;
+	const kek = (workspaceId: string) => deriveAesKey(master, `toolkien-${kind}-kek`, workspaceId);
 	return {
-		kind: 'dev',
+		kind,
 		wrap: async (workspaceId, dek) => {
 			const { ciphertext, nonce } = await aesGcmSeal(await kek(workspaceId), dek, workspaceId);
 			const packed = new Uint8Array(nonce.byteLength + ciphertext.byteLength);
 			packed.set(nonce);
 			packed.set(ciphertext, nonce.byteLength);
-			return `${DEV_PREFIX}${toBase64(packed)}`;
+			return `${prefix}${toBase64(packed)}`;
 		},
 		unwrap: async (workspaceId, wrapped) => {
-			if (!wrapped.startsWith(DEV_PREFIX)) {
-				throw new CryptoError('Data key was not wrapped by the development master key');
+			if (!wrapped.startsWith(prefix)) {
+				throw new CryptoError(`Data key was not wrapped by ${MASTER_KEY_ENV[kind]}`);
 			}
-			const packed = fromBase64(wrapped.slice(DEV_PREFIX.length));
+			const packed = fromBase64(wrapped.slice(prefix.length));
 			return aesGcmOpen(await kek(workspaceId), packed.slice(12), packed.slice(0, 12), workspaceId);
 		},
 		rewrap: async (_workspaceId, wrapped) => wrapped
 	};
 }
+
+export const devWrapper = (masterKeyBase64: string) => masterKeyWrapper(masterKeyBase64, 'dev');

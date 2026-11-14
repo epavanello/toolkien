@@ -6,7 +6,8 @@ wrapped DEKs and values sealed with them, so a stolen database exposes no creden
 
 | File                  | What                                                                       |
 | --------------------- | -------------------------------------------------------------------------- |
-| `openbao.hcl`         | Server config: raft storage on the volume, listener on `core` only, audit  |
+| `compose.yml`         | Its own stack (`toolkien-vault`) and the internal `toolkien_vault` network |
+| `openbao.hcl`         | Server config: raft storage on the volume, listener on `vault` only, audit |
 | `policies/app.hcl`    | App policy: `encrypt`, `decrypt`, `rewrap` on `toolkien-tokens`, own token |
 | `policies/backup.hcl` | Backup policy: raft snapshots only                                         |
 | `init.sh`             | One-time init (Shamir keys, transit key, policies, AppRoles, root revoked) |
@@ -14,8 +15,11 @@ wrapped DEKs and values sealed with them, so a stolen database exposes no creden
 | `rotate.sh`           | Transit key rotation (`rotate`, then `trim`)                               |
 
 The scripts are baked into the image at `/openbao/scripts/`. Find the container with
-`docker ps --filter name=openbao` (Coolify names it `openbao-<uuid>`, plain compose
-`toolkien-openbao-1`).
+`docker ps --filter name=openbao` (plain compose: `toolkien-vault-openbao-1`).
+
+OpenBao is a **separate stack** from the app on purpose: it is sealed after every restart, so
+app deploys must never recreate it. Deploy it once; it restarts only when you redeploy it or the
+server reboots.
 
 ## What `init.sh` sets up
 
@@ -25,7 +29,7 @@ The scripts are baked into the image at `/openbao/scripts/`. Find the container 
   (`TRANSIT_AUTO_ROTATE`).
 - Policy `app` and AppRole `toolkien-app`: service tokens, TTL 15 min, max 1 h, no `default`
   policy. The app renews its token at two thirds of its life and logs in again past the max
-  TTL. Optional `APP_CIDRS` binds the secret id and tokens to the `core` subnet.
+  TTL. Optional `APP_CIDRS` binds the secret id and tokens to the `vault` subnet.
 - Policy `backup` and AppRole `toolkien-backup` (5 min tokens) for snapshots.
 - Audit device `file` to stdout (declared in `openbao.hcl`), sensitive values HMAC-hashed.
 - The initial root token is revoked.
@@ -76,7 +80,7 @@ the snapshot over it. After the restore it is sealed with the ORIGINAL unseal ke
 
 ```sh
 age -d -i openbao.key openbao-<stamp>.snap.age > openbao.snap
-docker compose up -d openbao
+docker compose -f deploy/openbao/compose.yml up -d --build
 docker exec -it <openbao> bao operator init -key-shares=1 -key-threshold=1   # temporary
 docker exec -it <openbao> bao operator unseal <temporary key>
 docker cp openbao.snap <openbao>:/tmp/openbao.snap

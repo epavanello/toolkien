@@ -1,16 +1,21 @@
 # Deploy on Coolify
 
-Toolkien runs as **one Docker Compose resource** on a Coolify server in the EU. Only the app
-gets a domain; OpenBao, the egress proxy and the runner have no public port. Turso (EU region)
-is the database, outside the VPS. For a plain `docker compose` install see
-[`self-hosting.md`](self-hosting.md); the compose file is the same.
+Toolkien runs as **two Docker Compose resources** on a Coolify server in the EU:
 
-| Service      | Networks                    | Volume     | Exposed     |
-| ------------ | --------------------------- | ---------- | ----------- |
-| app          | `public`, `core`, `sandbox` | no         | yes, domain |
-| openbao      | `core` (internal)           | yes (raft) | no          |
-| egress-proxy | `core`, `public`            | no         | no          |
-| runner       | `sandbox` (internal)        | no         | no          |
+- **toolkien-vault** (`deploy/openbao/compose.yml`): OpenBao alone. Deployed once, auto-deploy
+  off. Coolify recreates every container of a resource on each deploy, and OpenBao comes back
+  sealed: keeping it apart means pushes to `main` never seal it.
+- **toolkien** (`docker-compose.yml`): app, egress proxy, runner. Auto-deploy on push.
+
+Only the app gets a domain. Turso (EU region) is the database, outside the VPS. For a plain
+`docker compose` install see [`self-hosting.md`](self-hosting.md); the compose files are the same.
+
+| Service      | Resource       | Networks                             | Volume     | Exposed     |
+| ------------ | -------------- | ------------------------------------ | ---------- | ----------- |
+| app          | toolkien       | `public`, `core`, `sandbox`, `vault` | no         | yes, domain |
+| egress-proxy | toolkien       | `core`, `public`                     | no         | no          |
+| runner       | toolkien       | `sandbox` (internal)                 | no         | no          |
+| openbao      | toolkien-vault | `vault` (internal)                   | yes (raft) | no          |
 
 ## Why "Raw Compose Deployment"
 
@@ -35,7 +40,16 @@ written: our networks only, plus the Traefik labels on the app. Keep raw mode on
   openssl rand -hex 32      # EGRESS_PROXY_TOKEN
   ```
 
-## 2. Create the resource
+## 2. Create the OpenBao resource (once)
+
+1. **Project → New resource → Public/Private repository**, branch `main`.
+2. **Build pack: Docker Compose**, base directory `/deploy/openbao`, compose file `/compose.yml`.
+3. **Advanced → Raw Compose Deployment: ON**; **auto-deploy: OFF** (General / Advanced).
+4. No environment variables, no domain. **Deploy.** It creates the internal `toolkien_vault`
+   network and starts OpenBao **uninitialised and sealed**.
+5. Initialise it now (step 4 below), keep the app credentials for the next step.
+
+## 3. Create the app resource
 
 1. **Project → New resource → Public/Private repository**, branch `main`.
 2. **Build pack: Docker Compose**, compose file `/docker-compose.yml`.
@@ -56,8 +70,8 @@ written: our networks only, plus the Traefik labels on the app. Keep raw mode on
    | `RUNNER_SHARED_SECRET`    | generated                                 |
    | `EGRESS_PROXY_TOKEN`      | generated                                 |
    | `PLATFORM_ADMIN_EMAILS`   | your email                                |
-   | `OPENBAO_ROLE_ID`         | empty for now                             |
-   | `OPENBAO_SECRET_ID`       | empty for now                             |
+   | `OPENBAO_ROLE_ID`         | printed by `init.sh`                      |
+   | `OPENBAO_SECRET_ID`       | printed by `init.sh`                      |
 
    `PUBLIC_NETWORK=coolify` puts the app and the egress proxy on the network Coolify's Traefik
    uses; check its name with `docker network ls` (it is `coolify` on a standard install).
@@ -65,40 +79,42 @@ written: our networks only, plus the Traefik labels on the app. Keep raw mode on
 5. Leave the domain fields of the services empty: routing comes from the Traefik labels.
 6. If gVisor is installed, uncomment `runtime: runsc` under `runner` in your fork, or keep a
    small compose override in the repo you deploy.
-7. **Deploy.** The app starts and runs migrations; OpenBao starts **uninitialised and sealed**.
-   Pages work, anything touching credentials fails until the next step.
+7. **Deploy.** The app starts, runs migrations and joins `toolkien_vault`. Deploy the OpenBao
+   resource first: the app's deploy fails while that network does not exist.
 
-## 3. Initialise OpenBao (once)
+## 4. Initialise OpenBao (once)
 
-From **Terminal** in Coolify (or SSH on the server):
+From **Terminal** in Coolify, pick the OpenBao container (or SSH on the server):
 
 ```sh
-docker ps --filter name=openbao --format '{{.Names}}'
-docker exec -it <openbao-container> /openbao/scripts/init.sh
+/openbao/scripts/init.sh
+# a single operator can choose one key instead of 3 of 5:
+KEY_SHARES=1 KEY_THRESHOLD=1 /openbao/scripts/init.sh
 ```
 
-It prints, once: five unseal keys (three needed), the app AppRole credentials and the backup
-AppRole credentials, then revokes the root token.
+It prints, once: the unseal keys, the app AppRole credentials and the backup AppRole
+credentials, then revokes the root token.
 
 - Unseal keys: offline, ideally one per person (password managers of different people, paper
   in a safe). Never on the server, in Coolify, in the repo or in a chat.
-- `OPENBAO_ROLE_ID` / `OPENBAO_SECRET_ID`: set them in the resource's environment variables and
-  **redeploy**.
+- `OPENBAO_ROLE_ID` / `OPENBAO_SECRET_ID`: set them in the app resource's environment variables
+  (and redeploy it if it already runs).
 - Backup credentials: see step 5.
 
 Clear the terminal scrollback afterwards. Details: `deploy/openbao/README.md`.
 
-## 4. After every restart: unseal
+## 4b. After a restart of OpenBao: unseal
 
-OpenBao is sealed whenever its container restarts (deploy, server reboot, Coolify update). Its
-health check stays unhealthy until unsealed, and the app cannot read credentials meanwhile.
+OpenBao is sealed whenever its container restarts: server reboot, a redeploy of the
+toolkien-vault resource, sometimes a Coolify update. App deploys do not touch it. Its health
+check stays unhealthy until unsealed, and the app cannot read credentials meanwhile.
 
 ```sh
-docker exec -it <openbao-container> /openbao/scripts/unseal.sh
+/openbao/scripts/unseal.sh     # Coolify Terminal, OpenBao container
 ```
 
-Three key holders type their key at a hidden prompt (they can do it one after the other). Set
-a Coolify notification on unhealthy containers so a sealed OpenBao does not go unnoticed.
+Key holders type their key at a hidden prompt (they can do it one after the other). Set a
+Coolify notification on unhealthy containers so a sealed OpenBao does not go unnoticed.
 
 ## 5. Backups (host cron)
 
@@ -157,16 +173,16 @@ log shipping (Coolify, Loki…) must apply the same 14-day retention.
 
 - `https://<domain>` loads; sign up; your personal workspace opens.
 - `docker inspect <runner-container> --format '{{json .NetworkSettings.Networks}}'` lists only
-  the `sandbox` network; same check for OpenBao (`core` only).
+  the `sandbox` network; same check for OpenBao (`toolkien_vault` only).
 - From the runner, nothing outside resolves or connects:
   `docker exec <runner-container> deno eval "await fetch('https://example.com')"` fails.
 - Add a connector to a public MCP server: the call goes out through the egress proxy.
 
 ## Updates
 
-Push to `main` and redeploy (or enable auto-deploy). The app runs migrations on start; Toolkien
-assumes **one app instance**, so keep Coolify's rolling updates off for this resource. A deploy
-that rebuilds OpenBao restarts it: unseal again. Changing OpenBao or Deno versions: bump the
+Push to `main` and redeploy (or enable auto-deploy) the **app** resource. The app runs
+migrations on start; Toolkien assumes **one app instance**, so keep Coolify's rolling updates off
+for it. Redeploy the OpenBao resource only when its release notes say so, then unseal. Changing OpenBao or Deno versions: bump the
 `FROM` lines in `deploy/openbao/Dockerfile`, `egress/Dockerfile`, `runner/Dockerfile`.
 
 ## Key rotation

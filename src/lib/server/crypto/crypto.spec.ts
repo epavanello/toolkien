@@ -7,7 +7,7 @@ import {
 } from './envelope.ts';
 import { OpenBaoClient, OpenBaoError } from './openbao.ts';
 import type { Sealed } from './types.ts';
-import { devWrapper, transitWrapper, type KeyWrapper } from './wrappers.ts';
+import { devWrapper, masterKeyWrapper, transitWrapper, type KeyWrapper } from './wrappers.ts';
 
 const MASTER = Buffer.alloc(32, 7).toString('base64');
 const WS = 'ws_1';
@@ -189,6 +189,22 @@ describe('envelope encryption (dev master key)', () => {
 		});
 		await expect(b.decryptForWorkspace(WS, sealed)).rejects.toThrow();
 		expect(() => devWrapper('c2hvcnQ=')).toThrow('32 bytes');
+	});
+
+	it('static master key round-trips and never opens dev-wrapped keys (or the reverse)', async () => {
+		const prod = masterKeyWrapper(MASTER, 'static');
+		const dev = devWrapper(MASTER);
+		const wrapped = await prod.wrap(WS, new Uint8Array(32).fill(7));
+		expect(wrapped.startsWith('static:v1:')).toBe(true);
+		expect(await prod.unwrap(WS, wrapped)).toEqual(new Uint8Array(32).fill(7));
+		await expect(dev.unwrap(WS, wrapped)).rejects.toThrow('TOOLKIEN_DEV_MASTER_KEY');
+		await expect(prod.unwrap(WS, await dev.wrap(WS, new Uint8Array(32)))).rejects.toThrow(
+			'TOOLKIEN_MASTER_KEY'
+		);
+		// Same key bytes, different HKDF label: the prefix is not the only barrier
+		const forged = `dev:v1:${wrapped.slice('static:v1:'.length)}`;
+		await expect(dev.unwrap(WS, forged)).rejects.toThrow();
+		expect(() => masterKeyWrapper('c2hvcnQ=', 'static')).toThrow('TOOLKIEN_MASTER_KEY');
 	});
 
 	it('rotates the data key and re-seals old values without downtime', async () => {

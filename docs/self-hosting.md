@@ -1,9 +1,15 @@
 # Self-hosting Toolkien
 
-Toolkien is one `docker compose` project: the app (SvelteKit), OpenBao (encryption keys), an
-egress proxy (the only way out to upstream MCP servers) and the runner (Deno sandbox for
-scripts). On Coolify, follow [`deploy-coolify.md`](deploy-coolify.md) instead; the compose file
-is the same.
+Toolkien is two `docker compose` stacks:
+
+- **App stack** (`docker-compose.yml`): the app (SvelteKit), an egress proxy (the only way out
+  to upstream MCP servers) and the runner (Deno sandbox for scripts).
+- **OpenBao stack** (`deploy/openbao/compose.yml`): the key provider. Separate because it is
+  sealed after every restart: app upgrades never touch it. It creates the internal
+  `toolkien_vault` network the app joins.
+
+On Coolify, follow [`deploy-coolify.md`](deploy-coolify.md) instead; the compose files are the
+same.
 
 ## Requirements
 
@@ -29,6 +35,7 @@ cp deploy/compose.env.example .env.production && chmod 600 .env.production
 | `RUNNER_SHARED_SECRET`                                                                          | yes      | `openssl rand -hex 32` (app ↔ runner)                     |
 | `EGRESS_PROXY_TOKEN`                                                                            | yes      | `openssl rand -hex 32` (app ↔ egress proxy)               |
 | `OPENBAO_ROLE_ID`, `OPENBAO_SECRET_ID`                                                          | yes\*    | Printed by `init.sh` on first boot                        |
+| `TOOLKIEN_MASTER_KEY`, `VAULT_NETWORK_EXTERNAL`                                                 | no\*     | Only without OpenBao, see "Without OpenBao"               |
 | `RESEND_API_KEY`, `EMAIL_FROM`                                                                  | yes      | Sign-in email (code + link) and invitations, see below    |
 | `PLATFORM_ADMIN_EMAILS`                                                                         | no       | Access to `/admin` (limits, kill switches)                |
 | `APP_PUBLISH`                                                                                   | no       | Host port for the reverse proxy, default `127.0.0.1:3000` |
@@ -36,8 +43,8 @@ cp deploy/compose.env.example .env.production && chmod 600 .env.production
 | `EXEC_*`, `RATE_LIMIT_EXEC_PER_MIN`, `AUDIT_RETENTION_DAYS`                                     | no       | Limits, see `src/env.ts`                                  |
 | `APP_MEMORY`, `RUNNER_CPUS`, `RUNNER_MEMORY`, `RUNNER_MAX_CONCURRENT`, `EGRESS_MAX_CONNECTIONS` | no       | Resources                                                 |
 
-Every app variable is documented in `src/env.ts`. The app refuses to start in production
-without OpenBao (`OPENBAO_ADDR` is set by the compose file).
+Every app variable is documented in `src/env.ts`. \*The app needs one key provider: OpenBao
+(recommended) or `TOOLKIEN_MASTER_KEY`; it refuses to start with neither, or with both.
 
 Email: sign-in is passwordless (an emailed 6-digit code and a single-use link, or a passkey),
 so the app needs a transactional email provider. Toolkien talks to the [Resend](https://resend.com)
@@ -57,29 +64,48 @@ toolkien.example.com {
 ## First boot
 
 ```sh
-docker compose --env-file .env.production up -d --build
-docker compose --env-file .env.production exec openbao /openbao/scripts/init.sh
+docker compose -f deploy/openbao/compose.yml up -d --build        # OpenBao stack, first
+docker exec -it toolkien-vault-openbao-1 /openbao/scripts/init.sh
 ```
 
 `init.sh` runs once. It prints the **unseal keys** (store them offline, split among people),
 the app credentials (put them in `.env.production`) and the backup credentials (see Backups),
-and revokes the root token. Then:
+and revokes the root token. A single operator can ask for one key instead of 3 of 5:
+`docker exec -it -e KEY_SHARES=1 -e KEY_THRESHOLD=1 … init.sh` (simpler, no split of trust).
+Then start the app stack:
 
 ```sh
-docker compose --env-file .env.production up -d app   # picks up the OpenBao credentials
+docker compose --env-file .env.production up -d --build
 ```
 
 Open `ORIGIN`, sign up, and you are in your personal workspace.
 
-## After every restart: unseal
+## After a restart of OpenBao: unseal
 
-OpenBao starts sealed. Until three key holders unseal it, the app cannot read any credential:
+OpenBao starts sealed: after a server reboot or a redeploy of the OpenBao stack (app upgrades
+do not restart it). Until key holders unseal it, the app cannot read any credential:
 
 ```sh
-docker compose --env-file .env.production exec openbao /openbao/scripts/unseal.sh
+docker exec -it toolkien-vault-openbao-1 /openbao/scripts/unseal.sh
 ```
 
-`docker compose ps` shows OpenBao as unhealthy while it is sealed: monitor that.
+`docker ps` shows OpenBao as unhealthy while it is sealed: monitor that.
+
+## Without OpenBao (simpler, weaker)
+
+For a small private instance you can skip the OpenBao stack and let the app wrap data keys with
+a master key from its environment:
+
+```sh
+echo "TOOLKIEN_MASTER_KEY=$(openssl rand -base64 32)" >> .env.production
+echo "VAULT_NETWORK_EXTERNAL=false" >> .env.production
+```
+
+Leave `OPENBAO_ROLE_ID` / `OPENBAO_SECRET_ID` empty. No unseal step, but the trade-off is real:
+anyone who can read the app's environment (the host, your deploy tool, its backups) can decrypt
+every stored credential, and there is no key rotation, audit device or revocable app identity.
+A stolen database alone is still useless. Back the key up offline: losing it loses every stored
+credential. Switching provider later means users reconnect their services (no migration tool).
 
 ## Backups and restore
 
@@ -100,7 +126,8 @@ are in `deploy/openbao/README.md`. Copy backups off the server.
 ```sh
 git pull
 docker compose --env-file .env.production up -d --build
-docker compose --env-file .env.production exec openbao /openbao/scripts/unseal.sh  # if it restarted
+# OpenBao is not touched; upgrade its stack only when its release notes say so, then unseal:
+# docker compose -f deploy/openbao/compose.yml up -d --build && docker exec -it toolkien-vault-openbao-1 /openbao/scripts/unseal.sh
 ```
 
 Migrations run when the app starts (`SKIP_MIGRATIONS=1` to run them yourself with

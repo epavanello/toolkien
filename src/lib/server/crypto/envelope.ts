@@ -14,7 +14,7 @@ export type DataKeyRecord = {
 	id: string;
 	workspaceId: string;
 	keyVersion: number;
-	/** `vault:vN:…` (OpenBao transit) or `dev:v1:…` */
+	/** `vault:vN:…` (OpenBao transit), `static:v1:…` or `dev:v1:…` (local master key) */
 	wrappedKey: string;
 	status: 'active' | 'retired';
 };

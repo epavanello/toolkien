@@ -140,11 +140,16 @@ removed after this merge).
 - **Envelope encryption**: one DEK per workspace and version (generated in the app), wrapped by
   OpenBao transit; values AES-256-GCM with the workspace id as AAD. Every sealed column is listed
   in `SEALED_GROUPS` (a spec checks coverage) so key rotation re-seals them. Dev fallback
-  `TOOLKIEN_DEV_MASTER_KEY`, refused in production.
+  `TOOLKIEN_DEV_MASTER_KEY`, refused in production. Self-hosters may use `TOOLKIEN_MASTER_KEY`
+  instead of OpenBao (`static:` prefix, distinct HKDF label; refused together with OpenBao
+  credentials): weaker, documented as such; the managed service uses OpenBao.
 - **SSRF**: IPv4 blocklist, IPv6 allowlist, local names rejected before DNS, port 443 only, DNS
   pinned at connect, redirects re-checked; production egress through the CONNECT-only proxy.
 - Content (tokens, arguments, results, code) is stored only sealed and wiped when no longer needed.
 - **OpenBao 2.7**: raft, Shamir 5/3, root token revoked after init, AppRoles for app and backup.
+  Its own compose stack (`deploy/openbao/compose.yml`), joined by the app over the internal
+  `toolkien_vault` network: app deploys recreate every container of their stack, and OpenBao
+  must not be resealed on every push.
 - **Compose**: `core` and `sandbox` networks are internal; Coolify needs Raw Compose Deployment.
 
 ## UI

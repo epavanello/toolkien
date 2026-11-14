@@ -115,7 +115,7 @@ export const workspaceDataKey = sqliteTable(
 			.notNull()
 			.references(() => organization.id, { onDelete: 'cascade' }),
 		keyVersion: integer('key_version').notNull(),
-		/** Transit ciphertext (`vault:vN:…`), or `dev:…` with the development master key */
+		/** Transit ciphertext (`vault:vN:…`), or `static:…` / `dev:…` with a local master key */
 		wrappedKey: text('wrapped_key').notNull(),
 		status: text('status', { enum: ['active', 'retired'] })
 			.notNull()

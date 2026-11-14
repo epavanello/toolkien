@@ -7,8 +7,8 @@
  * - Values are sealed with AES-256-GCM, 12-byte random nonce, and the workspace id as
  *   associated data: a ciphertext moved to another workspace fails to decrypt.
  * - Unwrapped DEKs may be cached in memory for a short TTL; they are never written anywhere.
- * - Without `OPENBAO_ADDR`, development uses `TOOLKIEN_DEV_MASTER_KEY`; production refuses to
- *   start without OpenBao.
+ * - Alternative provider: `TOOLKIEN_MASTER_KEY` (a local master key, weaker, for simple
+ *   self-hosting). Development uses `TOOLKIEN_DEV_MASTER_KEY`; production refuses it.
  * - Plaintext, DEKs and ciphertexts never appear in logs or error messages.
  */
 
