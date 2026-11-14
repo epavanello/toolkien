@@ -2,8 +2,7 @@ import * as schema from '#lib/server/db/schema/index.ts';
 import { createMigratedTestDb } from '#lib/server/db/testing.ts';
 
 /**
- * Test-only database for the connectors module: every migration applied (FTS5 `tool_search`
- * included), in a temp file.
+ * Test-only database for the connectors module: every migration applied, in a temp file.
  *
  * ```ts
  * vi.mock('#lib/server/db/index.ts', async () => {

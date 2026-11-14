@@ -2,8 +2,8 @@ import * as schema from '#lib/server/db/schema/index.ts';
 import { createMigratedTestDb } from '#lib/server/db/testing.ts';
 
 /**
- * Test-only: a fresh database with every migration applied (FTS5 tool search, audit
- * append-only trigger included). Use it with `vi.mock('#lib/server/db/index.ts', ...)`:
+ * Test-only: a fresh database with every migration applied (audit append-only trigger
+ * included). Use it with `vi.mock('#lib/server/db/index.ts', ...)`:
  *
  * ```ts
  * vi.mock('#lib/server/db/index.ts', async () => {

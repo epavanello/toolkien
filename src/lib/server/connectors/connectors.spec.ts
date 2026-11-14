@@ -9,7 +9,7 @@ import {
 } from './testing/fake-mcp.ts';
 
 /**
- * Integration tests: real connectors module + real SQLite (FTS5) + in-process fake MCP servers.
+ * Integration tests: real connectors module + real SQLite + in-process fake MCP servers.
  * Mocked: `net` (routes https hosts to the fakes), `crypto` (reversible, workspace-bound),
  * `permissions.visibleToolIds`, `workspaces.getPolicy/getById`, env.
  */
@@ -215,12 +215,34 @@ describe('directory connector without auth', () => {
 		expect(ask.declaration).toContain('@readOnly');
 		expect(detail.canManage).toBe(false);
 
-		const hits = await connectors.searchTools(bob, 'question about repository');
+		const hits = await connectors.searchTools(bob, 'question about a repo');
 		expect(hits[0]).toMatchObject({
 			path: 'deepwiki.askQuestion',
 			summary: 'Ask about a repo.',
 			unverified: false
 		});
+		// Every word must match: "repository" is not in any text
+		expect(await connectors.searchTools(bob, 'question about repository')).toEqual([]);
+		const paths = async (query: string) =>
+			(await connectors.searchTools(bob, query))
+				.map((h) => h.path)
+				.filter((p) => p.startsWith('deepwiki.'));
+		// Exact name > name prefix > name words > instance (namespace) > description
+		expect(await paths('ask_question')).toEqual(['deepwiki.askQuestion']);
+		expect(await paths('readWikiStructure')).toEqual(['deepwiki.readWikiStructure']);
+		expect(await paths('wiki')).toEqual(['deepwiki.readWikiStructure', 'deepwiki.askQuestion']);
+		expect(await paths('deepwiki repo')).toEqual([
+			'deepwiki.askQuestion',
+			'deepwiki.readWikiStructure'
+		]);
+		expect(await paths('read')).toEqual(['deepwiki.readWikiStructure']);
+		// Case-insensitive; both match "repo" in the description only, so path order
+		expect(await paths('REPO Wiki')).toEqual([
+			'deepwiki.askQuestion',
+			'deepwiki.readWikiStructure'
+		]);
+		// LIKE wildcards in the query are literal, never "match anything"
+		expect(await connectors.searchTools(bob, '100% repo')).toEqual([]);
 		const [described] = await connectors.describeTools(bob, [
 			'deepwiki.askQuestion',
 			'nope.nothing'
@@ -667,6 +689,13 @@ describe('several instances of one server', () => {
 				namespace: 'posthogDevmotion',
 				accountHint: 'DevMotion'
 			})
+		]);
+		// The instance label narrows a query that matches both instances
+		expect((await connectors.searchTools(bob, 'devmotion query')).map((h) => h.path)).toEqual([
+			'posthogDevmotion.query'
+		]);
+		expect((await connectors.searchTools(bob, 'DevMotion')).map((h) => h.accountHint)).toEqual([
+			'DevMotion'
 		]);
 		expect((await connectors.searchTools(bob, 'hogql query')).map((h) => h.path).sort()).toEqual([
 			'posthogDevmotion.query',

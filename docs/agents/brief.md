@@ -55,7 +55,7 @@ Rules:
 - Remote functions start with `requireUser()` or `requireWorkspace(slug, minRole)` from `#lib/server/guards.ts`; pass the returned `actor` (`WorkspaceActor`) to services.
 - UI library: `#lib/components/app/index.ts` (Page, DataTable, FilterBar, SidePanel, Section, KeyValueList, StatusBadge, PermissionBadge, UnverifiedBadge, Mono, CodeBlock, EmptyState, ConfirmDialog, FormDialog, FormField, RemoteForm, Stats, Toolbar, ...). Placeholder pages in `src/routes/w/[workspace]/*` show the pattern; replace the ones you own.
 - Contracts: `src/lib/server/<module>/types.ts`; most `index.ts` throw `NotImplementedError` (`#lib/server/not-implemented.ts`) until the owner implements them. Already real: workspaces (listForUser/getBySlug/getById/hasRole), audit.record, limits.getLimits + in-memory rate limiter, jobs scheduler.
-- Encrypted columns use the `sealed(prefix)` helper; FTS5 `tool_search` and the append-only audit trigger live in `drizzle/0001_search_and_audit_guards.sql`.
+- Encrypted columns use the `sealed(prefix)` helper; the append-only audit trigger lives in `drizzle/0001_audit_guards.sql`. Tool search is the plain table `tool_search_text` (no FTS5/virtual tables: Turso MVCC rejects them).
 - `/mcp` is bearer-only (never cookies). CSP has `form-action 'self'`. Login keeps `redirectTo` for the OAuth flow. CIMD fetches go through `net.safeFetch`.
 - `(marketing)/+page.server.ts` redirects signed-in users to their workspace: keep that.
 - **Do not `git commit`** (parallel agents share the index); the integrator commits.

@@ -275,8 +275,10 @@ export interface ConnectorsService {
 	 */
 	refreshStale(actor: WorkspaceActor): Promise<void>;
 	/**
-	 * FTS5 search over the tools the actor can see and call (connector visible, credential
-	 * usable, not suspended) minus the tools `permissions.visibleToolIds` hides (blocked).
+	 * Keyword search over the tools the actor can see and call (connector visible, credential
+	 * usable, not suspended) minus the tools `permissions.visibleToolIds` hides (blocked). Every
+	 * query word must match; exact names rank first, then name prefixes, names, instances
+	 * (namespace, connector name, label) and descriptions.
 	 */
 	searchTools(actor: WorkspaceActor, query: string, limit?: number): Promise<ToolSearchHit[]>;
 	/** Same visibility as `searchTools`; unknown or blocked paths are omitted */

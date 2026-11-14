@@ -18,8 +18,19 @@ removed after this merge).
 
 - **Turso (libSQL)**, not Postgres; local dev uses a `file:` database through the same driver.
 - **Migrations are the only schema path** (dev, prod and tests): `pnpm db:generate` +
-  `pnpm db:migrate`; no `db:push`. Custom SQL (FTS5 `tool_search`, append-only audit trigger) is
-  migration `0001`. A spec fails when the schema drifts from the migrations.
+  `pnpm db:migrate`; no `db:push`. Custom SQL (append-only audit trigger) is migration `0001`. A
+  spec fails when the schema drifts from the migrations.
+- **Tool search without FTS5** (the spec asks for SQLite FTS5 in v1): production is Turso Cloud on
+  the `tursodb` engine in MVCC mode, which rejects virtual tables ("Virtual tables are not
+  supported in MVCC mode"), so `CREATE VIRTUAL TABLE … USING fts5` cannot run there. Instead the
+  plain table `tool_search_text` holds one lowercased text per live tool (name split
+  camelCase/snake_case, path, namespace, connector name, instance label, title, first description
+  line, directory tags), rebuilt on sync and rename. Every query word must match
+  (`LIKE '%word%'`, wildcards escaped; a few stopwords dropped), ranked in TypeScript: exact name,
+  then name prefix, name words, instance (namespace/name/label), description, then path. Same
+  behaviour on local SQLite and Turso; no stemming or bm25, fine at the scale of one workspace's
+  tools. The FTS5 table was removed from migration `0001` (renamed `0001_audit_guards`) since
+  production had never been migrated; runtime code also avoids SQLite-only pragmas.
 - **Single instance**: rate limits, concurrency slots, caches, `list_changed` watchers and jobs
   live in memory; anything that must survive a restart (paused executions, approvals) is in the DB.
 - **Jobs** are registered in one place (`jobs/builtin.ts`, dynamic imports, no import-time side

@@ -3,7 +3,13 @@ import { error } from '@sveltejs/kit';
 import { and, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { record } from '#lib/server/audit/index.ts';
 import { db } from '#lib/server/db/index.ts';
-import { connector, connectorCredential, tool, toolVersion } from '#lib/server/db/schema/index.ts';
+import {
+	connector,
+	connectorCredential,
+	tool,
+	toolSearchText,
+	toolVersion
+} from '#lib/server/db/schema/index.ts';
 import { assertSafeUrl, UnsafeUrlError } from '#lib/server/net/index.ts';
 import {
 	moduleDeclaration,
@@ -409,9 +415,7 @@ export const remove: ConnectorsService['remove'] = async (actor, connectorId) =>
 	for (const credential of await listCredentials(row.id)) {
 		await revokeAndDelete(row, credential.userId);
 	}
-	await db.run(
-		sql`DELETE FROM tool_search WHERE tool_id IN (SELECT id FROM tool WHERE connector_id = ${row.id})`
-	);
+	await db.delete(toolSearchText).where(eq(toolSearchText.connectorId, row.id));
 	await db.delete(connector).where(eq(connector.id, row.id));
 	await record({
 		type: 'connector.removed',

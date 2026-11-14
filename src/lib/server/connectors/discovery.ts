@@ -1,10 +1,17 @@
 import { and, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
-import { connector, connectorCredential, tool, toolVersion } from '#lib/server/db/schema/index.ts';
+import {
+	connector,
+	connectorCredential,
+	tool,
+	toolSearchText,
+	toolVersion
+} from '#lib/server/db/schema/index.ts';
 import { visibleToolIds } from '#lib/server/permissions/index.ts';
 import { moduleDeclaration, type ToolTypeInput } from '#lib/server/typegen/index.ts';
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 import { visibleTo } from './access.ts';
+import { likePattern, queryWords, rank } from './search.ts';
 import type { ResolvedTool, ToolAnnotations, ToolDescription, ToolSearchHit } from './types.ts';
 
 /**
@@ -125,38 +132,35 @@ export const toTypeInput = (record: ToolRecord): ToolTypeInput => ({
 	instanceLabel: record.label
 });
 
-/** FTS5 query: every word as a prefix term, OR-ed, ranked by bm25 */
-export function ftsQuery(text: string): string | null {
-	const words = text
-		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-		.toLowerCase()
-		.match(/[\p{L}\p{N}]+/gu);
-	if (!words || words.length === 0) return null;
-	return [...new Set(words)]
-		.slice(0, 12)
-		.map((w) => `"${w}"*`)
-		.join(' OR ');
-}
-
+/**
+ * Every query word must appear in the tool's search text (`LIKE '%word%'`, wildcards escaped);
+ * hits are ranked by `rank` (exact name, name prefix, name, instance, description), then path.
+ * A query without words lists every usable tool by path.
+ */
 export async function searchTools(
 	actor: WorkspaceActor,
 	query: string,
 	limit = 20
 ): Promise<ToolSearchHit[]> {
 	const cap = Math.min(Math.max(limit, 1), 100);
-	const match = ftsQuery(query);
+	const terms = queryWords(query);
 	let rows: ToolRecord[];
-	if (!match) {
+	if (terms.length === 0) {
 		rows = (await usableTools(actor).orderBy(tool.path)) as ToolRecord[];
 	} else {
-		const ranked = await db.all<{ tool_id: string }>(
-			sql`SELECT tool_id FROM tool_search WHERE tool_search MATCH ${match} AND workspace_id = ${actor.workspaceId} ORDER BY bm25(tool_search, 0, 0, 10.0, 5.0, 1.0) LIMIT 500`
-		);
-		if (ranked.length === 0) return [];
-		const order = new Map(ranked.map((r, i) => [r.tool_id, i]));
-		rows = ((await usableTools(actor, inArray(tool.id, [...order.keys()]))) as ToolRecord[]).sort(
-			(a, b) => order.get(a.id)! - order.get(b.id)!
-		);
+		const matching = db
+			.select({ toolId: toolSearchText.toolId })
+			.from(toolSearchText)
+			.where(
+				and(
+					eq(toolSearchText.workspaceId, actor.workspaceId),
+					...terms.map((term) => sql`${toolSearchText.text} LIKE ${likePattern(term)} ESCAPE '\\'`)
+				)
+			);
+		rows = ((await usableTools(actor, inArray(tool.id, matching))) as ToolRecord[])
+			.map((row) => ({ row, rank: rank(row, terms) }))
+			.sort((a, b) => a.rank - b.rank || (a.row.path < b.row.path ? -1 : 1))
+			.map(({ row }) => row);
 	}
 	const allowed = await withoutBlocked(actor, rows);
 	return allowed.slice(0, cap).map((row) => ({

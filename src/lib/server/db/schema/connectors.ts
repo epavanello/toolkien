@@ -2,10 +2,9 @@
  * Connectors (upstream MCP servers configured in a workspace), their encrypted credentials,
  * upstream OAuth client registrations and the tool definitions they expose, versioned.
  *
- * Full-text search over tools uses the FTS5 virtual table `tool_search` (columns `tool_id`
- * UNINDEXED, `workspace_id` UNINDEXED, `path`, `description`), created by a custom SQL
- * migration because drizzle-kit cannot express virtual tables. The connectors module keeps it
- * in sync with `tool` / `tool_version` (no triggers: descriptions come from the version row).
+ * Tool search uses the plain table `tool_search_text` (one normalized text per live tool),
+ * kept in sync with `tool` / `tool_version` by the connectors module (no triggers: the text
+ * depends on the connector name, label and the current version's description).
  */
 import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
@@ -248,4 +247,31 @@ export const toolVersion = sqliteTable(
 		createdAt: createdAt()
 	},
 	(t) => [uniqueIndex('tool_version_uq').on(t.toolId, t.version)]
+);
+
+/**
+ * Search text of each live tool, rebuilt by the connectors module on every sync and rename
+ * (`rebuildSearch`). `text` holds lowercased words separated by single spaces: tool name split
+ * camelCase/snake_case, path, namespace, connector name, instance label, title, first line of
+ * the description and directory tags. Searched with `LIKE '%word%'` per query word, so it works
+ * the same on local SQLite and on Turso in MVCC mode (no virtual tables, hence no FTS5).
+ */
+export const toolSearchText = sqliteTable(
+	'tool_search_text',
+	{
+		toolId: text('tool_id')
+			.primaryKey()
+			.references(() => tool.id, { onDelete: 'cascade' }),
+		workspaceId: text('workspace_id')
+			.notNull()
+			.references(() => organization.id, { onDelete: 'cascade' }),
+		connectorId: text('connector_id')
+			.notNull()
+			.references(() => connector.id, { onDelete: 'cascade' }),
+		text: text('text').notNull()
+	},
+	(t) => [
+		index('tool_search_text_workspace_idx').on(t.workspaceId),
+		index('tool_search_text_connector_idx').on(t.connectorId)
+	]
 );

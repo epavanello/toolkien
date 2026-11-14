@@ -1,17 +1,5 @@
 -- Custom migration: objects drizzle-kit cannot express.
 
--- Full-text search over tool definitions (owner: connectors). One row per non-removed tool,
--- kept in sync by the connectors module on every sync. `keywords` holds the path split into
--- words (`gmail search threads`) so camelCase names match plain-word queries.
-CREATE VIRTUAL TABLE `tool_search` USING fts5(
-	`tool_id` UNINDEXED,
-	`workspace_id` UNINDEXED,
-	`path`,
-	`keywords`,
-	`description`,
-	tokenize = 'porter unicode61'
-);
---> statement-breakpoint
 -- The audit log is append-only. The only update allowed is anonymisation: setting
 -- `user_id` / `approver_user_id` to NULL when an account is deleted. DELETE stays allowed for
 -- the retention job.

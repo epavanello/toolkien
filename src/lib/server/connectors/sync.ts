@@ -1,11 +1,12 @@
 import { error } from '@sveltejs/kit';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { record } from '#lib/server/audit/index.ts';
 import { db, type Tx } from '#lib/server/db/index.ts';
-import { connector, tool, toolVersion } from '#lib/server/db/schema/index.ts';
+import { connector, tool, toolSearchText, toolVersion } from '#lib/server/db/schema/index.ts';
 import { signatureHash, toCamelCase, uniqueName } from '#lib/server/typegen/index.ts';
 import type { ConnectorRow } from './access.ts';
 import { getDirectoryEntry } from './directory.ts';
+import { searchText } from './search.ts';
 import { upstreamCredential } from './session.ts';
 import type { SyncReason, SyncResult, ToolAnnotations } from './types.ts';
 import { listTools, UpstreamError, type SessionInfo, type UpstreamTool } from './upstream.ts';
@@ -15,7 +16,7 @@ import { listTools, UpstreamError, type SessionInfo, type UpstreamTool } from '.
  * while its upstream name exists); new names get the first free camelCase name in the
  * connector. A version is saved whenever schema, annotations, title or description change;
  * permissions compare their confirmed hash with the current version's, so a changed signature
- * is "to confirm" without touching permission rows. The FTS5 `tool_search` rows of the
+ * is "to confirm" without touching permission rows. The `tool_search_text` rows of the
  * connector are rebuilt in the same transaction.
  */
 
@@ -26,31 +27,6 @@ export function mergeAnnotations(
 ): ToolAnnotations | null {
 	if (!verified) return upstream;
 	return { ...(upstream ?? {}), ...verified };
-}
-
-/** Words for the FTS `keywords` column: `gmail.searchThreads` + `search_threads` → words */
-export function keywordsFor(
-	path: string,
-	upstreamName: string,
-	title: string | null,
-	/** Connector name and instance label: searching "devmotion" finds that instance's tools */
-	connectorWords: (string | null)[] = []
-) {
-	const split = (text: string) =>
-		text
-			.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-			.replace(/[^A-Za-z0-9]+/g, ' ')
-			.toLowerCase()
-			.trim();
-	return [
-		...new Set(
-			[path, upstreamName, title ?? '', ...connectorWords.map((w) => w ?? '')]
-				.map(split)
-				.join(' ')
-				.split(/\s+/)
-				.filter(Boolean)
-		)
-	].join(' ');
 }
 
 type ExistingTool = typeof tool.$inferSelect & { version: typeof toolVersion.$inferSelect | null };
@@ -187,16 +163,17 @@ export async function applyToolList(
 }
 
 /**
- * Rebuilds the FTS5 rows of a connector's live tools (sync, rename). Keywords include the
+ * Rebuilds the search rows of a connector's live tools (sync, rename). The text includes the
  * connector name and instance label so two instances of one server are told apart.
  */
 export async function rebuildSearch(
 	tx: Tx,
-	conn: Pick<ConnectorRow, 'id' | 'workspaceId' | 'name' | 'label'>
+	conn: Pick<
+		ConnectorRow,
+		'id' | 'workspaceId' | 'name' | 'label' | 'namespace' | 'source' | 'directoryId'
+	>
 ) {
-	await tx.run(
-		sql`DELETE FROM tool_search WHERE tool_id IN (SELECT id FROM tool WHERE connector_id = ${conn.id})`
-	);
+	await tx.delete(toolSearchText).where(eq(toolSearchText.connectorId, conn.id));
 	const live = await tx
 		.select({
 			id: tool.id,
@@ -210,14 +187,23 @@ export async function rebuildSearch(
 			toolVersion,
 			and(eq(toolVersion.toolId, tool.id), eq(toolVersion.version, tool.currentVersion))
 		)
-		.where(and(eq(tool.connectorId, conn.id), sql`${tool.removedAt} IS NULL`));
-	for (const row of live) {
-		const keywords = keywordsFor(row.path, row.upstreamName, row.title, [conn.name, conn.label]);
-		const text = [row.title, row.description].filter(Boolean).join('\n');
-		await tx.run(
-			sql`INSERT INTO tool_search (tool_id, workspace_id, path, keywords, description) VALUES (${row.id}, ${conn.workspaceId}, ${row.path}, ${keywords}, ${text})`
-		);
-	}
+		.where(and(eq(tool.connectorId, conn.id), isNull(tool.removedAt)));
+	if (live.length === 0) return;
+	const tags = conn.source === 'directory' ? (getDirectoryEntry(conn.directoryId)?.tags ?? []) : [];
+	await tx.insert(toolSearchText).values(
+		live.map((row) => ({
+			toolId: row.id,
+			workspaceId: conn.workspaceId,
+			connectorId: conn.id,
+			text: searchText({
+				...row,
+				namespace: conn.namespace,
+				connectorName: conn.name,
+				label: conn.label,
+				tags
+			})
+		}))
+	);
 }
 
 const inflight = new Map<string, Promise<SyncResult>>();

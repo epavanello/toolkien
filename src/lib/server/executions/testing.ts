@@ -16,8 +16,8 @@ import type { Sealed, WorkspaceCrypto } from '#lib/server/crypto/types.ts';
 export type TestDb = { db: Db; url: string; reopen: () => Db; cleanup: () => void };
 
 /**
- * A fresh database file with every migration applied (FTS5, audit trigger). `reopen` returns a
- * new connection: it simulates a process restart.
+ * A fresh database file with every migration applied (audit trigger included). `reopen`
+ * returns a new connection: it simulates a process restart.
  */
 export async function createTestDb(): Promise<TestDb> {
 	const test = await createMigratedTestDb('toolkien-executions');
