@@ -8,7 +8,7 @@
 
 <Sidebar.Provider>
 	<AppSidebar workspace={data.workspace} workspaces={data.workspaces} user={data.user} />
-	<Sidebar.Inset>
+	<Sidebar.Inset class="min-w-0">
 		<header class="flex h-10 shrink-0 items-center gap-2 border-b px-3 text-sm">
 			<Sidebar.Trigger class="-ml-1" />
 			<span class="truncate text-muted-foreground">{data.workspace.name}</span>
