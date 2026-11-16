@@ -15,6 +15,31 @@
 		/** Reviewer note from the curated directory */
 		note?: string | null;
 	};
+
+	export type ToolGroupKey = 'read' | 'write' | 'destructive' | 'unannotated';
+
+	/** Tool groups by MCP annotation, in reading order, with what each means for an agent */
+	export const toolGroups: { key: ToolGroupKey; title: string; description: string }[] = [
+		{ key: 'read', title: 'Read only', description: 'Only read data, change nothing' },
+		{ key: 'write', title: 'Write', description: 'Create or change data' },
+		{ key: 'destructive', title: 'Destructive', description: 'May delete or overwrite data' },
+		{
+			key: 'unannotated',
+			title: 'Not declared',
+			description: 'The server does not say: treated as write'
+		}
+	];
+
+	/**
+	 * Which group a tool falls in, with the same rule as the permission defaults
+	 * (`server/permissions/resolve.ts`). The hints come from the server itself, unverified.
+	 */
+	export function toolGroup(annotations: ToolAnnotations | null): ToolGroupKey {
+		if (!annotations) return 'unannotated';
+		if (annotations.destructiveHint === true) return 'destructive';
+		if (annotations.readOnlyHint === true) return 'read';
+		return 'write';
+	}
 </script>
 
 <script lang="ts">
@@ -25,10 +50,9 @@
 	import ToolPath from './tool-path.svelte';
 
 	/**
-	 * One upstream tool as an agent sees it: path, annotation hints, one-line summary, reviewer
-	 * note, change warnings and the generated TypeScript signature. Rows of a list inside a
-	 * `Section variant="flush"`: collapsed to path, hints and summary; the details (full
-	 * signature) open on demand. Native `<details>`, keyboard accessible.
+	 * One upstream tool as an agent sees it. Collapsed: path and one-line summary (the list groups
+	 * rows by read/write/destructive, see `toolGroup`). Open: full summary, remaining hints,
+	 * version, reviewer note and the generated TypeScript signature. Native `<details>`.
 	 */
 	let { tool }: { tool: ToolDefinitionItem } = $props();
 
@@ -42,36 +66,21 @@
 			header: 'flex min-w-0 flex-wrap items-center gap-1.5',
 			body: 'flex flex-col gap-2 px-4 pb-3 ps-10',
 			text: 'text-sm text-muted-foreground',
+			meta: 'text-xs text-muted-foreground',
 			warning: 'text-sm text-warning'
 		},
 		variants: { removed: { true: { root: 'opacity-60' } } }
 	});
 	const s = $derived(styles({ removed: !!tool.removed }));
 
-	const hints = $derived(
+	const meta = $derived(
 		[
-			tool.annotations?.readOnlyHint === true && {
-				label: 'Read only',
-				variant: 'success' as const
-			},
-			tool.annotations?.destructiveHint === true &&
-				tool.annotations.readOnlyHint !== true && {
-					label: 'Destructive',
-					variant: 'destructive' as const
-				},
-			tool.annotations?.idempotentHint === true && {
-				label: 'Idempotent',
-				variant: 'outline' as const
-			},
-			tool.annotations?.openWorldHint === true && {
-				label: 'Open world',
-				variant: 'outline' as const
-			},
-			!tool.annotations && {
-				label: 'No annotations · treated as write',
-				variant: 'outline' as const
-			}
-		].filter((hint) => !!hint)
+			`Version ${tool.version}`,
+			tool.annotations?.idempotentHint === true && 'Idempotent',
+			tool.annotations?.openWorldHint === true && 'Talks to external systems (open world)'
+		]
+			.filter(Boolean)
+			.join(' · ')
 	);
 </script>
 
@@ -85,10 +94,6 @@
 				<span class="min-w-0" onclick={(event) => event.preventDefault()}>
 					<ToolPath path={tool.path} unverified={tool.unverified} copy />
 				</span>
-				{#each hints as hint (hint.label)}
-					<Badge variant={hint.variant} class="rounded-sm">{hint.label}</Badge>
-				{/each}
-				<Badge variant="outline" class="rounded-sm">v{tool.version}</Badge>
 				{#if tool.removed}<Badge variant="secondary" class="rounded-sm">Removed upstream</Badge
 					>{/if}
 			</div>
@@ -101,6 +106,7 @@
 		</div>
 	</summary>
 	<div class={s.body()}>
+		<p class={s.meta()}>{meta}</p>
 		{#if tool.note}<p class={s.text()}>Reviewer note: {tool.note}</p>{/if}
 		<CodeBlock code={tool.declaration} />
 	</div>

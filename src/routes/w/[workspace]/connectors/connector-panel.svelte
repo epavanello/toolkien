@@ -11,6 +11,7 @@
 		SourceBadge,
 		ToolDefinition
 	} from '#lib/components/app/index.ts';
+	import { toolGroup, toolGroups } from '#lib/components/app/tool-definition.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { attempt } from '#lib/core/attempt.ts';
 	import { getConnector, refreshConnector } from '#lib/functions/connectors.remote.ts';
@@ -159,7 +160,7 @@
 		<Section
 			variant="flush"
 			title={`Tools (${c.tools.length})`}
-			description="What agents can call. Open a tool to see its TypeScript signature."
+			description="What agents can call, grouped by what the server declares. Open a tool for its TypeScript signature."
 		>
 			{#snippet actions()}
 				<Button size="sm" variant="outline" icon={RefreshCw} onclick={refresh}>Refresh</Button>
@@ -172,8 +173,27 @@
 						: 'Sign in first: the tools load right after.'}
 				/>
 			{:else}
-				{#each c.tools as tool (tool.id)}
-					<ToolDefinition tool={{ ...tool, unverified: c.unverified }} />
+				{#each toolGroups as group (group.key)}
+					{@const tools = c.tools.filter((tool) => toolGroup(tool.annotations) === group.key)}
+					{#if tools.length > 0}
+						<div
+							class="flex items-baseline gap-2 border-b bg-muted/40 px-4 py-1.5 text-xs"
+							role="heading"
+							aria-level="3"
+						>
+							<span
+								class={[
+									'font-medium',
+									group.key === 'read' && 'text-success',
+									group.key === 'destructive' && 'text-destructive'
+								]}>{group.title} · {tools.length}</span
+							>
+							<span class="truncate text-muted-foreground">{group.description}</span>
+						</div>
+						{#each tools as tool (tool.id)}
+							<ToolDefinition tool={{ ...tool, unverified: c.unverified }} />
+						{/each}
+					{/if}
 				{/each}
 			{/if}
 		</Section>
