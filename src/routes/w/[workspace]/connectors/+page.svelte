@@ -10,10 +10,12 @@
 		Boundary,
 		Callout,
 		ConfirmDialog,
+		ContextSavings,
 		DataTable,
 		FormDialog,
 		FormField,
 		Page,
+		Section,
 		SourceBadge,
 		ToolPath,
 		type Column,
@@ -31,6 +33,7 @@
 		renameConnector,
 		saveToken
 	} from '#lib/functions/connectors.remote.ts';
+	import { getContextFootprint } from '#lib/functions/permissions.remote.ts';
 	import type { ConnectorSummary } from '#lib/server/connectors/types.ts';
 	import ConnectorPanel from './connector-panel.svelte';
 	import TokenHelp from './token-help.svelte';
@@ -38,6 +41,7 @@
 		accessStatus,
 		audienceLabel,
 		describeSync,
+		heaviestConnector,
 		lastCheck,
 		needsSignIn,
 		oauthNotice,
@@ -230,7 +234,24 @@
 	{/if}
 
 	<Boundary>
-		{@const data = await listConnectors(workspace)}
+		{@const [data, footprint] = await Promise.all([
+			listConnectors(workspace),
+			getContextFootprint(workspace)
+		])}
+		{#if footprint.native.tools > 0}
+			<Section
+				title="Context savings"
+				description="What your agents carry before their first message: every tool connected natively, or Toolkien's six."
+			>
+				<ContextSavings
+					tools={footprint.native.tools}
+					connectors={footprint.native.connectors.length}
+					nativeChars={footprint.native.chars}
+					gatewayChars={footprint.gatewayChars}
+					heaviest={heaviestConnector(footprint.native, data.connectors)}
+				/>
+			</Section>
+		{/if}
 		<DataTable
 			label="Connectors"
 			rows={data.connectors}

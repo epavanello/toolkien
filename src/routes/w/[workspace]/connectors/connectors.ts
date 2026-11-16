@@ -1,10 +1,11 @@
 import { toast } from 'svelte-sonner';
-import type { SecondaryTime } from '#lib/components/app/index.ts';
+import type { HeaviestConnector, SecondaryTime } from '#lib/components/app/index.ts';
 import type {
 	ConnectorAuthType,
 	ConnectorSummary,
 	OAuthResult,
-	SyncResult
+	SyncResult,
+	ToolFootprint
 } from '#lib/server/connectors/types.ts';
 
 /** Who uses the connector's credential, in words */
@@ -163,3 +164,19 @@ const OAUTH_NOTICES: Record<OAuthResult, OAuthNotice> = {
 /** What the page says after the upstream sign-in (`?oauth=<code>`); unknown codes say nothing */
 export const oauthNotice = (code: string | null): OAuthNotice | null =>
 	code !== null && Object.hasOwn(OAUTH_NOTICES, code) ? OAUTH_NOTICES[code as OAuthResult] : null;
+
+/**
+ * The connector with the heaviest native definitions, named for the context-savings highlight.
+ * Only when there are at least two connectors (with one, it is the whole figure already).
+ */
+export function heaviestConnector(
+	footprint: Pick<ToolFootprint, 'connectors'>,
+	connectors: Pick<ConnectorSummary, 'id' | 'displayName' | 'icon'>[]
+): HeaviestConnector | undefined {
+	const [first] = footprint.connectors;
+	if (!first || footprint.connectors.length < 2) return undefined;
+	const info = connectors.find((connector) => connector.id === first.connectorId);
+	return (
+		info && { name: info.displayName, icon: info.icon, tools: first.tools, chars: first.chars }
+	);
+}

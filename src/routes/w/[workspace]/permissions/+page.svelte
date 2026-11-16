@@ -3,7 +3,6 @@
 	import {
 		Boundary,
 		BulkLevelMenu,
-		ContextSavings,
 		Disclosure,
 		EmptyState,
 		FilterBar,
@@ -13,7 +12,6 @@
 		Mono,
 		Page,
 		permissionSummary,
-		Section,
 		ServiceLogo,
 		ToolGroupList,
 		ToolPermissionRow,
@@ -21,12 +19,8 @@
 	} from '#lib/components/app/index.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { listConnectors } from '#lib/functions/connectors.remote.ts';
-	import { getContextFootprint, listPermissions } from '#lib/functions/permissions.remote.ts';
-	import {
-		connectorSections,
-		heaviestConnector,
-		OPEN_BY_DEFAULT_MAX_TOOLS
-	} from './permissions.ts';
+	import { listPermissions } from '#lib/functions/permissions.remote.ts';
+	import { connectorSections, OPEN_BY_DEFAULT_MAX_TOOLS } from './permissions.ts';
 
 	const workspace = $derived(page.params.workspace!);
 
@@ -45,10 +39,9 @@
 	description="Choose which tools run freely, ask you first, or are blocked, connector by connector and by what each tool does. Blocked tools are hidden from agents; every call is checked again when it runs."
 >
 	<Boundary>
-		{@const [data, { connectors }, footprint] = await Promise.all([
+		{@const [data, { connectors }] = await Promise.all([
 			listPermissions(workspace),
-			listConnectors(workspace),
-			getContextFootprint(workspace)
+			listConnectors(workspace)
 		])}
 		{@const sections = connectorSections(data.tools, connectors)}
 		{@const openByDefault =
@@ -69,19 +62,6 @@
 				description="Add a connector: its tools show up here with their default levels."
 			/>
 		{:else}
-			<Section
-				title="Context savings"
-				description="What your agents carry before their first message: every tool connected natively, or Toolkien's six."
-			>
-				<ContextSavings
-					tools={footprint.native.tools}
-					connectors={footprint.native.connectors.length}
-					nativeChars={footprint.native.chars}
-					gatewayChars={footprint.gatewayChars}
-					heaviest={heaviestConnector(footprint.native, connectors)}
-				/>
-			</Section>
-
 			<FilterBar
 				bind:search={() => search, (value) => narrow(() => (search = value))}
 				bind:values={() => values, (value) => narrow(() => (values = value))}

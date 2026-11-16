@@ -1,5 +1,4 @@
-import type { HeaviestConnector } from '#lib/components/app/index.ts';
-import type { ConnectorSummary, ToolFootprint } from '#lib/server/connectors/types.ts';
+import type { ConnectorSummary } from '#lib/server/connectors/types.ts';
 import type { ToolPermission } from '#lib/server/permissions/types.ts';
 
 export type ConnectorInfo = Pick<
@@ -44,19 +43,3 @@ export function connectorSections(
 
 /** Connector sections start open when there are few tools; a search or filter opens them all */
 export const OPEN_BY_DEFAULT_MAX_TOOLS = 40;
-
-/**
- * The connector with the heaviest native definitions, named for the context-savings highlight.
- * Only when there are at least two connectors (with one, it is the whole figure already).
- */
-export function heaviestConnector(
-	footprint: Pick<ToolFootprint, 'connectors'>,
-	connectors: ConnectorInfo[]
-): HeaviestConnector | undefined {
-	const [first] = footprint.connectors;
-	if (!first || footprint.connectors.length < 2) return undefined;
-	const info = connectors.find((connector) => connector.id === first.connectorId);
-	return (
-		info && { name: info.displayName, icon: info.icon, tools: first.tools, chars: first.chars }
-	);
-}

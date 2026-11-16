@@ -17,7 +17,7 @@ import {
 	syncTools
 } from '#lib/server/connectors/index.ts';
 import { requireUser, requireWorkspace } from '#lib/server/guards.ts';
-import { listPermissions } from './permissions.remote.ts';
+import { getContextFootprint, listPermissions } from './permissions.remote.ts';
 import { getPolicy, hasRole, listForUser } from '#lib/server/workspaces/index.ts';
 import type { WorkspaceActor, WorkspaceSummary } from '#lib/server/workspaces/types.ts';
 
@@ -147,6 +147,7 @@ export const addConnector = form(
 			(connectorId) => connectorPath(input.workspace, connectorId)
 		);
 		void listConnectors(input.workspace).refresh();
+		void getContextFootprint(input.workspace).refresh();
 		// Guided setup: straight to the upstream sign-in, the token dialog, or the loaded panel
 		if (next.type === 'authorize') {
 			// Built by `startOAuth` from the server's discovered metadata (`javascript:` refused)
@@ -171,6 +172,7 @@ export const renameConnector = form(
 		const { actor } = await requireWorkspace(workspace);
 		await rename(actor, id, { label: label || null, namespace });
 		void listConnectors(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
 		// The panel shows the levels of the tools it lists
 		void listPermissions(workspace).refresh();
@@ -188,6 +190,7 @@ export const saveToken = form(
 		const { actor } = await requireWorkspace(workspace);
 		await setToken(actor, id, token);
 		void listConnectors(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
 		// The panel shows the levels of the tools it lists
 		void listPermissions(workspace).refresh();
@@ -210,6 +213,7 @@ export const refreshConnector = command(
 		const { actor } = await requireWorkspace(workspace);
 		const result = await syncTools(actor, id, 'manual');
 		void listConnectors(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
 		// The panel shows the levels of the tools it lists
 		void listPermissions(workspace).refresh();
@@ -224,6 +228,7 @@ export const acknowledgeConnectorChanges = command(
 		const { actor } = await requireWorkspace(workspace);
 		await acknowledgeChanges(actor, id);
 		void listConnectors(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
 	}
 );
@@ -235,6 +240,7 @@ export const disconnectConnector = command(
 		const { actor } = await requireWorkspace(workspace);
 		await disconnect(actor, id);
 		void listConnectors(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
 	}
 );
@@ -245,6 +251,7 @@ export const removeConnector = command(
 		const { actor } = await requireWorkspace(workspace);
 		await remove(actor, id);
 		void listConnectors(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 		void listDirectoryServers(workspace).refresh();
 	}
 );
