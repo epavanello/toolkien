@@ -28,6 +28,18 @@ Toolkien is a gateway between your AI clients (Claude, Codex, Cursor…) and the
 
 Sign-in codes, sign-in links and workspace invitations are sent by email through our email provider (see [sub-processors](/legal/sub-processors)); the codes and links are stored only hashed and expire after 10 minutes. We measure page visits with a cookieless, self-hosted instance of Plausible Analytics operated by us: no cookies, no cross-site tracking, no personal profiles. Before an event leaves our servers we strip query strings and replace workspace names, invite tokens and other identifiers in page addresses with placeholders; your IP address and browser user agent are used only to compute a daily-rotating anonymous visitor count and are not stored by Plausible. If you choose "Continue with Google", Google authenticates you under its own privacy policy and shares your name, email address and profile picture with us; we request no other Google data. We use no advertising or third-party tracking. We only set technical cookies (see the [cookie policy](/legal/cookies)).
 
+## Google user data
+
+If you choose "Continue with Google", Toolkien uses Google Sign-In (OAuth 2.0) for authentication only.
+
+- **Data we access.** Only the basic sign-in scopes `openid`, `email` and `profile`: your Google account id, name, email address (and whether Google verified it) and profile picture URL. We request no other Google scope and never access your Gmail, Drive, Calendar, Contacts or any other Google service.
+- **How we use it.** To create your account or sign you in, to show your name and picture in the product, and to link the sign-in to an existing account with the same verified email address. We do not use it for advertising, profiling, analytics, or to build or train generative AI or machine-learning models.
+- **How we store it.** In our database in the European Union. Google's access and refresh tokens, which are issued with the sign-in, are stored encrypted and are never used to call Google APIs.
+- **Sharing.** We do not sell Google user data or transfer it to third parties, except to the sub-processors listed on the [sub-processors page](/legal/sub-processors) that host the service, and where the law requires. No human reads it unless you ask for support or it is needed to investigate abuse or comply with the law.
+- **Revoking and deleting.** You can revoke Toolkien's access at any time at [myaccount.google.com/permissions](https://myaccount.google.com/permissions). You can delete your account in **Settings → Account**, which deletes the data Google shared with us, or write to [toolkien@emadev.co](mailto:toolkien@emadev.co).
+
+Toolkien's use and transfer of information received from Google APIs adheres to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
+
 ## Legal bases (GDPR)
 
 - **Contract** (Art. 6(1)(b)): providing the service you signed up for.
