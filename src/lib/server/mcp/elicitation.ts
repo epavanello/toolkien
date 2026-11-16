@@ -84,7 +84,10 @@ export function approvalElicitation(prompt: ApprovalPrompt): InputRequest {
 					oneOf: APPROVAL_CHOICES.map((choice) => ({
 						const: choice,
 						title: APPROVAL_CHOICE_TITLES[choice]
-					}))
+					})),
+					// Preselected so the human confirms with one click; never `approve_tool`,
+					// which would approve every later call to the tool in the same script
+					default: 'approve_once' satisfies ApprovalChoice
 				}
 			},
 			required: ['decision']

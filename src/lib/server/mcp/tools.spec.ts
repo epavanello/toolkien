@@ -378,7 +378,9 @@ describe('execute', () => {
 		const first = asInputRequired(await call('execute', { code: 'x' }, modernForm));
 		const params = first.inputRequests!.approval.params as {
 			message: string;
-			requestedSchema: { properties: { decision: { oneOf: { const: string }[] } } };
+			requestedSchema: {
+				properties: { decision: { oneOf: { const: string }[]; default?: string } };
+			};
 		};
 		expect(params.message).toContain('Connector: GitHub');
 		expect(params.message).toContain('Tool: github.createIssue');
@@ -389,6 +391,7 @@ describe('execute', () => {
 			'approve_tool',
 			'reject'
 		]);
+		expect(params.requestedSchema.properties.decision.default).toBe('approve_once');
 
 		deps.executions.answerApproval.mockResolvedValueOnce(outcome());
 		const second = await call(
