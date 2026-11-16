@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const oauthQuery = url.search.slice(1);
 	const query = await verifiedQuery(oauthQuery);
-	const client = await describeClient(query.get('client_id') ?? '');
+	const client = await describeClient(query.get('client_id') ?? '', userId);
 	const workspaces = await listForUser(userId);
 	const current = await getActiveWorkspace(userId, client.clientId);
 	// The current choice first: a native select starts on its first option

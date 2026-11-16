@@ -42,6 +42,8 @@ export const AUDIT_EVENT_TYPES = [
 	'kill_switch.activated',
 	'kill_switch.released',
 	'mcp_client.revoked',
+	/** The user renamed one of their MCP clients (`clientName` is the new name) */
+	'mcp_client.renamed',
 	'account.exported',
 	'account.deleted',
 	'platform.limits_changed',

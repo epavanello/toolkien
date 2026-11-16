@@ -18,12 +18,16 @@ import {
 import { seedUser } from '#lib/server/workspaces/test-db.ts';
 import { and, eq } from 'drizzle-orm';
 import {
+	cleanClientLabel,
+	clientLabel,
 	hasLiveGrant,
 	listAuthorizedClients,
 	needsGuide,
 	onboardingStatus,
 	rememberClientInfo,
 	revokeClient,
+	setClientLabel,
+	storeClientLabel,
 	storedClientInfo
 } from './index.ts';
 
@@ -238,6 +242,75 @@ describe('MCP client info', () => {
 		await revokeClient({ workspaceId: crypto.randomUUID(), userId: me.id, role: 'owner' }, cursor);
 		expect(await storedClientInfo(me.id, cursor)).toBeNull();
 		expect(await storedClientInfo(other.id, cursor)).toBe('cursor-vscode 0.9.0');
+	});
+});
+
+describe('client names', () => {
+	it('cleans names: one line, no control characters, capped', () => {
+		expect(cleanClientLabel('  Work\n\tlaptop \u0007 ')).toBe('Work laptop');
+		expect(cleanClientLabel('   ')).toBeNull();
+		expect(cleanClientLabel(null)).toBeNull();
+		expect(cleanClientLabel('x'.repeat(80))).toHaveLength(60);
+	});
+
+	it('replaces the registered name for that user only; empty or equal clears it', async () => {
+		const me = await seedUser(db);
+		const other = await seedUser(db);
+		const claude = await addClient('Claude Code');
+		await consent(me.id, claude, minutes(-60));
+		await consent(other.id, claude, minutes(-60));
+
+		expect(await storeClientLabel(me.id, claude, '  Work laptop ')).toBe('Work laptop');
+		expect(await clientLabel(me.id, claude)).toBe('Work laptop');
+		expect(await clientLabel(other.id, claude)).toBeNull();
+		const [mine] = await listAuthorizedClients(me.id, NOW);
+		expect(mine).toMatchObject({ name: 'Work laptop', registeredName: 'Claude Code' });
+		const [theirs] = await listAuthorizedClients(other.id, NOW);
+		expect(theirs).toMatchObject({ name: 'Claude Code', registeredName: 'Claude Code' });
+
+		expect(await storeClientLabel(me.id, claude, 'Claude Code')).toBe('Claude Code');
+		expect(await clientLabel(me.id, claude)).toBeNull();
+		await storeClientLabel(me.id, claude, 'Home');
+		expect(await storeClientLabel(me.id, claude, '')).toBe('Claude Code');
+		expect(await clientLabel(me.id, claude)).toBeNull();
+	});
+
+	it('renames an authorized client with an audit event, 404 otherwise', async () => {
+		const me = await seedUser(db);
+		const claude = await addClient('Claude Code');
+		const notMine = await addClient('Other');
+		await consent(me.id, claude, minutes(-60));
+
+		expect(await setClientLabel(actorOf(me), claude, 'Work laptop')).toEqual({
+			clientId: claude,
+			name: 'Work laptop'
+		});
+		// Same name again: nothing to audit
+		await setClientLabel(actorOf(me), claude, 'Work laptop');
+		const events = await db
+			.select()
+			.from(auditEvent)
+			.where(and(eq(auditEvent.userId, me.id), eq(auditEvent.type, 'mcp_client.renamed')));
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({
+			workspaceId: me.personalWorkspaceId,
+			clientId: claude,
+			clientName: 'Work laptop',
+			metadata: { previousName: 'Claude Code' }
+		});
+		await expect(setClientLabel(actorOf(me), notMine, 'x')).rejects.toMatchObject({
+			status: 404
+		});
+	});
+
+	it('is used on disconnect and goes with it', async () => {
+		const me = await seedUser(db);
+		const claude = await addClient('Claude Code');
+		await consent(me.id, claude, minutes(-60));
+		await storeClientLabel(me.id, claude, 'Work laptop');
+		const revoked = await revokeClient(actorOf(me), claude);
+		expect(revoked.name).toBe('Work laptop');
+		expect(await clientLabel(me.id, claude)).toBeNull();
 	});
 });
 

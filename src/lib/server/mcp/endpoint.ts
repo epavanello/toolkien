@@ -9,7 +9,8 @@
  *    client the user disconnected (access tokens are JWTs verified offline: without a live
  *    grant they get the challenge again instead of working until they expire).
  * 6. Rate limit per user.
- * 7. The MCP handler, with the client name (OAuth registration) and the MCP `clientInfo` captured
+ * 7. The MCP handler, with the client name (the user's name for it, else the OAuth registration
+ *    name) and the MCP `clientInfo` captured
  *    for the audit: from the request's 2026-07-28 envelope, else from `initialize` (remembered
  *    per user and client, since 2025-era clients send it only once). Display only.
  *
@@ -32,6 +33,8 @@ export type McpEndpointDeps = {
 	) => Promise<Response>;
 	loadClient: (clientId: string) => Promise<{ name: string | null; disabled: boolean } | null>;
 	loadUser: (userId: string) => Promise<{ suspended: boolean } | null>;
+	/** The name the user gave this client (consent screen, Connected clients), if any */
+	clientLabel: (userId: string, clientId: string) => Promise<string | null>;
 	/** The user still grants the client access (consent or live refresh token) */
 	hasLiveGrant: (userId: string, clientId: string) => Promise<boolean>;
 	/** MCP `clientInfo` (`name version`) a client sent in `initialize`, per user and client */
@@ -92,10 +95,12 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 			const clientId = typeof claims.azp === 'string' ? claims.azp : null;
 			if (!userId || !clientId) return jsonRpcError(401, 'Access token is not bound to a user.');
 
-			const [client, user, granted] = await Promise.all([
+			const [client, user, granted, label] = await Promise.all([
 				deps.loadClient(clientId),
 				deps.loadUser(userId),
-				deps.hasLiveGrant(userId, clientId)
+				deps.hasLiveGrant(userId, clientId),
+				// Display only: a lookup failure must not fail the request
+				deps.clientLabel(userId, clientId).catch(() => null)
 			]);
 			if (!client || client.disabled) return jsonRpcError(403, 'This MCP client is disabled.');
 			if (!user) return jsonRpcError(401, 'Unknown user.');
@@ -123,7 +128,7 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 			const ctx: McpRequestContext = {
 				userId,
 				clientId,
-				clientName: client.name,
+				clientName: label ?? client.name,
 				clientInfo: await requestClientInfo(deps, verified, userId, clientId),
 				clientAddress: meta.clientAddress,
 				scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter(Boolean) : []

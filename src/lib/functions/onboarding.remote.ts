@@ -1,6 +1,11 @@
-import { command, query } from '$app/server';
+import { command, form, query } from '$app/server';
 import { z } from 'zod';
-import { onboardingStatus, revokeClient } from '#lib/server/clients/index.ts';
+import {
+	CLIENT_LABEL_MAX,
+	onboardingStatus,
+	revokeClient,
+	setClientLabel
+} from '#lib/server/clients/index.ts';
 import { requireWorkspace } from '#lib/server/guards.ts';
 
 /**
@@ -38,6 +43,28 @@ export const disconnectClient = command(
 	async ({ workspace, clientId }) => {
 		const { actor } = await requireWorkspace(workspace);
 		const { name } = await revokeClient(actor, clientId);
+		void watchOnboarding(workspace).reconnect();
+		return { name };
+	}
+);
+
+/**
+ * Names one of the user's MCP clients ("Claude Code — work laptop"): the name labels it in the
+ * activity from now on. Empty restores the registered name.
+ */
+export const renameClient = form(
+	z.object({
+		workspace: slug,
+		clientId: z.string().min(1).max(2048),
+		label: z
+			.string()
+			.trim()
+			.max(CLIENT_LABEL_MAX, { error: `Keep the name under ${CLIENT_LABEL_MAX} characters.` })
+			.optional()
+	}),
+	async ({ workspace, clientId, label }) => {
+		const { actor } = await requireWorkspace(workspace);
+		const { name } = await setClientLabel(actor, clientId, label ?? null);
 		void watchOnboarding(workspace).reconnect();
 		return { name };
 	}

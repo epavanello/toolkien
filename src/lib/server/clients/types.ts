@@ -13,6 +13,11 @@
  * - (additive) The MCP `clientInfo` a client sent in `initialize` (`name version`) is kept per
  *   user and client (`rememberClientInfo`) to label its later stateless requests in the
  *   activity; it goes with the client on disconnect. Self-asserted, display only.
+ * - (additive) The user can name each client (`setClientLabel`): asked on the consent screen,
+ *   editable from Connected clients. The name is per user and client, replaces the registered
+ *   name everywhere the client is shown (list, activity, approvals, switch requests) from then
+ *   on, and goes with the client on disconnect. Events already recorded keep the name they had.
+ *   A name equal to the registered one, or empty, clears it. Renames are audited.
  * - Onboarding steps tick from real data only: a connector visible to the user in the
  *   workspace, an authorized client, a tool call made through a client: (changed) any audited
  *   MCP tool call counts (`tools_search`, `tools_describe`, `execute`), so the step ticks as soon
@@ -20,8 +25,10 @@
  */
 export type AuthorizedClient = {
 	clientId: string;
-	/** Self-asserted for dynamically registered clients */
+	/** The user's name for it, else the registered name (self-asserted for DCR clients) */
 	name: string;
+	/** (additive) The OAuth registration name, `null` when it has none */
+	registeredName: string | null;
 	connectedAt: Date;
 	lastUsedAt: Date | null;
 };
@@ -64,3 +71,14 @@ export type RevokedClient = {
 	refreshTokens: number;
 	consents: number;
 };
+
+/** (additive) Longest client name a user can give */
+export const CLIENT_LABEL_MAX = 60;
+
+/** A user-given client name: single line, printable, capped; `null` when nothing is left */
+export function cleanClientLabel(value: string | null | undefined): string | null {
+	// eslint-disable-next-line no-control-regex
+	const line = (value ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\s]+/g, ' ').trim();
+	if (!line) return null;
+	return line.length > CLIENT_LABEL_MAX ? line.slice(0, CLIENT_LABEL_MAX).trimEnd() : line;
+}

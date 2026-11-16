@@ -17,6 +17,7 @@ function setup(overrides: Partial<McpEndpointDeps> = {}) {
 		loadClient: vi.fn(async () => ({ name: 'Claude', disabled: false })),
 		loadUser: vi.fn(async () => ({ suspended: false })),
 		hasLiveGrant: vi.fn(async () => true),
+		clientLabel: vi.fn(async (): Promise<string | null> => null),
 		clientInfo: {
 			remember: vi.fn(async () => {}),
 			load: vi.fn(async (): Promise<string | null> => null)
@@ -135,6 +136,29 @@ describe('/mcp endpoint', () => {
 			clientAddress: '203.0.113.7',
 			scopes: ['openid', 'offline_access']
 		});
+	});
+
+	it("names the client with the user's name for it, when they gave one", async () => {
+		const { post, deps } = setup({ clientLabel: vi.fn(async () => 'Work laptop') });
+		await post();
+		expect(deps.clientLabel).toHaveBeenCalledWith('u1', 'client-1');
+		expect(deps.handle).toHaveBeenCalledWith(
+			expect.any(Request),
+			expect.objectContaining({ clientName: 'Work laptop' })
+		);
+	});
+
+	it('falls back to the registered name when the name lookup fails', async () => {
+		const { post, deps } = setup({
+			clientLabel: vi.fn(async () => {
+				throw new Error('db down');
+			})
+		});
+		expect((await post()).status).toBe(200);
+		expect(deps.handle).toHaveBeenCalledWith(
+			expect.any(Request),
+			expect.objectContaining({ clientName: 'Claude' })
+		);
 	});
 
 	it('labels requests with the MCP client info of the 2026-07-28 envelope', async () => {

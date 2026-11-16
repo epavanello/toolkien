@@ -88,6 +88,14 @@ email profile`, `prompt=select_account`; the callback lands on `redirectTo` (so 
   before fall back to the registered name by joining the OAuth client. Shown as
   `via Claude Code (claude-code 2.1.3)` on executions and standalone events, `client` and
   `client_info` CSV columns.
+- **User-given client names**: the consent screen asks "Name this connection" (prefilled with
+  the registered name) and Connected clients has Rename. Stored per user and OAuth client
+  (`mcp_client_label`), not on the OAuth client: one CIMD client (Claude) is shared by every
+  user, and a registered name says nothing about which machine or project it runs in. `/mcp`
+  uses it as `clientName` (cached a minute, updated at once on write), so executions, events,
+  approvals and switch requests carry it; events already recorded keep their name (append-only).
+  Empty or equal to the registered name clears it; renames are audited
+  (`mcp_client.renamed`, previous name in metadata); it goes with the client on disconnect.
 - **Audit** is append-only (trigger); metadata never holds user ids (anonymisation only nulls
   `user_id`); members see their own events, admins with a passkey everyone's. Retention 90 days
   (job). Technical logs are separate: stdout, ids only, **14 days** (journald on the host; compose

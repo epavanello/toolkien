@@ -42,6 +42,15 @@
 	<RemoteForm form={authorizeClient} submitLabel="Allow access" submit="block" onSuccess={leave}>
 		<input {...authorizeClient.fields.oauthQuery.as('hidden', data.oauthQuery)} />
 		<FormField
+			field={authorizeClient.fields.label}
+			type="text"
+			label="Name this connection"
+			description="Shown in Activity and Connected clients, so you can tell your clients apart (e.g. “Claude Code — work laptop”)."
+			value={data.client.label ?? data.client.name}
+			placeholder={data.client.name}
+			autocomplete="off"
+		/>
+		<FormField
 			field={authorizeClient.fields.workspaceId}
 			type="select"
 			label="Start in workspace"

@@ -123,6 +123,26 @@ export const mcpClientInfo = sqliteTable(
 );
 
 /**
+ * The name the user gave one of their MCP clients ("Work laptop", "Claude Code — toolkien"), per
+ * user and OAuth client: asked on the consent screen, editable from Connected clients. It labels
+ * the client in the activity instead of the self-asserted registration name. Display only.
+ */
+export const mcpClientLabel = sqliteTable(
+	'mcp_client_label',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		/** OAuth `client_id` of the MCP client (CIMD URL or registered id) */
+		clientId: text('client_id').notNull(),
+		/** Sanitized, single-line, length-capped */
+		label: text('label').notNull(),
+		updatedAt: updatedAt()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.clientId] })]
+);
+
+/**
  * Envelope encryption: one data key (DEK) per workspace and version, wrapped by the OpenBao
  * transit key derived with the workspace id as context. The plaintext DEK never touches the
  * database. Exactly one `active` version per workspace; `retired` versions stay until every

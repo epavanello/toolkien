@@ -8,6 +8,7 @@ import {
 	auditEvent,
 	connector,
 	mcpClientInfo,
+	mcpClientLabel,
 	oauthAccessToken,
 	oauthClient,
 	oauthConsent,
@@ -15,6 +16,7 @@ import {
 } from '#lib/server/db/schema/index.ts';
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 import {
+	cleanClientLabel,
 	needsConnectGuide,
 	type AuthorizedClient,
 	type FirstToolCall,
@@ -24,7 +26,7 @@ import {
 } from './types.ts';
 
 export type * from './types.ts';
-export { needsConnectGuide } from './types.ts';
+export { CLIENT_LABEL_MAX, cleanClientLabel, needsConnectGuide } from './types.ts';
 
 export const mcpUrl = () => `${ORIGIN}/mcp`;
 
@@ -92,11 +94,15 @@ export async function listAuthorizedClients(
 	if (authorized.length === 0) return [];
 	const ids = authorized.map(([clientId]) => clientId);
 
-	const [names, calls] = await Promise.all([
+	const [names, labels, calls] = await Promise.all([
 		db
 			.select({ clientId: oauthClient.clientId, name: oauthClient.name })
 			.from(oauthClient)
 			.where(inArray(oauthClient.clientId, ids)),
+		db
+			.select({ clientId: mcpClientLabel.clientId, label: mcpClientLabel.label })
+			.from(mcpClientLabel)
+			.where(and(eq(mcpClientLabel.userId, userId), inArray(mcpClientLabel.clientId, ids))),
 		db
 			.select({
 				clientId: auditEvent.clientId,
@@ -107,14 +113,17 @@ export async function listAuthorizedClients(
 			.groupBy(auditEvent.clientId)
 	]);
 	const nameOf = new Map(names.map((row) => [row.clientId, row.name?.trim() || null]));
+	const labelOf = new Map(labels.map((row) => [row.clientId, row.label]));
 	const lastCall = new Map(calls.map((row) => [row.clientId, toDate(row.last)]));
 
 	return authorized
 		.map(([clientId, value]) => {
 			const tokens = value.tokens;
+			const registeredName = nameOf.get(clientId) ?? null;
 			return {
 				clientId,
-				name: nameOf.get(clientId) ?? UNNAMED,
+				name: labelOf.get(clientId) ?? registeredName ?? UNNAMED,
+				registeredName,
 				connectedAt: earliest(value.consentedAt, ...tokens.map((token) => token.first)) ?? now,
 				lastUsedAt: latest(...tokens.map((token) => token.last), lastCall.get(clientId))
 			};
@@ -181,6 +190,102 @@ export async function storedClientInfo(userId: string, clientId: string): Promis
 }
 
 /**
+ * Client names by user and client: `/mcp` reads one on every request, so they are cached a
+ * minute; writes here update the cache at once.
+ */
+const labelCache = new Map<string, { at: number; value: string | null }>();
+const LABEL_CACHE_MS = 60_000;
+const LABEL_CACHE_MAX = 5_000;
+const labelKey = (userId: string, clientId: string) => `${userId}\0${clientId}`;
+const cacheLabel = (userId: string, clientId: string, value: string | null) => {
+	if (labelCache.size >= LABEL_CACHE_MAX) labelCache.clear();
+	labelCache.set(labelKey(userId, clientId), { at: Date.now(), value });
+};
+
+/** The name the user gave this client, if any (see the contract) */
+export async function clientLabel(userId: string, clientId: string): Promise<string | null> {
+	const cached = labelCache.get(labelKey(userId, clientId));
+	if (cached && Date.now() - cached.at < LABEL_CACHE_MS) return cached.value;
+	const [row] = await db
+		.select({ label: mcpClientLabel.label })
+		.from(mcpClientLabel)
+		.where(and(eq(mcpClientLabel.userId, userId), eq(mcpClientLabel.clientId, clientId)))
+		.limit(1);
+	const value = row?.label ?? null;
+	cacheLabel(userId, clientId, value);
+	return value;
+}
+
+/** The registered (OAuth) name of a client, trimmed; `null` when it has none */
+async function registeredName(clientId: string): Promise<string | null> {
+	const [row] = await db
+		.select({ name: oauthClient.name })
+		.from(oauthClient)
+		.where(eq(oauthClient.clientId, clientId))
+		.limit(1);
+	return row?.name?.trim() || null;
+}
+
+/**
+ * Stores the user's name for a client, without checks or audit (the consent screen, before the
+ * client is authorized). Empty, or equal to the registered name, clears it. Returns the name the
+ * client is shown with from now on.
+ */
+export async function storeClientLabel(
+	userId: string,
+	clientId: string,
+	input: string | null
+): Promise<string> {
+	const registered = await registeredName(clientId);
+	const cleaned = cleanClientLabel(input);
+	const label = cleaned && cleaned !== registered ? cleaned : null;
+	if (label) {
+		await db
+			.insert(mcpClientLabel)
+			.values({ userId, clientId, label })
+			.onConflictDoUpdate({
+				target: [mcpClientLabel.userId, mcpClientLabel.clientId],
+				set: { label, updatedAt: new Date() }
+			});
+	} else {
+		await db
+			.delete(mcpClientLabel)
+			.where(and(eq(mcpClientLabel.userId, userId), eq(mcpClientLabel.clientId, clientId)));
+	}
+	cacheLabel(userId, clientId, label);
+	return label ?? registered ?? UNNAMED;
+}
+
+/**
+ * Renames one of the actor's authorized clients (see the contract), audited in the actor's
+ * workspace. 404 when the user has not authorized it.
+ */
+export async function setClientLabel(
+	actor: WorkspaceActor,
+	clientId: string,
+	input: string | null
+): Promise<{ clientId: string; name: string }> {
+	const clients = await listAuthorizedClients(actor.userId);
+	const current = clients.find((client) => client.clientId === clientId);
+	if (!current) {
+		error(404, 'This client is not connected to your account.', { code: 'NOT_FOUND' });
+	}
+	const name = await storeClientLabel(actor.userId, clientId, input);
+	if (name !== current.name) {
+		await record({
+			type: 'mcp_client.renamed',
+			outcome: 'success',
+			workspaceId: actor.workspaceId,
+			userId: actor.userId,
+			clientId,
+			clientName: name,
+			metadata: { previousName: current.name }
+		});
+	}
+	return { clientId, name };
+}
+
+/**
  * Disconnects an MCP client for the actor's user only (see the contract): consent and every
  * access/refresh token deleted in one transaction, then audited in the actor's workspace. 404
  * when the user never authorized it (or it was already disconnected).
@@ -190,6 +295,7 @@ export async function revokeClient(
 	clientId: string
 ): Promise<RevokedClient> {
 	const { userId } = actor;
+	const name = (await clientLabel(userId, clientId)) ?? (await registeredName(clientId)) ?? UNNAMED;
 	const removed = await db.transaction(async (tx) => {
 		// Access tokens first: those minted by a refresh token would cascade anyway
 		const accessTokens = await tx
@@ -207,6 +313,9 @@ export async function revokeClient(
 		await tx
 			.delete(mcpClientInfo)
 			.where(and(eq(mcpClientInfo.userId, userId), eq(mcpClientInfo.clientId, clientId)));
+		await tx
+			.delete(mcpClientLabel)
+			.where(and(eq(mcpClientLabel.userId, userId), eq(mcpClientLabel.clientId, clientId)));
 		return {
 			accessTokens: accessTokens.length,
 			refreshTokens: refreshTokens.length,
@@ -216,12 +325,7 @@ export async function revokeClient(
 	if (removed.accessTokens + removed.refreshTokens + removed.consents === 0) {
 		error(404, 'This client is not connected to your account.', { code: 'NOT_FOUND' });
 	}
-	const [client] = await db
-		.select({ name: oauthClient.name })
-		.from(oauthClient)
-		.where(eq(oauthClient.clientId, clientId))
-		.limit(1);
-	const name = client?.name?.trim() || UNNAMED;
+	labelCache.delete(labelKey(userId, clientId));
 	await record({
 		type: 'mcp_client.revoked',
 		outcome: 'success',

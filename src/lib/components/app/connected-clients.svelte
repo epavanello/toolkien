@@ -1,14 +1,20 @@
 <script lang="ts">
 	import { attempt } from '#lib/core/attempt.ts';
-	import { disconnectClient, watchOnboarding } from '#lib/functions/onboarding.remote.ts';
+	import {
+		disconnectClient,
+		renameClient,
+		watchOnboarding
+	} from '#lib/functions/onboarding.remote.ts';
 	import type { AuthorizedClient } from '#lib/server/clients/types.ts';
 	import ConfirmDialog from './confirm-dialog.svelte';
 	import DataTable from './data-table.svelte';
+	import FormDialog from './form-dialog.svelte';
+	import FormField from './form-field.svelte';
 	import type { Column } from './data-table.ts';
 
 	/**
-	 * The AI clients (MCP clients) the signed-in user authorized, with a Disconnect action behind
-	 * a confirmation. Disconnecting revokes the client's access for this user in every workspace;
+	 * The AI clients (MCP clients) the signed-in user authorized, with Rename (the name the
+	 * activity shows) and a Disconnect action behind a confirmation. Disconnecting revokes the client's access for this user in every workspace;
 	 * pass the live onboarding status's `clients` so the list updates by itself.
 	 */
 	type Props = { clients: AuthorizedClient[]; workspace: string };
@@ -21,6 +27,11 @@
 		target = client;
 		confirmOpen = true;
 	};
+	let renameOpen = $state(false);
+	const rename = (client: AuthorizedClient) => {
+		target = client;
+		renameOpen = true;
+	};
 
 	const columns: Column<AuthorizedClient>[] = [
 		{ key: 'name', header: 'Client' },
@@ -31,6 +42,7 @@
 			header: 'Actions',
 			type: 'actions',
 			actions: (client) => [
+				{ label: 'Rename', onSelect: () => rename(client) },
 				{ label: 'Disconnect', variant: 'destructive', onSelect: () => ask(client) }
 			]
 		}
@@ -63,3 +75,30 @@
 			`${target?.name ?? 'Client'} disconnected`
 		)}
 />
+
+<FormDialog
+	bind:open={renameOpen}
+	title="Rename {target?.name ?? 'client'}"
+	description="The name Activity shows for this client from now on. Events already recorded keep their name."
+	submitLabel="Save"
+	form={renameClient}
+	success="Client renamed"
+>
+	{#if target}
+		{#key target.clientId}
+			<input {...renameClient.fields.workspace.as('hidden', workspace)} />
+			<input {...renameClient.fields.clientId.as('hidden', target.clientId)} />
+			<FormField
+				field={renameClient.fields.label}
+				type="text"
+				label="Name"
+				description={target.registeredName
+					? `Leave empty to use the client's own name, “${target.registeredName}”.`
+					: undefined}
+				value={target.name}
+				placeholder={target.registeredName ?? undefined}
+				autocomplete="off"
+			/>
+		{/key}
+	{/if}
+</FormDialog>
