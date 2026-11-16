@@ -1,4 +1,6 @@
-import { humanize, type TimelineItem } from '#lib/components/app/index.ts';
+import type { TimelineItem } from '#lib/components/app/index.ts';
+// The pure helper, not the component library barrel (keeps this module light for its spec)
+import { humanize } from '#lib/components/app/status.ts';
 import { clientLabel } from '#lib/core/format.ts';
 import type { AuditEventView, TimelineEntry } from '#lib/server/audit/types.ts';
 
