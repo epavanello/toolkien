@@ -1,14 +1,10 @@
 <script lang="ts" module>
 	import type { PermissionLevel } from '#lib/server/db/schema/workspaces.ts';
+	import { LEVEL_LABELS as LABELS } from './tool-permission.ts';
 
 	// Mirrors `PERMISSION_LEVELS` / `LEVEL_RANK` (server modules cannot be imported client side)
 	const LEVELS = ['allow', 'ask', 'block'] as const satisfies readonly PermissionLevel[];
 	const RANK: Record<PermissionLevel, number> = { allow: 0, ask: 1, block: 2 };
-	const LABELS: Record<PermissionLevel, string> = {
-		allow: 'Always allow',
-		ask: 'Ask',
-		block: 'Blocked'
-	};
 </script>
 
 <script lang="ts">

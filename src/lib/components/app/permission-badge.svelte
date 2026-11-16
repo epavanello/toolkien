@@ -4,6 +4,7 @@
 	import CircleHelp from '@lucide/svelte/icons/circle-help';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import type { PermissionLevel } from '#lib/server/db/schema/workspaces.ts';
+	import { LEVEL_LABELS } from './tool-permission.ts';
 
 	/** Permission level of a tool; `needsConfirmation` marks a level to re-confirm */
 	type Props = { level: PermissionLevel; needsConfirmation?: boolean };
@@ -11,9 +12,9 @@
 	let { level, needsConfirmation = false }: Props = $props();
 
 	const config = {
-		allow: { label: 'Always allow', variant: 'success', icon: CircleCheck },
-		ask: { label: 'Ask', variant: 'warning', icon: CircleHelp },
-		block: { label: 'Blocked', variant: 'destructive', icon: Ban }
+		allow: { label: LEVEL_LABELS.allow, variant: 'success', icon: CircleCheck },
+		ask: { label: LEVEL_LABELS.ask, variant: 'warning', icon: CircleHelp },
+		block: { label: LEVEL_LABELS.block, variant: 'destructive', icon: Ban }
 	} as const;
 
 	const current = $derived(config[level]);

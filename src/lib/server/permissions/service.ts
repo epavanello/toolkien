@@ -200,6 +200,7 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 					unannotated:
 						facts.annotations?.readOnlyHint === undefined &&
 						facts.annotations?.destructiveHint === undefined,
+					annotations: facts.annotations,
 					effective,
 					defaultLevel: proposed,
 					chosen: (userRow ?? workspaceRow)?.level ?? proposed,

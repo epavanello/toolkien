@@ -88,6 +88,8 @@ export type ToolPermission = {
 	destructive: boolean;
 	/** The upstream sent no read/destructive hint (treated as a write) */
 	unannotated: boolean;
+	/** (additive) Annotations of the current version, for grouping by operation type (`toolGroup`) */
+	annotations: ToolAnnotations | null;
 	effective: EffectiveLevel;
 	/** Level from the default table (proposed level for free URLs) */
 	defaultLevel: PermissionLevel;

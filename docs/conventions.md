@@ -137,6 +137,8 @@ What exists today (`#lib/components/app/index.ts`):
 | Services                                                         | `ServiceLogo` (connector / directory server logo, sizes `xs`–`lg`, `withName`; monogram fallback); `Section` / `SidePanel` `media` slot to put it before a title                                                                                                                                                                       |
 | Actions                                                          | `ActionsMenu` ("⋯"), `ConfirmDialog` (`onConfirm` → `attempt(...)`), `FormDialog`, `RemoteForm`, `FormField`                                                                                                                                                                                                                           |
 
+Tools and permissions: `ToolDefinition` (signature on demand, `aside` slot), `ToolGroupList` (rows under read only / write / destructive / not declared headers; `tool-groups.ts` is the only classification), `ToolPermissionRow` (the one place a tool's level is shown and edited, on the permissions page and in the connector panel; saves through `setToolLevel`), `Disclosure` `flush` for one collapsible list among many.
+
 Rules:
 
 - Colors are tokens from `src/routes/layout.css` only: ink/paper neutrals, one accent (`primary`, ember), semantic `success` / `warning` / `destructive`; brand-only `ember` / `brass` / `ink` / `paper` for logo, art and marketing bands. Map domain statuses to tones in `status.ts`, once. Brand rules: `docs/brand.md`.

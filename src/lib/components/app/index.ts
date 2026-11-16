@@ -59,6 +59,23 @@ export { default as Steps, type StepItem, type StepStatus } from './steps.svelte
 export { humanize, toneFor, type Tone } from './status.ts';
 export { default as Timeline, type TimelineItem } from './timeline.svelte';
 export { default as ToolDefinition, type ToolDefinitionItem } from './tool-definition.svelte';
+export { default as ToolGroupList } from './tool-group-list.svelte';
+export {
+	groupTools,
+	toolGroup,
+	toolGroups,
+	type ToolGroup,
+	type ToolGroupKey
+} from './tool-groups.ts';
+export { default as ToolPermissionRow } from './tool-permission-row.svelte';
+export {
+	filterPermissions,
+	groupDefault,
+	LEVEL_FILTER_OPTIONS,
+	LEVEL_LABELS,
+	matchesLevel,
+	permissionSummary
+} from './tool-permission.ts';
 export { default as Toolbar } from './toolbar.svelte';
 export { default as ToolPath } from './tool-path.svelte';
 export { default as UnverifiedBadge } from './unverified-badge.svelte';

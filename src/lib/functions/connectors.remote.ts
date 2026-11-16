@@ -16,6 +16,7 @@ import {
 	syncTools
 } from '#lib/server/connectors/index.ts';
 import { requireUser, requireWorkspace } from '#lib/server/guards.ts';
+import { listPermissions } from './permissions.remote.ts';
 import { getPolicy, hasRole, listForUser } from '#lib/server/workspaces/index.ts';
 import type { WorkspaceActor, WorkspaceSummary } from '#lib/server/workspaces/types.ts';
 
@@ -161,6 +162,8 @@ export const renameConnector = form(
 		await rename(actor, id, { label: label || null, namespace });
 		void listConnectors(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
+		// The panel shows the levels of the tools it lists
+		void listPermissions(workspace).refresh();
 	}
 );
 
@@ -176,6 +179,8 @@ export const saveToken = form(
 		await setToken(actor, id, token);
 		void listConnectors(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
+		// The panel shows the levels of the tools it lists
+		void listPermissions(workspace).refresh();
 	}
 );
 
@@ -196,6 +201,8 @@ export const refreshConnector = command(
 		const result = await syncTools(actor, id, 'manual');
 		void listConnectors(workspace).refresh();
 		void getConnector({ workspace, id }).refresh();
+		// The panel shows the levels of the tools it lists
+		void listPermissions(workspace).refresh();
 		return result;
 	}
 );

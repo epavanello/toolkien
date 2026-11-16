@@ -1,18 +1,18 @@
 ---
 title: Permissions & approvals
 description: Allow, ask or block each tool; approve calls at runtime; admin floors that members cannot loosen.
-updated: 2026-11-14
+updated: 2026-11-16
 ---
 
 ## Levels
 
 Every tool has one of three levels, as in Claude and Codex:
 
-| Level     | Effect                                                   |
-| --------- | -------------------------------------------------------- |
-| **Allow** | The call runs without asking.                            |
-| **Ask**   | The execution pauses until you approve the call.         |
-| **Block** | The call is refused, and the tool is hidden from search. |
+| Level                      | Effect                                                   |
+| -------------------------- | -------------------------------------------------------- |
+| **Allow** (_Always allow_) | The call runs without asking.                            |
+| **Ask**                    | The execution pauses until you approve the call.         |
+| **Block** (_Blocked_)      | The call is refused, and the tool is hidden from search. |
 
 ## Defaults
 
@@ -26,6 +26,19 @@ Every tool has one of three levels, as in Claude and Codex:
 Only directory entries published by the service's own vendor and checked by a maintainer get the defaults straight away; community-maintained entries, entries still under review and free URLs get the same rule as a proposal, and each tool behaves as **Ask** until you confirm it.
 
 The bridge checks the level on **every call**, not only during discovery. When a tool's signature changes, an approved level goes back to _to confirm_ and the tool behaves as **Ask**.
+
+## The Permissions page
+
+The **Permissions** page lists every tool of the workspace by connector, then by what the tool does, as the server declares it in its annotations:
+
+| Group            | Annotation                     | Meaning                      |
+| ---------------- | ------------------------------ | ---------------------------- |
+| **Read only**    | `readOnlyHint: true`           | Only reads data              |
+| **Write**        | not read-only, not destructive | Creates or changes data      |
+| **Destructive**  | `destructiveHint: true`        | May delete or overwrite data |
+| **Not declared** | no annotations                 | Unknown: treated as a write  |
+
+Each group header shows its count and the default level of its tools (_Proposed_ while the connector's defaults wait for your confirmation). Each tool shows its effective level, your level and, for admins of a company workspace, the workspace minimum; **Confirm** accepts a proposed or changed level as it is. Search by tool or connector name, filter by level (including _to confirm_), and fold connectors you are not working on. The same rows appear in each connector's panel on the **Connectors** page, next to the tool's TypeScript signature: a level changed in one place shows in the other.
 
 ## Admin floors
 

@@ -15,35 +15,11 @@
 		/** Reviewer note from the curated directory */
 		note?: string | null;
 	};
-
-	export type ToolGroupKey = 'read' | 'write' | 'destructive' | 'unannotated';
-
-	/** Tool groups by MCP annotation, in reading order, with what each means for an agent */
-	export const toolGroups: { key: ToolGroupKey; title: string; description: string }[] = [
-		{ key: 'read', title: 'Read only', description: 'Only read data, change nothing' },
-		{ key: 'write', title: 'Write', description: 'Create or change data' },
-		{ key: 'destructive', title: 'Destructive', description: 'May delete or overwrite data' },
-		{
-			key: 'unannotated',
-			title: 'Not declared',
-			description: 'The server does not say: treated as write'
-		}
-	];
-
-	/**
-	 * Which group a tool falls in, with the same rule as the permission defaults
-	 * (`server/permissions/resolve.ts`). The hints come from the server itself, unverified.
-	 */
-	export function toolGroup(annotations: ToolAnnotations | null): ToolGroupKey {
-		if (!annotations) return 'unannotated';
-		if (annotations.destructiveHint === true) return 'destructive';
-		if (annotations.readOnlyHint === true) return 'read';
-		return 'write';
-	}
 </script>
 
 <script lang="ts">
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import type { Snippet } from 'svelte';
 	import { tv } from 'tailwind-variants';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import CodeBlock from './code-block.svelte';
@@ -51,10 +27,12 @@
 
 	/**
 	 * One upstream tool as an agent sees it. Collapsed: path and one-line summary (the list groups
-	 * rows by read/write/destructive, see `toolGroup`). Open: full summary, remaining hints,
+	 * rows by read/write/destructive, see `ToolGroupList`). Open: full summary, remaining hints,
 	 * version, reviewer note and the generated TypeScript signature. Native `<details>`.
+	 * `aside` sits at the right of the path (e.g. the permission controls of `ToolPermissionRow`);
+	 * clicks in it do not toggle the row.
 	 */
-	let { tool }: { tool: ToolDefinitionItem } = $props();
+	let { tool, aside }: { tool: ToolDefinitionItem; aside?: Snippet } = $props();
 
 	const styles = tv({
 		slots: {
@@ -64,6 +42,7 @@
 			chevron:
 				'mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90',
 			header: 'flex min-w-0 flex-wrap items-center gap-1.5',
+			aside: 'ms-auto flex flex-wrap items-center gap-2',
 			body: 'flex flex-col gap-2 px-4 pb-3 ps-10',
 			text: 'text-sm text-muted-foreground',
 			meta: 'text-xs text-muted-foreground',
@@ -91,11 +70,17 @@
 			<div class={s.header()}>
 				<!-- Copying the path must not toggle the row -->
 				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-				<span class="min-w-0" onclick={(event) => event.preventDefault()}>
+				<span class="flex min-w-0" onclick={(event) => event.preventDefault()}>
 					<ToolPath path={tool.path} unverified={tool.unverified} copy />
 				</span>
 				{#if tool.removed}<Badge variant="secondary" class="rounded-sm">Removed upstream</Badge
 					>{/if}
+				{#if aside}
+					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+					<span class={s.aside()} onclick={(event) => event.preventDefault()}>
+						{@render aside()}
+					</span>
+				{/if}
 			</div>
 			<p class="{s.text()} line-clamp-1 group-open:line-clamp-none">{tool.summary}</p>
 			{#if tool.descriptionChanged}

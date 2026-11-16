@@ -323,5 +323,9 @@ describe('permissions service', () => {
 			effective: { level: 'ask', needsConfirmation: true }
 		});
 		expect(list.find((r) => r.path === 'gh.createIssue')!.unannotated).toBe(true);
+		// The UI groups rows by operation type from the current version's annotations
+		expect(list.find((r) => r.path === 'gh.listIssues')!.annotations).toEqual({
+			readOnlyHint: true
+		});
 	});
 });
