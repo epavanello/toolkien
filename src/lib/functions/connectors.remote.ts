@@ -1,4 +1,4 @@
-import { command, form, query } from '$app/server';
+import { command, form, getRequestEvent, query } from '$app/server';
 import { resolve } from '$app/paths';
 import { error, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
@@ -23,9 +23,18 @@ import type { WorkspaceActor, WorkspaceSummary } from '#lib/server/workspaces/ty
 const slug = z.string().trim().min(1).max(200);
 const id = z.string().trim().min(1).max(100);
 
-/** The connectors page with a connector's panel open (`connect=token` opens the token dialog) */
-const connectorPath = (workspace: string, connectorId: string, connect?: 'token') =>
-	`${resolve('/w/[workspace]/connectors', { workspace })}?connector=${encodeURIComponent(connectorId)}${connect ? `&connect=${connect}` : ''}`;
+/**
+ * The connectors page with a connector's panel open (`connect=token` opens the token dialog).
+ * Always an absolute path: on the server `resolve` is relative to the remote request
+ * (`../../../w/…` from `/_app/remote/…`), and the OAuth flow stores this as its `returnTo`,
+ * where a relative path is refused and falls back to `/` (the personal workspace).
+ */
+function connectorPath(workspace: string, connectorId: string, connect?: 'token') {
+	const url = new URL(resolve('/w/[workspace]/connectors', { workspace }), getRequestEvent().url);
+	url.searchParams.set('connector', connectorId);
+	if (connect) url.searchParams.set('connect', connect);
+	return `${url.pathname}${url.search}`;
+}
 
 /** What the viewer may add, from the workspace policy (admins are not limited by it) */
 async function addRights(workspace: WorkspaceSummary, actor: WorkspaceActor) {

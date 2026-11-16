@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
@@ -39,12 +40,14 @@ vi.mock('$app/server', () => {
 	return {
 		form: call('form'),
 		command: call('command'),
+		getRequestEvent: () => ({ url: new URL('https://toolkien.test/_app/remote/abc/addConnector') }),
 		query: () => remote('query', () => ({ refresh: async () => undefined }))
 	};
 });
+// Like SvelteKit's `paths.relative` during a remote request: relative to `/_app/remote/…`
 vi.mock('$app/paths', () => ({
 	resolve: (id: string, params: Record<string, string>) =>
-		id.replace(/\[(\w+)\]/g, (_, key: string) => params[key])
+		`../../..${id.replace(/\[(\w+)\]/g, (_, key: string) => params[key])}`
 }));
 vi.mock('#lib/server/guards.ts', () => ({
 	requireWorkspace: async (slug: string) => ({
@@ -1020,6 +1023,17 @@ describe('authentication detection and guided setup', () => {
 		expect(redirect.location).toMatch(/^https:\/\/mcp\.detect-oauth\.example\/authorize\?/);
 		const params = new URL(redirect.location).searchParams;
 		expect(params.get('redirect_uri')).toBe('https://toolkien.test/connectors/oauth/callback');
+		// The callback comes back to this workspace, not to `/` (the personal workspace)
+		const flow = await db
+			.select({ returnTo: schema.upstreamOAuthFlow.returnTo })
+			.from(schema.upstreamOAuthFlow)
+			.where(
+				eq(
+					schema.upstreamOAuthFlow.stateHash,
+					createHash('sha256').update(params.get('state')!).digest('hex')
+				)
+			);
+		expect(flow[0]?.returnTo).toMatch(/^\/w\/ws-1\/connectors\?connector=[\w-]+$/);
 
 		const viaToken = await submit({
 			workspace: 'ws-1',
