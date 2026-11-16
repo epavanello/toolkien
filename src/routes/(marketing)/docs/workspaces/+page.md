@@ -31,7 +31,7 @@ Toolkien sends no email. Admins create **invite links** with a role, an optional
 
 ## Switching workspace from your client
 
-Each MCP client has one connection and one **active workspace**, chosen on the consent screen. The agent can call `workspace_switch` only when you ask for it, and the switch needs your confirmation; it is recorded in the activity log.
+Every time you approve a client on the consent screen you create a separate connection, with its own name and its own **active workspace** (chosen on that screen). Two Claude accounts, or the same client on two machines, are two connections: switching or disconnecting one leaves the other alone. The agent can call `workspace_switch` only when you ask for it, and the switch needs your confirmation; it is recorded in the activity log.
 
 ## Leaving, transferring, deleting
 

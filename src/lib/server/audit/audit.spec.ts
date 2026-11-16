@@ -6,7 +6,7 @@ vi.mock('#lib/server/db/index.ts', async () => {
 });
 
 import { db } from '#lib/server/db/index.ts';
-import { auditEvent, mcpClientLabel, oauthClient } from '#lib/server/db/schema/index.ts';
+import { auditEvent, mcpConnection, oauthClient } from '#lib/server/db/schema/index.ts';
 import { seedUser } from '#lib/server/workspaces/test-db.ts';
 import {
 	anonymizeUser,
@@ -177,17 +177,31 @@ describe('client of an event', () => {
 		expect(byType.get('auth.login')).toMatchObject({ clientName: null });
 	});
 
-	it("shows the client's current label on its past events, except the rename itself", async () => {
+	it("shows the connection's current label on its past events, except the rename itself", async () => {
 		const workspaceId = crypto.randomUUID();
 		const clientId = `client-${crypto.randomUUID()}`;
 		const { id: userId } = await seedUser(db);
+		const [laptop, phone] = [crypto.randomUUID(), crypto.randomUUID()];
 		const used = { workspaceId, userId, clientId, clientName: 'Claude' };
-		await record({ type: 'tools.searched', outcome: 'success', ...used });
-		await record({ ...used, type: 'mcp_client.renamed', outcome: 'success', clientName: 'Pack' });
-		await db.insert(mcpClientLabel).values({ userId, clientId, label: 'Work laptop' });
+		await record({ type: 'tools.searched', outcome: 'success', ...used, connectionId: laptop });
+		await record({ type: 'tools.described', outcome: 'success', ...used, connectionId: phone });
+		await record({
+			...used,
+			connectionId: laptop,
+			type: 'mcp_client.renamed',
+			outcome: 'success',
+			clientName: 'Pack'
+		});
+		await db.insert(mcpConnection).values([
+			{ id: laptop, userId, clientId, label: 'Work laptop' },
+			{ id: phone, userId, clientId, label: null }
+		]);
 		const { events } = await queryViews({ workspaceId });
+		expect(events).toHaveLength(3);
 		const byType = new Map(events.map((event) => [event.type, event]));
 		expect(byType.get('tools.searched')).toMatchObject({ clientName: 'Work laptop' });
+		// Another connection of the same client keeps its own name
+		expect(byType.get('tools.described')).toMatchObject({ clientName: 'Claude' });
 		expect(byType.get('mcp_client.renamed')).toMatchObject({ clientName: 'Pack' });
 	});
 });

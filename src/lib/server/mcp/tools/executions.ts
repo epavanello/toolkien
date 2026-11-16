@@ -130,14 +130,14 @@ async function continueApproval(
 /**
  * `execution_status` without an id: the recovery path when the client gave up on an approval
  * dialog (the model saw a timeout, no executionId, no link). Lists this user's executions
- * started by this client in the active workspace that wait for approval: the same scope as the
- * active workspace (per user and client), so another client's scripts never show up here.
+ * started by this connection in the active workspace that wait for approval: the same scope as
+ * the active workspace (per connection), so another connection's scripts never show up here.
  */
 async function listAwaitingApproval(deps: McpDeps, env: ToolEnv): Promise<ToolResult> {
 	const { workspace } = await activeActor(deps, env.request);
 	const pending = await deps.executions.listPendingApprovals(env.request.userId, {
 		workspaceId: workspace.id,
-		clientId: env.request.clientId
+		connectionId: env.request.connectionId
 	});
 	return text(
 		pendingApprovalsText(
@@ -191,6 +191,7 @@ export function registerExecutionTools(
 			const outcome = await deps.executions.start({
 				actor,
 				clientId: env.request.clientId,
+				connectionId: env.request.connectionId,
 				clientName: env.request.clientName,
 				clientInfo: env.request.clientInfo ?? null,
 				ip: env.request.clientAddress ?? null,

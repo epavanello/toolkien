@@ -2,18 +2,11 @@
  * Workspaces. A workspace IS a Better Auth organization (`organization`, `member`,
  * `invitation` live in `auth.ts`, generated); its extra columns (`kind`, `deleteScheduledAt`,
  * `suspendedAt`) are declared as `additionalFields` in `#lib/server/auth.ts`. This file holds
- * what Better Auth does not model: policy, link invites, the MCP active workspace, the MCP
- * client info and the workspace data key.
+ * what Better Auth does not model: policy, link invites, MCP connections and the workspace
+ * data key.
  */
 import { sql } from 'drizzle-orm';
-import {
-	index,
-	integer,
-	primaryKey,
-	sqliteTable,
-	text,
-	uniqueIndex
-} from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { organization, user } from './auth.ts';
 import { createdAt, id, json, timestamp, updatedAt } from './columns.ts';
 
@@ -81,65 +74,45 @@ export const workspaceInviteLink = sqliteTable(
 );
 
 /**
- * Active workspace of one MCP client for one user: one MCP connection per client, switched only
- * by `workspace_switch` after human confirmation. Missing row = the user's personal workspace
- * (or the one chosen on the consent screen).
+ * One MCP connection: what a single "Allow access" on the consent screen created. Its id is the
+ * OAuth consent `reference_id`, which the provider stores on the consent, the authorization code
+ * and every refresh token of the grant (rotation carries it over), and which we stamp on every
+ * access token (`connection_id` claim). So two clients sharing one `client_id` (every Claude
+ * account uses the same CIMD URL) with the same Toolkien user stay two connections, each with
+ * its own name, workspace and disconnect.
  */
-export const mcpActiveWorkspace = sqliteTable(
-	'mcp_active_workspace',
+export const mcpConnection = sqliteTable(
+	'mcp_connection',
 	{
+		id: text('id').primaryKey(),
 		userId: text('user_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
 		/** OAuth `client_id` of the MCP client (CIMD URL or registered id) */
 		clientId: text('client_id').notNull(),
-		workspaceId: text('workspace_id')
-			.notNull()
-			.references(() => organization.id, { onDelete: 'cascade' }),
+		/**
+		 * The name the user gave it ("Work laptop", "Claude — Emanuele"): asked on the consent
+		 * screen, editable from Connected clients. Sanitized, single-line, length-capped; `null`
+		 * shows the registered name. Display only.
+		 */
+		label: text('label'),
+		/**
+		 * The MCP `clientInfo` (`name version`, e.g. `claude-code 2.1.3`) sent in the last
+		 * `initialize`: 2025-era clients send it once, later stateless requests are labelled with
+		 * it in the audit. Self-asserted, display only.
+		 */
+		clientInfo: text('client_info'),
+		/**
+		 * The workspace it works in, chosen on the consent screen and switched only after human
+		 * confirmation; `null` (or a workspace the user left) means the personal one.
+		 */
+		workspaceId: text('workspace_id').references(() => organization.id, {
+			onDelete: 'set null'
+		}),
+		createdAt: createdAt(),
 		updatedAt: updatedAt()
 	},
-	(t) => [primaryKey({ columns: [t.userId, t.clientId] })]
-);
-
-/**
- * The MCP `clientInfo` (implementation name and version, e.g. `claude-code 2.1.3`) a client
- * sent in its last `initialize`, per user and OAuth client. 2025-era clients are served
- * statelessly and only send it once, at `initialize`; later requests are labelled with it in the
- * audit. Self-asserted metadata, display only (never a security decision).
- */
-export const mcpClientInfo = sqliteTable(
-	'mcp_client_info',
-	{
-		userId: text('user_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		/** OAuth `client_id` of the MCP client (CIMD URL or registered id) */
-		clientId: text('client_id').notNull(),
-		/** `name version`, sanitized and length-capped */
-		info: text('info').notNull(),
-		updatedAt: updatedAt()
-	},
-	(t) => [primaryKey({ columns: [t.userId, t.clientId] })]
-);
-
-/**
- * The name the user gave one of their MCP clients ("Work laptop", "Claude Code — toolkien"), per
- * user and OAuth client: asked on the consent screen, editable from Connected clients. It labels
- * the client in the activity instead of the self-asserted registration name. Display only.
- */
-export const mcpClientLabel = sqliteTable(
-	'mcp_client_label',
-	{
-		userId: text('user_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		/** OAuth `client_id` of the MCP client (CIMD URL or registered id) */
-		clientId: text('client_id').notNull(),
-		/** Sanitized, single-line, length-capped */
-		label: text('label').notNull(),
-		updatedAt: updatedAt()
-	},
-	(t) => [primaryKey({ columns: [t.userId, t.clientId] })]
+	(t) => [index('mcp_connection_user_idx').on(t.userId, t.clientId)]
 );
 
 /**

@@ -42,11 +42,11 @@ export type ServerOptions = {
 };
 
 export function createToolkienServer({ era, request, deps, stateKey }: ServerOptions): McpServer {
-	// State is bound to this user and client: a state minted for someone else is refused
+	// State is bound to this user and connection: a state minted for someone else is refused
 	const codec = createRequestStateCodec<RequestStatePayload>({
 		key: stateKey,
 		ttlSeconds: APPROVAL_TTL_MS / 1000,
-		bind: (ctx) => `${ctx.mcpReq.method}\0${request.userId}\0${request.clientId}`
+		bind: (ctx) => `${ctx.mcpReq.method}\0${request.userId}\0${request.connectionId}`
 	});
 
 	const server = new McpServer(

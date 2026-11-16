@@ -46,7 +46,7 @@
 			type="text"
 			label="Name this connection"
 			description="Shown in Activity and Connected clients, so you can tell your clients apart (e.g. “Claude Code — work laptop”)."
-			value={data.client.label ?? data.client.name}
+			value={data.client.name}
 			placeholder={data.client.name}
 			autocomplete="off"
 		/>

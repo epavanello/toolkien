@@ -5,7 +5,7 @@ import { db } from '#lib/server/db/index.ts';
 import {
 	connector,
 	connectorCredential,
-	mcpActiveWorkspace,
+	mcpConnection,
 	member,
 	passkey,
 	user
@@ -121,12 +121,14 @@ export async function removeMember(actor: WorkspaceActor, targetUserId: string) 
 	);
 	await db.batch([
 		db.delete(member).where(eq(member.id, target.id)),
+		// Its connections working there fall back to the personal workspace
 		db
-			.delete(mcpActiveWorkspace)
+			.update(mcpConnection)
+			.set({ workspaceId: null })
 			.where(
 				and(
-					eq(mcpActiveWorkspace.userId, targetUserId),
-					eq(mcpActiveWorkspace.workspaceId, actor.workspaceId)
+					eq(mcpConnection.userId, targetUserId),
+					eq(mcpConnection.workspaceId, actor.workspaceId)
 				)
 			)
 	]);

@@ -49,15 +49,17 @@ export interface WorkspacesService {
 	getBySlug(userId: string, slug: string): Promise<WorkspaceSummary | null>;
 	getById(userId: string, workspaceId: string): Promise<WorkspaceSummary | null>;
 	/**
-	 * Active workspace for an MCP client: the stored choice, else the personal workspace.
-	 * Falls back to personal if the user lost access to the stored one.
+	 * (changed) Active workspace of an MCP connection (`mcp_connection.id`, one per approval):
+	 * the stored choice, else the personal workspace. Falls back to personal if the user lost
+	 * access to the stored one, or the connection is not theirs.
 	 */
-	getActiveWorkspace(userId: string, clientId: string): Promise<WorkspaceSummary>;
+	getActiveWorkspace(userId: string, connectionId: string): Promise<WorkspaceSummary>;
 	/**
 	 * Stores the active workspace. Callers MUST have obtained explicit human confirmation
-	 * (elicitation or consent screen) and record a `workspace.switched` audit event.
+	 * (elicitation or consent screen) and record a `workspace.switched` audit event. 404 when
+	 * the workspace or the connection is not the user's.
 	 */
-	setActiveWorkspace(userId: string, clientId: string, workspaceId: string): Promise<void>;
+	setActiveWorkspace(userId: string, connectionId: string, workspaceId: string): Promise<void>;
 	getPolicy(workspaceId: string): Promise<WorkspacePolicy>;
 }
 

@@ -924,7 +924,7 @@ describe('bridge guards', () => {
 });
 
 describe('pending approvals listing', () => {
-	it("lists the user's paused executions, scoped by workspace and client, never others'", async () => {
+	it("lists the user's paused executions, scoped by workspace and connection, never others'", async () => {
 		const sys = makeSystem(t.db, PROGRAMS);
 		tools.push(
 			await seedResolved(t.db, otherWs, tools[3].connectorId, 'gh.createIssue', {
@@ -934,21 +934,26 @@ describe('pending approvals listing', () => {
 		const mine = await sys.service.start({
 			actor: actor(),
 			clientId: 'claude',
+			connectionId: 'claude-1',
 			code: 'deleteRepo'
 		});
+		// Another sign-in of the same client: another connection
 		const otherClient = await sys.service.start({
 			actor: actor(),
-			clientId: 'cursor',
+			clientId: 'claude',
+			connectionId: 'claude-2',
 			code: 'deleteRepo'
 		});
 		const otherWorkspace = await sys.service.start({
 			actor: { workspaceId: otherWs, userId: user, role: 'owner' },
 			clientId: 'claude',
+			connectionId: 'claude-1',
 			code: 'readThenWrite'
 		});
 		const peers = await sys.service.start({
 			actor: { workspaceId: ws, userId: peer, role: 'member' },
 			clientId: 'claude',
+			connectionId: 'claude-1',
 			code: 'deleteRepo'
 		});
 		for (const outcome of [mine, otherClient, otherWorkspace, peers]) {
@@ -957,7 +962,7 @@ describe('pending approvals listing', () => {
 
 		const scoped = await sys.service.listPendingApprovals(user, {
 			workspaceId: ws,
-			clientId: 'claude'
+			connectionId: 'claude-1'
 		});
 		expect(scoped).toHaveLength(1);
 		expect(scoped[0]).toMatchObject({
@@ -971,12 +976,12 @@ describe('pending approvals listing', () => {
 		});
 		expect(scoped[0].argumentsPreview).toContain('a/b');
 
-		const ids = async (scope?: { workspaceId?: string; clientId?: string }) =>
+		const ids = async (scope?: { workspaceId?: string; connectionId?: string }) =>
 			(await sys.service.listPendingApprovals(user, scope)).map((p) => p.executionId).sort();
 		expect(await ids({ workspaceId: ws })).toEqual(
 			[mine.executionId, otherClient.executionId].sort()
 		);
-		expect(await ids({ clientId: 'claude' })).toEqual(
+		expect(await ids({ connectionId: 'claude-1' })).toEqual(
 			[mine.executionId, otherWorkspace.executionId].sort()
 		);
 		expect(await ids()).toEqual(
@@ -994,22 +999,26 @@ describe('pending approvals listing', () => {
 		const expiring = await sys.service.start({
 			actor: actor(),
 			clientId: 'claude',
+			connectionId: 'claude-1',
 			code: 'deleteRepo'
 		});
 		nowMs += 20 * 60 * 1000;
 		const decided = await sys.service.start({
 			actor: actor(),
 			clientId: 'claude',
+			connectionId: 'claude-1',
 			code: 'deleteRepo'
 		});
 		const cancelled = await sys.service.start({
 			actor: actor(),
 			clientId: 'claude',
+			connectionId: 'claude-1',
 			code: 'deleteRepo'
 		});
 		const fresh = await sys.service.start({
 			actor: actor(),
 			clientId: 'claude',
+			connectionId: 'claude-1',
 			code: 'deleteRepo'
 		});
 		await sys.service.decideApproval({
@@ -1022,7 +1031,7 @@ describe('pending approvals listing', () => {
 		nowMs += 11 * 60 * 1000;
 		const listed = await sys.service.listPendingApprovals(user, {
 			workspaceId: ws,
-			clientId: 'claude'
+			connectionId: 'claude-1'
 		});
 		expect(listed.map((p) => p.executionId)).toEqual([fresh.executionId]);
 		expect(expiring.status).toBe('awaiting_approval');

@@ -14,6 +14,7 @@ export type SwitchChannel = 'elicitation_form' | 'link' | 'consent';
 type SwitchSubject = {
 	userId: string;
 	clientId: string;
+	connectionId: string;
 	clientName: string | null;
 	clientInfo?: string | null;
 };
@@ -32,6 +33,7 @@ export async function openSwitchRequest(
 	const request = createSwitchRequest({
 		userId: subject.userId,
 		clientId: subject.clientId,
+		connectionId: subject.connectionId,
 		clientName: subject.clientName,
 		clientInfo: subject.clientInfo ?? null,
 		fromWorkspaceId,
@@ -43,6 +45,7 @@ export async function openSwitchRequest(
 		workspaceId: toWorkspaceId,
 		userId: subject.userId,
 		clientId: subject.clientId,
+		connectionId: subject.connectionId,
 		clientName: subject.clientName,
 		clientInfo: subject.clientInfo ?? null,
 		metadata: { fromWorkspaceId, channel }
@@ -57,18 +60,38 @@ export async function applySwitch(
 	to: Pick<WorkspaceSummary, 'id'>,
 	channel: SwitchChannel
 ): Promise<void> {
-	await deps.workspaces.setActiveWorkspace(subject.userId, subject.clientId, to.id);
+	await deps.workspaces.setActiveWorkspace(subject.userId, subject.connectionId, to.id);
 	await deps.audit.record({
 		type: 'workspace.switched',
 		outcome: 'success',
 		workspaceId: to.id,
 		userId: subject.userId,
 		clientId: subject.clientId,
+		connectionId: subject.connectionId,
 		clientName: subject.clientName,
 		clientInfo: subject.clientInfo ?? null,
 		approvedBy: 'self',
 		approverUserId: subject.userId,
 		metadata: { fromWorkspaceId, channel }
+	});
+}
+
+/** The workspace chosen on the consent screen, already stored with the new connection */
+export async function recordConsentWorkspace(
+	deps: Pick<McpDeps, 'audit'>,
+	subject: SwitchSubject & { workspaceId: string }
+): Promise<void> {
+	await deps.audit.record({
+		type: 'workspace.switched',
+		outcome: 'success',
+		workspaceId: subject.workspaceId,
+		userId: subject.userId,
+		clientId: subject.clientId,
+		connectionId: subject.connectionId,
+		clientName: subject.clientName,
+		approvedBy: 'self',
+		approverUserId: subject.userId,
+		metadata: { fromWorkspaceId: null, channel: 'consent' }
 	});
 }
 
@@ -85,6 +108,7 @@ async function recordRefusedSwitch(
 		workspaceId: toWorkspaceId,
 		userId: subject.userId,
 		clientId: subject.clientId,
+		connectionId: subject.connectionId,
 		clientName: subject.clientName,
 		clientInfo: subject.clientInfo ?? null,
 		metadata: { fromWorkspaceId, channel }

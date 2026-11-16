@@ -5,14 +5,17 @@
  * 3. Rate limit per IP, before any token work.
  * 4. Bearer token: signature, issuer, expiry, `aud = ${ORIGIN}/mcp` (Better Auth
  *    `requireMcpAuth`); failures get the RFC 9728 `WWW-Authenticate` challenge.
- * 5. Kill switches: disabled OAuth client, suspended user (`limits.assertNotSuspended`), and a
- *    client the user disconnected (access tokens are JWTs verified offline: without a live
+ * 5. The connection the token names (`connection_id` claim, one per approval): it must exist
+ *    and belong to the token's user and client; a token without one (issued before connections)
+ *    gets the challenge, so the client signs in again.
+ * 6. Kill switches: disabled OAuth client, suspended user (`limits.assertNotSuspended`), and a
+ *    connection the user disconnected (access tokens are JWTs verified offline: without a live
  *    grant they get the challenge again instead of working until they expire).
- * 6. Rate limit per user.
- * 7. The MCP handler, with the client name (the user's name for it, else the OAuth registration
- *    name) and the MCP `clientInfo` captured
- *    for the audit: from the request's 2026-07-28 envelope, else from `initialize` (remembered
- *    per user and client, since 2025-era clients send it only once). Display only.
+ * 7. Rate limit per user.
+ * 8. The MCP handler, with the connection, its name (the user's name for it, else the OAuth
+ *    registration name) and the MCP `clientInfo` captured for the audit: from the request's
+ *    2026-07-28 envelope, else from `initialize` (remembered on the connection, since 2025-era
+ *    clients send it only once). Display only.
  *
  * Cookies are never read here (the hooks skip sessions on `/mcp`).
  */
@@ -22,7 +25,23 @@ import { peekClientInfo } from './client-info.ts';
 import type { HandleMcpRequest, McpRequestContext } from './types.ts';
 
 /** Verified claims of the access token (subset of the JWT payload) */
-export type AccessTokenClaims = { sub?: unknown; azp?: unknown; scope?: unknown };
+export type AccessTokenClaims = {
+	sub?: unknown;
+	azp?: unknown;
+	scope?: unknown;
+	/** `CONNECTION_CLAIM`: the MCP connection of the grant */
+	connection_id?: unknown;
+};
+
+/** What the endpoint needs of an MCP connection */
+export type EndpointConnection = {
+	userId: string;
+	clientId: string;
+	/** The name the user gave it (consent screen, Connected clients), if any */
+	label: string | null;
+	/** MCP `clientInfo` (`name version`) it sent in its last `initialize` */
+	clientInfo: string | null;
+};
 
 export type McpEndpointDeps = {
 	handle: HandleMcpRequest;
@@ -33,15 +52,12 @@ export type McpEndpointDeps = {
 	) => Promise<Response>;
 	loadClient: (clientId: string) => Promise<{ name: string | null; disabled: boolean } | null>;
 	loadUser: (userId: string) => Promise<{ suspended: boolean } | null>;
-	/** The name the user gave this client (consent screen, Connected clients), if any */
-	clientLabel: (userId: string, clientId: string) => Promise<string | null>;
-	/** The user still grants the client access (consent or live refresh token) */
-	hasLiveGrant: (userId: string, clientId: string) => Promise<boolean>;
-	/** MCP `clientInfo` (`name version`) a client sent in `initialize`, per user and client */
-	clientInfo: {
-		remember: (userId: string, clientId: string, info: string) => Promise<void>;
-		load: (userId: string, clientId: string) => Promise<string | null>;
-	};
+	/** The connection by id, `null` when it does not exist (disconnected) */
+	loadConnection: (connectionId: string) => Promise<EndpointConnection | null>;
+	/** The user still grants the connection access (consent and a live grant) */
+	hasLiveGrant: (userId: string, connectionId: string) => Promise<boolean>;
+	/** Stores the MCP `clientInfo` (`name version`) a connection sent in `initialize` */
+	rememberClientInfo: (connectionId: string, info: string) => Promise<void>;
 	/** RFC 9728 metadata URL, sent in the challenge when the grant is gone */
 	resourceMetadataUrl: string;
 	limits: Pick<LimitsService, 'checkRateLimit' | 'assertNotSuspended' | 'getLimits'>;
@@ -94,20 +110,38 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 			const userId = typeof claims.sub === 'string' ? claims.sub : null;
 			const clientId = typeof claims.azp === 'string' ? claims.azp : null;
 			if (!userId || !clientId) return jsonRpcError(401, 'Access token is not bound to a user.');
+			const connectionId = typeof claims.connection_id === 'string' ? claims.connection_id : null;
+			const signInAgain = (message: string, description: string) =>
+				jsonRpcError(401, message, {
+					'WWW-Authenticate': `Bearer error="invalid_token", error_description="${description}", resource_metadata="${deps.resourceMetadataUrl}"`
+				});
+			// Issued before connections existed: one sign-in makes a token that names one
+			if (!connectionId) {
+				return signInAgain(
+					'This access token predates connections. Sign in again.',
+					'Sign in again'
+				);
+			}
 
-			const [client, user, granted, label] = await Promise.all([
+			const [client, user, connection, granted] = await Promise.all([
 				deps.loadClient(clientId),
 				deps.loadUser(userId),
-				deps.hasLiveGrant(userId, clientId),
-				// Display only: a lookup failure must not fail the request
-				deps.clientLabel(userId, clientId).catch(() => null)
+				deps.loadConnection(connectionId),
+				deps.hasLiveGrant(userId, connectionId)
 			]);
 			if (!client || client.disabled) return jsonRpcError(403, 'This MCP client is disabled.');
 			if (!user) return jsonRpcError(401, 'Unknown user.');
-			if (!granted) {
-				return jsonRpcError(401, 'This client was disconnected. Sign in again to reconnect it.', {
-					'WWW-Authenticate': `Bearer error="invalid_token", error_description="The user disconnected this client", resource_metadata="${deps.resourceMetadataUrl}"`
-				});
+			// The connection must be the one this user approved for this very client
+			if (
+				!connection ||
+				connection.userId !== userId ||
+				connection.clientId !== clientId ||
+				!granted
+			) {
+				return signInAgain(
+					'This client was disconnected. Sign in again to reconnect it.',
+					'The user disconnected this client'
+				);
 			}
 			if (user.suspended) return jsonRpcError(403, 'This account is suspended.');
 			try {
@@ -128,8 +162,9 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 			const ctx: McpRequestContext = {
 				userId,
 				clientId,
-				clientName: label ?? client.name,
-				clientInfo: await requestClientInfo(deps, verified, userId, clientId),
+				connectionId,
+				clientName: connection.label ?? client.name,
+				clientInfo: await requestClientInfo(deps, verified, connectionId, connection.clientInfo),
 				clientAddress: meta.clientAddress,
 				scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter(Boolean) : []
 			};
@@ -142,17 +177,17 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 async function requestClientInfo(
 	deps: McpEndpointDeps,
 	request: Request,
-	userId: string,
-	clientId: string
+	connectionId: string,
+	remembered: string | null
 ): Promise<string | null> {
 	try {
 		const peeked = await peekClientInfo(request);
-		if (peeked.info && peeked.fromInitialize) {
-			await deps.clientInfo.remember(userId, clientId, peeked.info);
+		if (peeked.info && peeked.fromInitialize && peeked.info !== remembered) {
+			await deps.rememberClientInfo(connectionId, peeked.info);
 		}
-		return peeked.info ?? (await deps.clientInfo.load(userId, clientId));
+		return peeked.info ?? remembered;
 	} catch {
-		return null;
+		return remembered;
 	}
 }
 

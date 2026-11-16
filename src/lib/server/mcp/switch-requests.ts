@@ -44,10 +44,10 @@ export function getSwitchRequest(
 	return request;
 }
 
-/** The client's request still waiting for the human to switch to `toWorkspaceId`, if any */
+/** The connection's request still waiting for the human to switch to `toWorkspaceId`, if any */
 export function findPendingSwitch(
 	userId: string,
-	clientId: string,
+	connectionId: string,
 	toWorkspaceId: string,
 	now = Date.now()
 ): PendingWorkspaceSwitch | null {
@@ -56,7 +56,7 @@ export function findPendingSwitch(
 		if (
 			request.status === 'pending' &&
 			request.userId === userId &&
-			request.clientId === clientId &&
+			request.connectionId === connectionId &&
 			request.toWorkspaceId === toWorkspaceId
 		) {
 			return request;

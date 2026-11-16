@@ -539,6 +539,7 @@ describe.skipIf(!process.env.TOOLKIEN_PROBE)('live probe', () => {
 					{
 						userId: user,
 						clientId: 'probe-client',
+						connectionId: 'probe-connection',
 						clientName: 'Probe agent',
 						scopes: []
 					}

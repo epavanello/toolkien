@@ -15,6 +15,7 @@ import { emailOTP, jwt, magicLink, organization } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { brand } from '#lib/brand.ts';
 import { safeRedirectPath } from '#lib/core/redirects.ts';
+import { connectionClaims, consentReferenceId } from '#lib/server/clients/connection-grant.ts';
 import { db } from '#lib/server/db/index.ts';
 import { loginEmail, sendEmail } from '#lib/server/email/index.ts';
 import { safeFetch } from '#lib/server/net/index.ts';
@@ -181,6 +182,10 @@ export const auth = betterAuth({
 		 * - Authorization responses carry `iss` (RFC 9207, always on in the provider).
 		 * - Refresh tokens rotate; reusing a rotated one after the 30 s retry window revokes the
 		 *   whole token family (reuse detection).
+		 * - Every approval is its own MCP connection (`#lib/server/clients/connection-grant.ts`):
+		 *   its id is the consent `reference_id`, carried by the code and refresh tokens and
+		 *   stamped on access tokens as `connection_id`. Never "remembered" consent: the screen
+		 *   shows on every authorization, so each sign-in picks its own name and workspace.
 		 */
 		mcp({
 			// The consent page is the single interaction entry: it sends signed-out users to
@@ -207,6 +212,13 @@ export const auth = betterAuth({
 			// Identical retries within 30 s get the same response; any other reuse kills the family
 			refreshTokenReuseInterval: 30,
 			codeExpiresIn: 5 * 60,
+			// Not a post-login page: only the hook that gives each approval its own reference
+			postLogin: {
+				page: '/consent',
+				shouldRedirect: () => false,
+				consentReferenceId
+			},
+			customAccessTokenClaims: connectionClaims,
 			// DCR is deprecated in MCP 2026-07-28 (CIMD preferred) but most clients still use it
 			allowDynamicClientRegistration: true,
 			allowUnauthenticatedClientRegistration: true,

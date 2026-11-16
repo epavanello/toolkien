@@ -82,26 +82,42 @@ email profile`, `prompt=select_account`; the callback lands on `redirectTo` (so 
   Two sources, both self-asserted and display only: the OAuth registration `client_name`
   (optional in DCR, so sometimes missing, and shared by every app behind one OAuth client) and
   the MCP `clientInfo` (`name version`, e.g. `claude-code 2.1.3`): from the 2026-07-28 request
-  envelope, else from the 2025-era `initialize`, remembered per user and client
-  (`mcp_client_info`) since those clients are served statelessly and send it once. Executions
+  envelope, else from the 2025-era `initialize`, remembered on the MCP connection
+  (`mcp_connection.client_info`) since those clients are served statelessly and send it once.
+  Executions
   copy both onto their events (`execution.client_name` / `client_info`); events recorded
   before fall back to the registered name by joining the OAuth client. Shown as
   `via Claude Code (claude-code 2.1.3)` on executions and standalone events, `client` and
   `client_info` CSV columns.
+- **One MCP connection per approval** (`mcp_connection`), not one per user and OAuth client: a
+  CIMD client id is shared by everyone using that app (every Claude account signs in as
+  Claude's one metadata URL), so keying name, workspace and disconnect on (user, client) merged
+  two Claude accounts of the same Toolkien user into one client: same name prefilled, a
+  workspace switch in one moved the other, Disconnect cut both. Each "Allow access" now creates
+  a connection whose id is the consent `reference_id` (Better Auth `postLogin
+.consentReferenceId`, answered only inside our "Allow" through an `AsyncLocalStorage`). The
+  provider stores it on the consent, the code and every refresh token, and carries it through
+  rotation; `customAccessTokenClaims` stamps it on access tokens as `connection_id`. `/mcp`
+  requires the claim and a connection of the token's user and client. Consent is therefore never
+  remembered: every authorization shows the consent screen (the name starts from the registered
+  name, the workspace from the personal one), and a re-authorization is a new connection. A
+  connection is live while its consent stands and a refresh token is usable (or none was issued
+  yet); dead ones leave Connected clients. Executions and audit events carry `connection_id`;
+  pending approvals and workspace switches are scoped to it. The migration dropped every
+  existing grant (no reference to carry): clients sign in again.
 - **User-given client names**: the consent screen asks "Name this connection" (prefilled with
-  the registered name) and Connected clients has Rename. Stored per user and OAuth client
-  (`mcp_client_label`), not on the OAuth client: one CIMD client (Claude) is shared by every
-  user, and a registered name says nothing about which machine or project it runs in. `/mcp`
-  uses it as `clientName` (cached a minute, updated at once on write), so executions, events,
-  approvals and switch requests carry it; events already recorded keep their name (append-only).
-  Empty or equal to the registered name clears it; renames are audited
-  (`mcp_client.renamed`, previous name in metadata); it goes with the client on disconnect.
-- **Workspace per client, visible and movable from the app**: the active workspace was already
-  per user and OAuth client (`mcp_active_workspace`), but nothing showed it. Connected clients
-  now has a Workspace column (a link) and "Change workspace": the user acting in the app is the
-  confirmation, audited as `workspace.switched` with channel `settings`. Clients sharing one
-  OAuth client id (Claude web, desktop and mobile) still share one workspace: the server cannot
-  tell them apart. Moves and renames do not count as the client's "last used".
+  the registered name) and Connected clients has Rename. Stored on the connection, not on the
+  OAuth client: a registered name says nothing about which account, machine or project it runs
+  in. `/mcp` uses it as `clientName` (cached a minute, updated at once on write), so
+  executions, events, approvals and switch requests carry it; the activity shows the
+  connection's current name on its past events (joined on `connection_id`). Empty or equal to
+  the registered name clears it; renames are audited (`mcp_client.renamed`, previous name in
+  metadata); it goes with the connection on disconnect.
+- **Workspace per connection, visible and movable from the app**: chosen on the consent screen,
+  switched by `workspace_switch` after confirmation. Connected clients has a Workspace column (a
+  link) and "Change workspace": the user acting in the app is the confirmation, audited as
+  `workspace.switched` with channel `settings`. Moves and renames do not count as the
+  connection's "last used".
 - **Audit** is append-only (trigger); metadata never holds user ids (anonymisation only nulls
   `user_id`); members see their own events, admins with a passkey everyone's. Retention 90 days
   (job). Technical logs are separate: stdout, ids only, **14 days** (journald on the host; compose

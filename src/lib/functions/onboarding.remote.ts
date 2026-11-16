@@ -36,54 +36,54 @@ export const watchOnboarding = query.live(slug, async function* (slug) {
 });
 
 /**
- * Disconnects one of the user's MCP clients: its consent and tokens are deleted (it must sign in
- * again), and the live onboarding state restarts so every "connected" mark updates.
+ * Disconnects one of the user's MCP connections: its consent and tokens are deleted (that client
+ * must sign in again; other connections of the same client keep working), and the live onboarding state restarts so every "connected" mark updates.
  */
 export const disconnectClient = command(
-	z.object({ workspace: slug, clientId: z.string().min(1).max(2048) }),
-	async ({ workspace, clientId }) => {
+	z.object({ workspace: slug, connectionId: z.string().min(1).max(100) }),
+	async ({ workspace, connectionId }) => {
 		const { actor } = await requireWorkspace(workspace);
-		const { name } = await revokeClient(actor, clientId);
+		const { name } = await revokeClient(actor, connectionId);
 		void watchOnboarding(workspace).reconnect();
 		return { name };
 	}
 );
 
 /**
- * Names one of the user's MCP clients ("Claude Code — work laptop"): the name labels it in the
+ * Names one of the user's MCP connections ("Claude Code — work laptop"): the name labels it in the
  * activity from now on. Empty restores the registered name.
  */
 export const renameClient = form(
 	z.object({
 		workspace: slug,
-		clientId: z.string().min(1).max(2048),
+		connectionId: z.string().min(1).max(100),
 		label: z
 			.string()
 			.trim()
 			.max(CLIENT_LABEL_MAX, { error: `Keep the name under ${CLIENT_LABEL_MAX} characters.` })
 			.optional()
 	}),
-	async ({ workspace, clientId, label }) => {
+	async ({ workspace, connectionId, label }) => {
 		const { actor } = await requireWorkspace(workspace);
-		const { name } = await setClientLabel(actor, clientId, label ?? null);
+		const { name } = await setClientLabel(actor, connectionId, label ?? null);
 		void watchOnboarding(workspace).reconnect();
 		return { name };
 	}
 );
 
 /**
- * Moves one of the user's MCP clients to another of their workspaces: its next requests work
- * there. The other clients stay where they are.
+ * Moves one of the user's MCP connections to another of their workspaces: its next requests
+ * work there. The other connections stay where they are.
  */
 export const moveClientWorkspace = form(
 	z.object({
 		workspace: slug,
-		clientId: z.string().min(1).max(2048),
+		connectionId: z.string().min(1).max(100),
 		workspaceId: z.string().min(1, { error: 'Choose a workspace.' }).max(100)
 	}),
-	async ({ workspace, clientId, workspaceId }) => {
+	async ({ workspace, connectionId, workspaceId }) => {
 		const { actor } = await requireWorkspace(workspace);
-		const moved = await moveClient(actor, clientId, workspaceId);
+		const moved = await moveClient(actor, connectionId, workspaceId);
 		void watchOnboarding(workspace).reconnect();
 		return { name: moved.name, workspace: moved.workspace.name };
 	}

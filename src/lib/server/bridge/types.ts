@@ -25,6 +25,8 @@ export type BridgeContext = {
 	executionId: string;
 	actor: WorkspaceActor;
 	clientId: string | null;
+	/** (additive) The MCP connection that started the execution, for the audit */
+	connectionId?: string | null;
 };
 
 export type HandleToolCall = (

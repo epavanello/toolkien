@@ -73,6 +73,8 @@ export const auditEvent = sqliteTable(
 		/** OAuth client id and display name (Claude, Codex, Cursor…) */
 		clientId: text('client_id'),
 		clientName: text('client_name'),
+		/** The MCP connection (`mcp_connection.id`) the request came through, when it did */
+		connectionId: text('connection_id'),
 		/**
 		 * MCP `clientInfo` of the request, `name version` (`claude-code 2.1.3`). Self-asserted by
 		 * the client like the name: display only.
@@ -93,6 +95,7 @@ export const auditEvent = sqliteTable(
 		index('audit_event_workspace_idx').on(t.workspaceId, t.occurredAt),
 		index('audit_event_user_idx').on(t.userId, t.occurredAt),
 		index('audit_event_execution_idx').on(t.executionId),
-		index('audit_event_occurred_idx').on(t.occurredAt)
+		index('audit_event_occurred_idx').on(t.occurredAt),
+		index('audit_event_connection_idx').on(t.connectionId, t.occurredAt)
 	]
 );

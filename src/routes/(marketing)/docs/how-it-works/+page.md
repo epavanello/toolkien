@@ -60,7 +60,7 @@ When a call needs your confirmation, the execution **pauses** and its state is s
 
 ## One workspace per execution
 
-The active workspace is chosen per client, at consent time or with `workspace_switch` (after your confirmation). An execution is bound to one workspace and can never mix tools from two. Search and execute results always name the workspace.
+The active workspace is chosen per connection (each approval of a client), at consent time or with `workspace_switch` (after your confirmation). An execution is bound to one workspace and can never mix tools from two. Search and execute results always name the workspace.
 
 ## Keeping definitions fresh
 

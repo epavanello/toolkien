@@ -10,6 +10,7 @@ import { db } from '#lib/server/db/index.ts';
 import {
 	auditEvent,
 	connector,
+	mcpConnection,
 	organization,
 	oauthAccessToken,
 	oauthClient,
@@ -20,18 +21,18 @@ import { seedMember, seedUser } from '#lib/server/workspaces/test-db.ts';
 import { and, eq } from 'drizzle-orm';
 import {
 	cleanClientLabel,
-	clientLabel,
+	createConnection,
 	hasLiveGrant,
 	listAuthorizedClients,
+	loadConnection,
 	moveClient,
 	needsGuide,
 	onboardingStatus,
 	rememberClientInfo,
 	revokeClient,
-	setClientLabel,
-	storeClientLabel,
-	storedClientInfo
+	setClientLabel
 } from './index.ts';
+import { getActiveWorkspace } from '#lib/server/workspaces/active.ts';
 
 const NOW = new Date('2026-11-14T12:00:00Z');
 const minutes = (n: number) => new Date(NOW.getTime() + n * 60_000);
@@ -47,20 +48,38 @@ async function addClient(name: string | null) {
 	return clientId;
 }
 
-async function consent(userId: string, clientId: string, at: Date) {
+/** What one "Allow access" leaves behind: the connection and its consent (`reference_id`) */
+async function connect(
+	userId: string,
+	clientId: string,
+	at: Date,
+	options: { label?: string; workspaceId?: string } = {}
+) {
+	const id = crypto.randomUUID();
+	await db.insert(mcpConnection).values({
+		id,
+		userId,
+		clientId,
+		label: options.label ?? null,
+		workspaceId: options.workspaceId ?? null,
+		createdAt: at
+	});
 	await db.insert(oauthConsent).values({
 		id: crypto.randomUUID(),
 		clientId,
 		userId,
+		referenceId: id,
 		scopes: ['openid'],
 		createdAt: at,
 		updatedAt: at
 	});
+	return id;
 }
 
 async function refreshToken(
 	userId: string,
 	clientId: string,
+	connectionId: string,
 	options: { createdAt: Date; expiresAt: Date; revoked?: Date }
 ) {
 	await db.insert(oauthRefreshToken).values({
@@ -68,6 +87,7 @@ async function refreshToken(
 		token: crypto.randomUUID(),
 		clientId,
 		userId,
+		referenceId: connectionId,
 		scopes: ['openid'],
 		createdAt: options.createdAt,
 		expiresAt: options.expiresAt,
@@ -81,117 +101,211 @@ const actorOf = (user: { id: string; personalWorkspaceId: string }) => ({
 	role: 'owner' as const
 });
 
-describe('authorized clients', () => {
-	it('lists consented clients and live tokens, newest activity first, never token values', async () => {
+describe('authorized connections', () => {
+	it('lists approved connections, newest activity first, never token values', async () => {
 		const me = await seedUser(db);
 		const cursor = await addClient('Cursor');
 		const claude = await addClient('Claude Code (toolkien)');
-		await consent(me.id, cursor, minutes(-120));
-		await refreshToken(me.id, claude, { createdAt: minutes(-30), expiresAt: minutes(60) });
-		await db.insert(oauthAccessToken).values({
-			id: crypto.randomUUID(),
-			token: crypto.randomUUID(),
-			clientId: cursor,
-			userId: me.id,
-			scopes: ['openid'],
+		const viaCursor = await connect(me.id, cursor, minutes(-120));
+		await refreshToken(me.id, cursor, viaCursor, {
 			createdAt: minutes(-90),
-			expiresAt: minutes(-75)
+			expiresAt: minutes(60)
+		});
+		const viaClaude = await connect(me.id, claude, minutes(-40));
+		await refreshToken(me.id, claude, viaClaude, {
+			createdAt: minutes(-30),
+			expiresAt: minutes(60)
 		});
 
 		const clients = await listAuthorizedClients(me.id, NOW);
 		expect(clients.map((c) => c.name)).toEqual(['Claude Code (toolkien)', 'Cursor']);
-		expect(clients[1]).toMatchObject({ connectedAt: minutes(-120), lastUsedAt: minutes(-90) });
+		expect(clients[1]).toMatchObject({
+			connectionId: viaCursor,
+			clientId: cursor,
+			connectedAt: minutes(-120),
+			lastUsedAt: minutes(-90)
+		});
 		expect(JSON.stringify(clients)).not.toMatch(/token/i);
 	});
 
-	it('skips clients whose tokens are all revoked or expired and that have no consent', async () => {
+	it('two sign-ins of the same client are two connections, each with its own name and workspace', async () => {
+		const me = await seedUser(db);
+		const claude = await addClient('Claude');
+		const acme = crypto.randomUUID();
+		await db.insert(organization).values({
+			id: acme,
+			name: 'Acme',
+			slug: `acme-${acme.replace(/-/g, '')}`,
+			kind: 'company',
+			createdAt: new Date()
+		});
+		await seedMember(db, acme, me.id, 'owner');
+		const emanuele = await createConnection({
+			userId: me.id,
+			clientId: claude,
+			label: 'Claude — Emanuele',
+			workspaceId: me.personalWorkspaceId
+		});
+		const agent = await createConnection({
+			userId: me.id,
+			clientId: claude,
+			label: 'Claude — Agent',
+			workspaceId: acme
+		});
+		for (const { connectionId } of [emanuele, agent]) {
+			await db.insert(oauthConsent).values({
+				id: crypto.randomUUID(),
+				clientId: claude,
+				userId: me.id,
+				referenceId: connectionId,
+				scopes: ['openid'],
+				createdAt: minutes(-5),
+				updatedAt: minutes(-5)
+			});
+		}
+
+		const listed = new Map(
+			(await listAuthorizedClients(me.id, NOW)).map((c) => [c.connectionId, c])
+		);
+		expect(listed.get(emanuele.connectionId)).toMatchObject({
+			name: 'Claude — Emanuele',
+			workspace: { id: me.personalWorkspaceId }
+		});
+		expect(listed.get(agent.connectionId)).toMatchObject({
+			name: 'Claude — Agent',
+			workspace: { id: acme }
+		});
+		expect((await getActiveWorkspace(me.id, agent.connectionId)).id).toBe(acme);
+		expect((await getActiveWorkspace(me.id, emanuele.connectionId)).id).toBe(
+			me.personalWorkspaceId
+		);
+
+		// Renaming, moving and disconnecting one leaves the other alone
+		await setClientLabel(actorOf(me), agent.connectionId, 'Agent');
+		await moveClient(actorOf(me), agent.connectionId, me.personalWorkspaceId);
+		expect((await loadConnection(emanuele.connectionId))?.label).toBe('Claude — Emanuele');
+		await revokeClient(actorOf(me), agent.connectionId);
+		expect(await hasLiveGrant(me.id, agent.connectionId, NOW)).toBe(false);
+		expect(await hasLiveGrant(me.id, emanuele.connectionId, NOW)).toBe(true);
+		expect((await listAuthorizedClients(me.id, NOW)).map((c) => c.name)).toEqual([
+			'Claude — Emanuele'
+		]);
+	});
+
+	it('drops connections whose grant is over: no consent, or every refresh token dead', async () => {
 		const me = await seedUser(db);
 		const revoked = await addClient('Revoked');
 		const expired = await addClient('Expired');
-		await refreshToken(me.id, revoked, {
+		const viaRevoked = await connect(me.id, revoked, minutes(-20));
+		await refreshToken(me.id, revoked, viaRevoked, {
 			createdAt: minutes(-10),
 			expiresAt: minutes(60),
 			revoked: minutes(-5)
 		});
-		await refreshToken(me.id, expired, { createdAt: minutes(-100), expiresAt: minutes(-1) });
+		const viaExpired = await connect(me.id, expired, minutes(-200));
+		await refreshToken(me.id, expired, viaExpired, {
+			createdAt: minutes(-100),
+			expiresAt: minutes(-1)
+		});
+		// A connection the provider never consented to (the "Allow" failed)
+		await createConnection({
+			userId: me.id,
+			clientId: expired,
+			label: null,
+			workspaceId: me.personalWorkspaceId
+		});
 		expect(await listAuthorizedClients(me.id, NOW)).toEqual([]);
+		expect(await hasLiveGrant(me.id, viaRevoked, NOW)).toBe(false);
+		expect(await hasLiveGrant(me.id, viaExpired, NOW)).toBe(false);
 	});
 
 	it('counts audited calls as last use and names unnamed clients', async () => {
 		const me = await seedUser(db);
 		const client = await addClient(null);
-		await consent(me.id, client, minutes(-60));
+		const connectionId = await connect(me.id, client, minutes(-60));
 		await db.insert(auditEvent).values({
 			type: 'tool.called',
 			outcome: 'success',
 			userId: me.id,
 			workspaceId: me.personalWorkspaceId,
 			clientId: client,
+			connectionId,
 			occurredAt: minutes(-2)
 		});
 		const [row] = await listAuthorizedClients(me.id, NOW);
 		expect(row).toMatchObject({ name: 'Unnamed MCP client', lastUsedAt: minutes(-2) });
 	});
 
-	it("never shows another user's clients", async () => {
+	it("never shows another user's connections", async () => {
 		const me = await seedUser(db);
 		const other = await seedUser(db);
-		await consent(other.id, await addClient('Theirs'), minutes(-1));
+		await connect(other.id, await addClient('Theirs'), minutes(-1));
 		expect(await listAuthorizedClients(me.id, NOW)).toEqual([]);
 	});
 });
 
-describe('disconnecting a client', () => {
-	const tokensOf = async (userId: string, clientId: string) => ({
+describe('disconnecting a connection', () => {
+	const grantOf = async (userId: string, connectionId: string) => ({
 		access: await db
 			.select()
 			.from(oauthAccessToken)
-			.where(and(eq(oauthAccessToken.userId, userId), eq(oauthAccessToken.clientId, clientId))),
+			.where(
+				and(eq(oauthAccessToken.userId, userId), eq(oauthAccessToken.referenceId, connectionId))
+			),
 		refresh: await db
 			.select()
 			.from(oauthRefreshToken)
-			.where(and(eq(oauthRefreshToken.userId, userId), eq(oauthRefreshToken.clientId, clientId))),
+			.where(
+				and(eq(oauthRefreshToken.userId, userId), eq(oauthRefreshToken.referenceId, connectionId))
+			),
 		consent: await db
 			.select()
 			.from(oauthConsent)
-			.where(and(eq(oauthConsent.userId, userId), eq(oauthConsent.clientId, clientId)))
+			.where(and(eq(oauthConsent.userId, userId), eq(oauthConsent.referenceId, connectionId)))
 	});
 
-	it("deletes the user's consent and tokens for that client only, and audits it", async () => {
+	it('deletes that connection, its consent and tokens only, and audits it', async () => {
 		const me = await seedUser(db);
 		const other = await seedUser(db);
 		const cursor = await addClient('Cursor');
 		const codex = await addClient('Codex');
+		const connections = new Map<string, string>();
 		for (const user of [me, other]) {
-			await consent(user.id, cursor, minutes(-60));
-			await refreshToken(user.id, cursor, { createdAt: minutes(-5), expiresAt: minutes(60) });
+			const id = await connect(user.id, cursor, minutes(-60));
+			await refreshToken(user.id, cursor, id, { createdAt: minutes(-5), expiresAt: minutes(60) });
+			connections.set(user.id, id);
 		}
-		await consent(me.id, codex, minutes(-30));
+		const mine = connections.get(me.id)!;
+		const theirs = connections.get(other.id)!;
+		await connect(me.id, codex, minutes(-30));
 		await db.insert(oauthAccessToken).values({
 			id: crypto.randomUUID(),
 			token: crypto.randomUUID(),
 			clientId: cursor,
 			userId: me.id,
+			referenceId: mine,
 			scopes: ['openid'],
 			createdAt: minutes(-1),
 			expiresAt: minutes(14)
 		});
-		expect(await hasLiveGrant(me.id, cursor, NOW)).toBe(true);
+		expect(await hasLiveGrant(me.id, mine, NOW)).toBe(true);
 
-		const revoked = await revokeClient(actorOf(me), cursor);
+		const revoked = await revokeClient(actorOf(me), mine);
 		expect(revoked).toEqual({
+			connectionId: mine,
 			clientId: cursor,
 			name: 'Cursor',
 			accessTokens: 1,
 			refreshTokens: 1,
 			consents: 1
 		});
-		expect(await tokensOf(me.id, cursor)).toEqual({ access: [], refresh: [], consent: [] });
-		expect(await hasLiveGrant(me.id, cursor, NOW)).toBe(false);
+		expect(await grantOf(me.id, mine)).toEqual({ access: [], refresh: [], consent: [] });
+		expect(await loadConnection(mine)).toBeNull();
+		expect(await hasLiveGrant(me.id, mine, NOW)).toBe(false);
 		expect((await listAuthorizedClients(me.id, NOW)).map((c) => c.name)).toEqual(['Codex']);
 		// Another user of the same client keeps their access
-		expect(await hasLiveGrant(other.id, cursor, NOW)).toBe(true);
-		expect((await tokensOf(other.id, cursor)).refresh).toHaveLength(1);
+		expect(await hasLiveGrant(other.id, theirs, NOW)).toBe(true);
+		expect((await grantOf(other.id, theirs)).refresh).toHaveLength(1);
 
 		const [event] = await db
 			.select()
@@ -201,53 +315,39 @@ describe('disconnecting a client', () => {
 			outcome: 'success',
 			workspaceId: me.personalWorkspaceId,
 			clientId: cursor,
+			connectionId: mine,
 			clientName: 'Cursor',
 			metadata: { accessTokens: 1, refreshTokens: 1, consents: 1 }
 		});
 		expect(JSON.stringify(event)).not.toMatch(/token":"/);
 	});
 
-	it('answers 404 for a client the user never authorized or already disconnected', async () => {
+	it("answers 404 for another user's connection or one already disconnected", async () => {
 		const me = await seedUser(db);
 		const other = await seedUser(db);
-		const theirs = await addClient('Theirs');
-		await consent(other.id, theirs, minutes(-1));
+		const theirs = await connect(other.id, await addClient('Theirs'), minutes(-1));
 		await expect(revokeClient(actorOf(me), theirs)).rejects.toMatchObject({ status: 404 });
 		await revokeClient(actorOf(other), theirs);
 		await expect(revokeClient(actorOf(other), theirs)).rejects.toMatchObject({ status: 404 });
 	});
-
-	it('a revoked or expired refresh token is not a live grant', async () => {
-		const me = await seedUser(db);
-		const client = await addClient('Old');
-		await refreshToken(me.id, client, {
-			createdAt: minutes(-10),
-			expiresAt: minutes(60),
-			revoked: minutes(-5)
-		});
-		await refreshToken(me.id, client, { createdAt: minutes(-100), expiresAt: minutes(-1) });
-		expect(await hasLiveGrant(me.id, client, NOW)).toBe(false);
-	});
 });
 
 describe('MCP client info', () => {
-	it('is kept per user and client, updated, and goes with a disconnect', async () => {
+	it('is kept per connection and updated', async () => {
 		const me = await seedUser(db);
-		const other = await seedUser(db);
 		const cursor = await addClient('Cursor');
-		await consent(me.id, cursor, minutes(-60));
-		expect(await storedClientInfo(me.id, cursor)).toBeNull();
-		await rememberClientInfo(me.id, cursor, 'cursor-vscode 1.0.0');
-		await rememberClientInfo(me.id, cursor, 'cursor-vscode 1.1.0');
-		await rememberClientInfo(other.id, cursor, 'cursor-vscode 0.9.0');
-		expect(await storedClientInfo(me.id, cursor)).toBe('cursor-vscode 1.1.0');
-		await revokeClient({ workspaceId: crypto.randomUUID(), userId: me.id, role: 'owner' }, cursor);
-		expect(await storedClientInfo(me.id, cursor)).toBeNull();
-		expect(await storedClientInfo(other.id, cursor)).toBe('cursor-vscode 0.9.0');
+		const first = await connect(me.id, cursor, minutes(-60));
+		const second = await connect(me.id, cursor, minutes(-30));
+		expect((await loadConnection(first))?.clientInfo).toBeNull();
+		await rememberClientInfo(first, 'cursor-vscode 1.0.0');
+		await rememberClientInfo(first, 'cursor-vscode 1.1.0');
+		await rememberClientInfo(second, 'cursor-vscode 0.9.0');
+		expect((await loadConnection(first))?.clientInfo).toBe('cursor-vscode 1.1.0');
+		expect((await loadConnection(second))?.clientInfo).toBe('cursor-vscode 0.9.0');
 	});
 });
 
-describe('client names', () => {
+describe('connection names', () => {
 	it('cleans names: one line, no control characters, capped', () => {
 		expect(cleanClientLabel('  Work\n\tlaptop \u0007 ')).toBe('Work laptop');
 		expect(cleanClientLabel('   ')).toBeNull();
@@ -255,40 +355,43 @@ describe('client names', () => {
 		expect(cleanClientLabel('x'.repeat(80))).toHaveLength(60);
 	});
 
-	it('replaces the registered name for that user only; empty or equal clears it', async () => {
+	it('starts from the consent screen; empty or equal to the registered name stores none', async () => {
+		const me = await seedUser(db);
+		const claude = await addClient('Claude Code');
+		const named = await createConnection({
+			userId: me.id,
+			clientId: claude,
+			label: '  Work laptop ',
+			workspaceId: me.personalWorkspaceId
+		});
+		expect(named.name).toBe('Work laptop');
+		expect((await loadConnection(named.connectionId))?.label).toBe('Work laptop');
+		for (const label of ['Claude Code', '', null]) {
+			const plain = await createConnection({
+				userId: me.id,
+				clientId: claude,
+				label,
+				workspaceId: me.personalWorkspaceId
+			});
+			expect(plain.name).toBe('Claude Code');
+			expect((await loadConnection(plain.connectionId))?.label).toBeNull();
+		}
+	});
+
+	it('renames an authorized connection with an audit event, 404 otherwise', async () => {
 		const me = await seedUser(db);
 		const other = await seedUser(db);
 		const claude = await addClient('Claude Code');
-		await consent(me.id, claude, minutes(-60));
-		await consent(other.id, claude, minutes(-60));
+		const mine = await connect(me.id, claude, minutes(-60));
+		const theirs = await connect(other.id, claude, minutes(-60));
 
-		expect(await storeClientLabel(me.id, claude, '  Work laptop ')).toBe('Work laptop');
-		expect(await clientLabel(me.id, claude)).toBe('Work laptop');
-		expect(await clientLabel(other.id, claude)).toBeNull();
-		const [mine] = await listAuthorizedClients(me.id, NOW);
-		expect(mine).toMatchObject({ name: 'Work laptop', registeredName: 'Claude Code' });
-		const [theirs] = await listAuthorizedClients(other.id, NOW);
-		expect(theirs).toMatchObject({ name: 'Claude Code', registeredName: 'Claude Code' });
-
-		expect(await storeClientLabel(me.id, claude, 'Claude Code')).toBe('Claude Code');
-		expect(await clientLabel(me.id, claude)).toBeNull();
-		await storeClientLabel(me.id, claude, 'Home');
-		expect(await storeClientLabel(me.id, claude, '')).toBe('Claude Code');
-		expect(await clientLabel(me.id, claude)).toBeNull();
-	});
-
-	it('renames an authorized client with an audit event, 404 otherwise', async () => {
-		const me = await seedUser(db);
-		const claude = await addClient('Claude Code');
-		const notMine = await addClient('Other');
-		await consent(me.id, claude, minutes(-60));
-
-		expect(await setClientLabel(actorOf(me), claude, 'Work laptop')).toEqual({
-			clientId: claude,
+		expect(await setClientLabel(actorOf(me), mine, 'Work laptop')).toEqual({
+			connectionId: mine,
 			name: 'Work laptop'
 		});
+		expect((await loadConnection(mine))?.label).toBe('Work laptop');
 		// Same name again: nothing to audit
-		await setClientLabel(actorOf(me), claude, 'Work laptop');
+		await setClientLabel(actorOf(me), mine, 'Work laptop');
 		const events = await db
 			.select()
 			.from(auditEvent)
@@ -297,26 +400,28 @@ describe('client names', () => {
 		expect(events[0]).toMatchObject({
 			workspaceId: me.personalWorkspaceId,
 			clientId: claude,
+			connectionId: mine,
 			clientName: 'Work laptop',
 			metadata: { previousName: 'Claude Code' }
 		});
-		await expect(setClientLabel(actorOf(me), notMine, 'x')).rejects.toMatchObject({
+		// Empty restores the registered name
+		expect((await setClientLabel(actorOf(me), mine, '')).name).toBe('Claude Code');
+		expect((await loadConnection(mine))?.label).toBeNull();
+		await expect(setClientLabel(actorOf(me), theirs, 'x')).rejects.toMatchObject({
 			status: 404
 		});
 	});
 
-	it('is used on disconnect and goes with it', async () => {
+	it('is used on disconnect', async () => {
 		const me = await seedUser(db);
 		const claude = await addClient('Claude Code');
-		await consent(me.id, claude, minutes(-60));
-		await storeClientLabel(me.id, claude, 'Work laptop');
-		const revoked = await revokeClient(actorOf(me), claude);
+		const id = await connect(me.id, claude, minutes(-60), { label: 'Work laptop' });
+		const revoked = await revokeClient(actorOf(me), id);
 		expect(revoked.name).toBe('Work laptop');
-		expect(await clientLabel(me.id, claude)).toBeNull();
 	});
 });
 
-describe('client workspaces', () => {
+describe('connection workspaces', () => {
 	async function companyOf(userId: string, name = 'Acme') {
 		const id = crypto.randomUUID();
 		await db.insert(organization).values({
@@ -330,13 +435,11 @@ describe('client workspaces', () => {
 		return id;
 	}
 
-	it('each client works in its own workspace and moves alone, audited', async () => {
+	it('each connection works in its own workspace and moves alone, audited', async () => {
 		const me = await seedUser(db);
 		const acme = await companyOf(me.id);
-		const codex = await addClient('Codex');
-		const claude = await addClient('Claude Code');
-		await consent(me.id, codex, minutes(-60));
-		await consent(me.id, claude, minutes(-30));
+		const codex = await connect(me.id, await addClient('Codex'), minutes(-60));
+		const claude = await connect(me.id, await addClient('Claude Code'), minutes(-30));
 
 		const before = await listAuthorizedClients(me.id, NOW);
 		expect(before.map((c) => c.workspace?.id)).toEqual([
@@ -347,7 +450,7 @@ describe('client workspaces', () => {
 		const moved = await moveClient(actorOf(me), claude, acme);
 		expect(moved.workspace).toMatchObject({ id: acme, name: 'Acme', kind: 'company' });
 		const after = new Map(
-			(await listAuthorizedClients(me.id, NOW)).map((c) => [c.clientId, c.workspace?.id])
+			(await listAuthorizedClients(me.id, NOW)).map((c) => [c.connectionId, c.workspace?.id])
 		);
 		expect(after.get(claude)).toBe(acme);
 		expect(after.get(codex)).toBe(me.personalWorkspaceId);
@@ -361,7 +464,7 @@ describe('client workspaces', () => {
 		expect(events).toHaveLength(1);
 		expect(events[0]).toMatchObject({
 			workspaceId: acme,
-			clientId: claude,
+			connectionId: claude,
 			clientName: 'Claude Code',
 			approvedBy: 'self',
 			metadata: { fromWorkspaceId: me.personalWorkspaceId, channel: 'settings' }
@@ -369,7 +472,9 @@ describe('client workspaces', () => {
 
 		// Moving or renaming it from the app is not the client being used
 		await setClientLabel(actorOf(me), claude, 'Work');
-		const [listed] = (await listAuthorizedClients(me.id, NOW)).filter((c) => c.clientId === claude);
+		const [listed] = (await listAuthorizedClients(me.id, NOW)).filter(
+			(c) => c.connectionId === claude
+		);
 		expect(listed.lastUsedAt).toBeNull();
 
 		const status = await onboardingStatus(actorOf(me), NOW);
@@ -378,13 +483,12 @@ describe('client workspaces', () => {
 		);
 	});
 
-	it('refuses a workspace the user is not in, or a client they did not authorize', async () => {
+	it('refuses a workspace the user is not in, or a connection that is not theirs', async () => {
 		const me = await seedUser(db);
 		const other = await seedUser(db);
 		const theirs = await companyOf(other.id, 'Theirs');
-		const codex = await addClient('Codex');
-		const notMine = await addClient('Other');
-		await consent(me.id, codex, minutes(-60));
+		const codex = await connect(me.id, await addClient('Codex'), minutes(-60));
+		const notMine = await connect(other.id, await addClient('Other'), minutes(-60));
 		await expect(moveClient(actorOf(me), codex, theirs)).rejects.toMatchObject({ status: 404 });
 		await expect(moveClient(actorOf(me), notMine, me.personalWorkspaceId)).rejects.toMatchObject({
 			status: 404
@@ -426,7 +530,7 @@ describe('onboarding status', () => {
 		]);
 		expect(await needsGuide(actorOf(me), NOW)).toBe(false);
 
-		await consent(me.id, await addClient('Codex'), minutes(-5));
+		await connect(me.id, await addClient('Codex'), minutes(-5));
 		await db.insert(auditEvent).values({
 			type: 'execution.started',
 			outcome: 'pending',

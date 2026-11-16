@@ -5,10 +5,24 @@ import {
 	minRequestsPerUser,
 	originPolicy,
 	type AccessTokenClaims,
+	type EndpointConnection,
 	type McpEndpointDeps
 } from './endpoint.ts';
 
-const claims: AccessTokenClaims = { sub: 'u1', azp: 'client-1', scope: 'openid offline_access' };
+const claims: AccessTokenClaims = {
+	sub: 'u1',
+	azp: 'client-1',
+	scope: 'openid offline_access',
+	connection_id: 'conn-1'
+};
+
+const connection = (patch: Partial<EndpointConnection> = {}): EndpointConnection => ({
+	userId: 'u1',
+	clientId: 'client-1',
+	label: null,
+	clientInfo: null,
+	...patch
+});
 
 function setup(overrides: Partial<McpEndpointDeps> = {}) {
 	const deps = {
@@ -17,11 +31,8 @@ function setup(overrides: Partial<McpEndpointDeps> = {}) {
 		loadClient: vi.fn(async () => ({ name: 'Claude', disabled: false })),
 		loadUser: vi.fn(async () => ({ suspended: false })),
 		hasLiveGrant: vi.fn(async () => true),
-		clientLabel: vi.fn(async (): Promise<string | null> => null),
-		clientInfo: {
-			remember: vi.fn(async () => {}),
-			load: vi.fn(async (): Promise<string | null> => null)
-		},
+		loadConnection: vi.fn(async (): Promise<EndpointConnection | null> => connection()),
+		rememberClientInfo: vi.fn(async () => {}),
 		resourceMetadataUrl: 'https://toolkien.test/.well-known/oauth-protected-resource/mcp',
 		limits: {
 			checkRateLimit: vi.fn(() => ({ allowed: true as const })),
@@ -102,8 +113,36 @@ describe('/mcp endpoint', () => {
 		expect(response.headers.get('www-authenticate')).toMatch(
 			/^Bearer error="invalid_token".*resource_metadata="https:\/\/toolkien\.test\/\.well-known\/oauth-protected-resource\/mcp"$/
 		);
-		expect(deps.hasLiveGrant).toHaveBeenCalledWith('u1', 'client-1');
+		expect(deps.hasLiveGrant).toHaveBeenCalledWith('u1', 'conn-1');
 		expect(deps.handle).not.toHaveBeenCalled();
+	});
+
+	it('asks a token without a connection (issued before connections) to sign in again', async () => {
+		const { post, deps } = setup({
+			verify: vi.fn(async (request, next) =>
+				next(request, { sub: 'u1', azp: 'client-1', scope: 'openid' })
+			)
+		});
+		const response = await post();
+		expect(response.status).toBe(401);
+		expect(response.headers.get('www-authenticate')).toMatch(/^Bearer error="invalid_token"/);
+		expect(deps.loadConnection).not.toHaveBeenCalled();
+		expect(deps.handle).not.toHaveBeenCalled();
+	});
+
+	it("refuses a connection that is gone, another user's or another client's", async () => {
+		for (const found of [
+			null,
+			connection({ userId: 'u2' }),
+			connection({ clientId: 'client-2' })
+		]) {
+			const { post, deps } = setup({ loadConnection: vi.fn(async () => found) });
+			const response = await post();
+			expect(response.status).toBe(401);
+			expect(response.headers.get('www-authenticate')).toMatch(/^Bearer error="invalid_token"/);
+			expect(deps.loadConnection).toHaveBeenCalledWith('conn-1');
+			expect(deps.handle).not.toHaveBeenCalled();
+		}
 	});
 
 	it('applies kill switches: disabled client, suspended user', async () => {
@@ -131,6 +170,7 @@ describe('/mcp endpoint', () => {
 		expect(deps.handle).toHaveBeenCalledWith(expect.any(Request), {
 			userId: 'u1',
 			clientId: 'client-1',
+			connectionId: 'conn-1',
 			clientName: 'Claude',
 			clientInfo: null,
 			clientAddress: '203.0.113.7',
@@ -138,26 +178,14 @@ describe('/mcp endpoint', () => {
 		});
 	});
 
-	it("names the client with the user's name for it, when they gave one", async () => {
-		const { post, deps } = setup({ clientLabel: vi.fn(async () => 'Work laptop') });
+	it("names the connection with the user's name for it, when they gave one", async () => {
+		const { post, deps } = setup({
+			loadConnection: vi.fn(async () => connection({ label: 'Work laptop' }))
+		});
 		await post();
-		expect(deps.clientLabel).toHaveBeenCalledWith('u1', 'client-1');
 		expect(deps.handle).toHaveBeenCalledWith(
 			expect.any(Request),
 			expect.objectContaining({ clientName: 'Work laptop' })
-		);
-	});
-
-	it('falls back to the registered name when the name lookup fails', async () => {
-		const { post, deps } = setup({
-			clientLabel: vi.fn(async () => {
-				throw new Error('db down');
-			})
-		});
-		expect((await post()).status).toBe(200);
-		expect(deps.handle).toHaveBeenCalledWith(
-			expect.any(Request),
-			expect.objectContaining({ clientName: 'Claude' })
 		);
 	});
 
@@ -182,8 +210,7 @@ describe('/mcp endpoint', () => {
 			expect.any(Request),
 			expect.objectContaining({ clientInfo: 'claude-code 2.1.3' })
 		);
-		expect(deps.clientInfo.remember).not.toHaveBeenCalled();
-		expect(deps.clientInfo.load).not.toHaveBeenCalled();
+		expect(deps.rememberClientInfo).not.toHaveBeenCalled();
 	});
 
 	it('remembers the client info of a 2025-era initialize for later stateless requests', async () => {
@@ -201,11 +228,12 @@ describe('/mcp endpoint', () => {
 				}
 			}
 		);
-		expect(deps.clientInfo.remember).toHaveBeenCalledWith('u1', 'client-1', 'cursor-vscode 1.0.0');
+		expect(deps.rememberClientInfo).toHaveBeenCalledWith('conn-1', 'cursor-vscode 1.0.0');
 
-		vi.mocked(deps.clientInfo.load).mockResolvedValueOnce('cursor-vscode 1.0.0');
+		vi.mocked(deps.loadConnection).mockResolvedValueOnce(
+			connection({ clientInfo: 'cursor-vscode 1.0.0' })
+		);
 		await post({}, { jsonrpc: '2.0', id: 1, method: 'tools/list' });
-		expect(deps.clientInfo.load).toHaveBeenCalledWith('u1', 'client-1');
 		expect(deps.handle).toHaveBeenLastCalledWith(
 			expect.any(Request),
 			expect.objectContaining({ clientInfo: 'cursor-vscode 1.0.0' })
@@ -214,12 +242,9 @@ describe('/mcp endpoint', () => {
 
 	it('never fails a request over client info, and leaves the body for the handler', async () => {
 		const { post, deps } = setup({
-			clientInfo: {
-				remember: vi.fn(async () => {
-					throw new Error('db down');
-				}),
-				load: vi.fn(async () => null)
-			}
+			rememberClientInfo: vi.fn(async () => {
+				throw new Error('db down');
+			})
 		});
 		vi.mocked(deps.handle).mockImplementationOnce(
 			async (request: Request) => new Response(await request.text())

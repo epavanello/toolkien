@@ -69,7 +69,7 @@ export function fakeDeps(options: { active?: WorkspaceSummary } = {}) {
 				async (_userId: string, id: string) => [personal, acme].find((w) => w.id === id) ?? null
 			),
 			getActiveWorkspace: vi.fn(async () => active),
-			setActiveWorkspace: vi.fn(async (_userId: string, _clientId: string, id: string) => {
+			setActiveWorkspace: vi.fn(async (_userId: string, _connectionId: string, id: string) => {
 				active = [personal, acme].find((w) => w.id === id)!;
 			})
 		},
@@ -114,6 +114,7 @@ export function fakeEnv(overrides: Partial<ToolEnv> = {}): ToolEnv {
 		request: {
 			userId: 'u1',
 			clientId: 'client-1',
+			connectionId: 'connection-1',
 			clientName: 'Test Client',
 			clientInfo: 'test-client 1.0.0',
 			scopes: []

@@ -7,7 +7,7 @@ import {
 	scopeLabels,
 	verifiedQuery
 } from '#lib/server/mcp/index.ts';
-import { getActiveWorkspace, getById, listForUser } from '#lib/server/workspaces/index.ts';
+import { getById, listForUser } from '#lib/server/workspaces/index.ts';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -44,11 +44,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const oauthQuery = url.search.slice(1);
 	const query = await verifiedQuery(oauthQuery);
-	const client = await describeClient(query.get('client_id') ?? '', userId);
+	const client = await describeClient(query.get('client_id') ?? '');
 	const workspaces = await listForUser(userId);
-	const current = await getActiveWorkspace(userId, client.clientId);
-	// The current choice first: a native select starts on its first option
-	const ordered = [current, ...workspaces.filter((workspace) => workspace.id !== current.id)];
+	// Every approval is a new connection: it starts from the personal workspace (a native select
+	// starts on its first option), never from another connection's choice
+	const ordered = [
+		...workspaces.filter((workspace) => workspace.kind === 'personal'),
+		...workspaces.filter((workspace) => workspace.kind !== 'personal')
+	];
 	return {
 		mode: 'oauth' as const,
 		oauthQuery,

@@ -55,8 +55,14 @@ export type AccountExport = {
 		createdAt: string;
 	}[];
 	permissions: { workspaceId: string; toolId: string; level: string; updatedAt: string }[];
-	mcpClients: { clientId: string; name: string | null; consentedAt: string }[];
-	activeWorkspaces: { clientId: string; workspaceId: string }[];
+	/** (changed) One per MCP connection (each approval), not per OAuth client */
+	mcpClients: {
+		connectionId: string;
+		clientId: string;
+		name: string | null;
+		consentedAt: string;
+	}[];
+	activeWorkspaces: { connectionId: string; clientId: string; workspaceId: string }[];
 	auditEvents: Record<string, unknown>[];
 };
 

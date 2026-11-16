@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, inArray, lt, lte, or, type SQL } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
-import { auditEvent, mcpClientLabel, oauthClient, user } from '#lib/server/db/schema/index.ts';
+import { auditEvent, mcpConnection, oauthClient, user } from '#lib/server/db/schema/index.ts';
 import { auditCsv } from './csv.ts';
 import { groupByExecution } from './timeline.ts';
 import type {
@@ -63,21 +63,19 @@ function conditions(q: AuditQuery): SQL[] {
 }
 
 /**
- * The acting user's name and the client's current name: the label its user gave it, else the
- * name stored with the event, else its registered name. A rename then relabels the whole trail,
- * so the same client reads the same everywhere; a rename event keeps the name it set.
+ * The acting user's name and the connection's current name: the label its user gave it, else
+ * the name stored with the event, else its registered name. A rename then relabels the whole
+ * trail of that connection, so it reads the same everywhere; a rename event keeps the name it
+ * set. Another connection of the same client keeps its own name.
  */
 const viewColumns = {
 	event: auditEvent,
 	userName: user.name,
-	clientLabel: mcpClientLabel.label,
+	clientLabel: mcpConnection.label,
 	registeredClientName: oauthClient.name
 };
 
-const clientLabelJoin = and(
-	eq(mcpClientLabel.userId, auditEvent.userId),
-	eq(mcpClientLabel.clientId, auditEvent.clientId)
-);
+const clientLabelJoin = eq(mcpConnection.id, auditEvent.connectionId);
 
 const toView = ({
 	event,
@@ -109,7 +107,7 @@ export async function queryViews(
 		.from(auditEvent)
 		.leftJoin(user, eq(user.id, auditEvent.userId))
 		.leftJoin(oauthClient, eq(oauthClient.clientId, auditEvent.clientId))
-		.leftJoin(mcpClientLabel, clientLabelJoin)
+		.leftJoin(mcpConnection, clientLabelJoin)
 		.where(and(...conditions(q)))
 		.orderBy(desc(auditEvent.occurredAt), desc(auditEvent.id))
 		.limit(limit + 1);
@@ -147,7 +145,7 @@ export async function timeline(
 				.from(auditEvent)
 				.leftJoin(user, eq(user.id, auditEvent.userId))
 				.leftJoin(oauthClient, eq(oauthClient.clientId, auditEvent.clientId))
-				.leftJoin(mcpClientLabel, clientLabelJoin)
+				.leftJoin(mcpConnection, clientLabelJoin)
 				.where(and(...scope))
 				.limit(MAX_PAGE * 4)
 		).map(toView);

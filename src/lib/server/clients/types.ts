@@ -2,43 +2,53 @@ import type { WorkspaceKind } from '#lib/server/db/schema/index.ts';
 
 /**
  * MCP clients of a user and onboarding progress (owner: onboarding; reads the OAuth, connector
- * and audit tables, writes only to revoke a client).
+ * and audit tables, writes only to name, move or revoke a connection).
  *
- * - A client counts as authorized when the user consented to it, or holds a live (unrevoked,
- *   unexpired) access or refresh token for it. Revoked/expired-only clients are not listed.
- * - `lastUsedAt` is the latest sign of activity: a token issued (refreshes rotate while the
- *   client works) or an audited call made through it (not what the user did to it from the
- *   app: moves, renames, disconnects). Never token values.
- * - (additive) Disconnecting a client deletes, for that user and client only, the consent and
- *   every access and refresh token, in one transaction, and records `mcp_client.revoked`. Access
- *   tokens are JWTs verified offline, so `/mcp` also requires a live grant (`hasLiveGrant`):
- *   a token issued before the disconnect stops working at once, not when it expires.
- * - (additive) The MCP `clientInfo` a client sent in `initialize` (`name version`) is kept per
- *   user and client (`rememberClientInfo`) to label its later stateless requests in the
- *   activity; it goes with the client on disconnect. Self-asserted, display only.
- * - (additive) The user can name each client (`setClientLabel`): asked on the consent screen,
- *   editable from Connected clients. The name is per user and client, replaces the registered
- *   name everywhere the client is shown (list, activity, approvals, switch requests) from then
- *   on, and goes with the client on disconnect. Events already recorded keep the name they had.
- *   A name equal to the registered one, or empty, clears it. Renames are audited.
- * - (additive) Each client works in its own workspace (per user and client, chosen on the
- *   consent screen, switched by `workspace_switch` after confirmation). The list shows it, and
- *   the user can move a client from here (`moveClient`): the user acting in the app is the
- *   confirmation; audited as `workspace.switched` (channel `settings`) in the target workspace.
+ * - (changed) The unit is the MCP connection (`mcp_connection`): one per "Allow access" on the
+ *   consent screen, not one per OAuth client. Its id is the consent `reference_id`, carried by
+ *   the code and every refresh token of the grant and stamped on access tokens
+ *   (`connection_id` claim), so `/mcp` knows which connection each request comes from. Two
+ *   sign-ins of the same client (two Claude accounts share Claude's CIMD `client_id`) with the
+ *   same Toolkien user are two connections, each with its own name, workspace and disconnect.
+ * - A connection counts as authorized while its consent stands and its grant does: a live
+ *   (unrevoked, unexpired) refresh token, or none issued yet. When every refresh token is gone
+ *   the client signs in again, which makes a new connection.
+ * - `lastUsedAt` is the latest sign of activity: a refresh token issued (they rotate while the
+ *   client works) or an audited call made through the connection (not what the user did to it
+ *   from the app: moves, renames, disconnects). Never token values.
+ * - (additive) Disconnecting deletes, for that connection only, its consent, its access and
+ *   refresh tokens and the connection, in one transaction, and records `mcp_client.revoked`.
+ *   Access tokens are JWTs verified offline, so `/mcp` also requires a live grant
+ *   (`hasLiveGrant`): a token issued before the disconnect stops working at once.
+ * - (additive) The MCP `clientInfo` a client sent in `initialize` (`name version`) is kept on
+ *   the connection (`rememberClientInfo`) to label its later stateless requests in the
+ *   activity. Self-asserted, display only.
+ * - (additive) The user names each connection (`setClientLabel`): asked on the consent screen
+ *   (starting from the registered name, never from another connection's), editable from
+ *   Connected clients. It replaces the registered name everywhere the connection is shown
+ *   (list, activity, approvals, switch requests). Events recorded through the connection show
+ *   its current name; a name equal to the registered one, or empty, clears it. Renames are
+ *   audited.
+ * - (additive) Each connection works in its own workspace (chosen on the consent screen,
+ *   switched by `workspace_switch` after confirmation). The list shows it, and the user can move
+ *   a connection from here (`moveClient`): the user acting in the app is the confirmation;
+ *   audited as `workspace.switched` (channel `settings`) in the target workspace.
  * - Onboarding steps tick from real data only: a connector visible to the user in the
  *   workspace, an authorized client, a tool call made through a client: (changed) any audited
  *   MCP tool call counts (`tools_search`, `tools_describe`, `execute`), so the step ticks as soon
  *   as an agent reaches Toolkien, not only after a script ran.
  */
 export type AuthorizedClient = {
+	/** (additive) The connection (`mcp_connection.id`): what Rename, Move and Disconnect act on */
+	connectionId: string;
 	clientId: string;
 	/** The user's name for it, else the registered name (self-asserted for DCR clients) */
 	name: string;
 	/** (additive) The OAuth registration name, `null` when it has none */
 	registeredName: string | null;
 	/**
-	 * (additive) The workspace the client works in for this user (`mcp_active_workspace`, else
-	 * the personal one): each client has its own, switched without touching the others
+	 * (additive) The workspace the connection works in (`mcp_connection.workspace_id`, else the
+	 * personal one): each connection has its own, switched without touching the others
 	 */
 	workspace: ClientWorkspace | null;
 	connectedAt: Date;
@@ -87,6 +97,7 @@ export const needsConnectGuide = (status: Pick<OnboardingStatus, 'connectors' | 
 
 /** (additive) What a disconnect removed (counts only) */
 export type RevokedClient = {
+	connectionId: string;
 	clientId: string;
 	name: string;
 	accessTokens: number;

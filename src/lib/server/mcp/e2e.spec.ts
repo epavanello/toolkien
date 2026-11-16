@@ -67,6 +67,8 @@ vi.mock('./services.ts', async () => {
 
 const { auth, MCP_RESOURCE } = await import('#lib/server/auth.ts');
 const { mcpEndpoint } = await import('./index.ts');
+const { allowClient } = await import('./consent.ts');
+const workspacesModule = await import('#lib/server/workspaces/index.ts');
 const { serveWellKnown } = await import('./well-known.ts');
 const { db } = await import('#lib/server/db/index.ts');
 const schema = await import('#lib/server/db/schema/index.ts');
@@ -109,24 +111,34 @@ async function signUp() {
 	userId = ((await response.json()) as { user: { id: string } }).user.id;
 }
 
-/** Authorize → consent (if asked) → code; returns the redirect URL with `code` / `error` */
-async function authorize(params: Record<string, string>): Promise<URL> {
+type Approval = { label?: string; workspaceId?: string };
+
+/**
+ * Authorize → consent → code, through the consent page's own "Allow" (`allowClient`), which
+ * creates the connection; returns the redirect URL with `code` / `error`
+ */
+async function authorize(params: Record<string, string>, approval: Approval = {}): Promise<URL> {
 	const response = await callAuth(`/api/auth/oauth2/authorize?${new URLSearchParams(params)}`, {
 		headers: { cookie, accept: 'text/html' },
 		redirect: 'manual'
 	});
 	expect(response.status).toBe(302);
-	let location = new URL(response.headers.get('location')!, ORIGIN);
-	if (location.pathname === '/consent') {
-		const consent = await callAuth('/api/auth/oauth2/consent', {
+	const location = new URL(response.headers.get('location')!, ORIGIN);
+	if (location.pathname !== '/consent') return location;
+	const personal = (await workspacesModule.listForUser(userId)).find(
+		(workspace) => workspace.kind === 'personal'
+	)!;
+	const { url } = await allowClient({
+		request: new Request(`${ORIGIN}/consent`, {
 			method: 'POST',
-			headers: { cookie, 'Content-Type': 'application/json', Origin: ORIGIN },
-			body: JSON.stringify({ accept: true, oauth_query: location.search.slice(1) })
-		});
-		expect(consent.status).toBe(200);
-		location = new URL(((await consent.json()) as { url: string }).url);
-	}
-	return location;
+			headers: { cookie, Origin: ORIGIN }
+		}),
+		userId,
+		oauthQuery: location.search.slice(1),
+		workspaceId: approval.workspaceId ?? personal.id,
+		label: approval.label ?? null
+	});
+	return new URL(url);
 }
 
 async function token(body: Record<string, string>) {
@@ -139,19 +151,27 @@ async function token(body: Record<string, string>) {
 }
 
 /** Full authorization-code flow for a client; returns the token response */
-async function login(clientId: string, redirectUri: string, extra: Record<string, string> = {}) {
+async function login(
+	clientId: string,
+	redirectUri: string,
+	extra: Record<string, string> = {},
+	approval: Approval = {}
+) {
 	const { verifier, challenge } = pkce();
-	const redirect = await authorize({
-		response_type: 'code',
-		client_id: clientId,
-		redirect_uri: redirectUri,
-		scope: 'openid offline_access',
-		state: 'xyz',
-		code_challenge: challenge,
-		code_challenge_method: 'S256',
-		resource: MCP_RESOURCE,
-		...extra
-	});
+	const redirect = await authorize(
+		{
+			response_type: 'code',
+			client_id: clientId,
+			redirect_uri: redirectUri,
+			scope: 'openid offline_access',
+			state: 'xyz',
+			code_challenge: challenge,
+			code_challenge_method: 'S256',
+			resource: MCP_RESOURCE,
+			...extra
+		},
+		approval
+	);
 	expect(redirect.searchParams.get('state')).toBe('xyz');
 	expect(redirect.searchParams.get('iss')).toBe(ISSUER);
 	const code = redirect.searchParams.get('code')!;
@@ -361,6 +381,72 @@ describe('OAuth', () => {
 			.where((await import('drizzle-orm')).eq(schema.oauthClient.clientId, CIMD_CLIENT_ID));
 		expect(client.name).toBe('CIMD Test Client');
 	});
+
+	it('makes every approval its own connection, kept through refresh rotation', async () => {
+		const { eq } = await import('drizzle-orm');
+		const { seedMember } = await import('#lib/server/workspaces/test-db.ts');
+		const acme = crypto.randomUUID();
+		await db.insert(schema.organization).values({
+			id: acme,
+			name: 'Acme',
+			slug: `acme-${acme.slice(0, 8)}`,
+			kind: 'company',
+			createdAt: new Date()
+		});
+		await seedMember(db, acme, userId, 'owner');
+
+		// Same Toolkien user, same client (one CIMD client_id for every Claude account)
+		const first = await login(CIMD_CLIENT_ID, CIMD_REDIRECT, {}, { label: 'Claude — Emanuele' });
+		const second = await login(
+			CIMD_CLIENT_ID,
+			CIMD_REDIRECT,
+			{},
+			{ label: 'Claude — Agent', workspaceId: acme }
+		);
+		const firstId = String(decodeJwt(first.body.access_token).connection_id);
+		const secondId = String(decodeJwt(second.body.access_token).connection_id);
+		expect(firstId).not.toBe(secondId);
+		const rows = await db
+			.select()
+			.from(schema.mcpConnection)
+			.where(eq(schema.mcpConnection.clientId, CIMD_CLIENT_ID));
+		const byId = new Map(rows.map((row) => [row.id, row]));
+		expect(byId.get(firstId)).toMatchObject({ label: 'Claude — Emanuele', userId });
+		expect(byId.get(secondId)).toMatchObject({ label: 'Claude — Agent', workspaceId: acme });
+
+		const activeWorkspace = async (token: string) => {
+			const response = await mcpFetch(MCP_RESOURCE, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/json',
+					Accept: 'application/json, text/event-stream',
+					'MCP-Protocol-Version': '2025-11-25'
+				},
+				body: JSON.stringify({
+					jsonrpc: '2.0',
+					id: 1,
+					method: 'tools/call',
+					params: { name: 'workspace_list', arguments: {} }
+				})
+			});
+			expect(response.status).toBe(200);
+			return (await response.text()).match(/Active workspace: ([^\\(\n"]+)/)?.[1]?.trim();
+		};
+		expect(await activeWorkspace(first.body.access_token)).toBe('Personal');
+		expect(await activeWorkspace(second.body.access_token)).toBe('Acme');
+
+		// A refreshed token still names its connection
+		const rotated = await token({
+			grant_type: 'refresh_token',
+			refresh_token: second.body.refresh_token,
+			client_id: CIMD_CLIENT_ID,
+			resource: MCP_RESOURCE
+		});
+		expect(rotated.status).toBe(200);
+		expect(decodeJwt(rotated.body.access_token).connection_id).toBe(secondId);
+		expect(await activeWorkspace(rotated.body.access_token)).toBe('Acme');
+	});
 });
 
 describe('MCP', () => {
@@ -444,19 +530,26 @@ describe('MCP', () => {
 		const list = await client.callTool({ name: 'workspace_list', arguments: {} });
 		expect(JSON.stringify(list.content)).toContain('Active workspace: Acme (acme)');
 		const { and, eq } = await import('drizzle-orm');
-		const [switched] = await db
+		const switches = await db
 			.select()
 			.from(schema.auditEvent)
 			.where(
 				and(
 					eq(schema.auditEvent.type, 'workspace.switched'),
-					eq(schema.auditEvent.outcome, 'success')
+					eq(schema.auditEvent.outcome, 'success'),
+					eq(schema.auditEvent.connectionId, String(decodeJwt(accessToken).connection_id))
 				)
 			);
+		// The workspace chosen on the consent screen, then the switch confirmed in the dialog
+		const switched = switches.find((event) => event.metadata?.channel === 'elicitation_form');
 		expect(switched).toMatchObject({
 			clientName: 'DCR Test Client',
 			clientInfo: 'modern-test 1.0.0'
 		});
+		expect(switches.map((event) => event.metadata?.channel).sort()).toEqual([
+			'consent',
+			'elicitation_form'
+		]);
 		await client.close();
 	});
 	it('serves a Resend-like connector: verbatim descriptions, text results, bookkeeping params', async () => {
@@ -597,8 +690,8 @@ describe('MCP', () => {
 				body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
 			});
 		expect((await call()).status).not.toBe(401);
-		const client = String(decodeJwt(accessToken).azp);
-		await revokeClient({ workspaceId: 'any', userId, role: 'owner' }, client);
+		const connection = String(decodeJwt(accessToken).connection_id);
+		await revokeClient({ workspaceId: 'any', userId, role: 'owner' }, connection);
 		const response = await call();
 		expect(response.status).toBe(401);
 		expect(response.headers.get('www-authenticate')).toContain('error="invalid_token"');

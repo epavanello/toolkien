@@ -31,7 +31,13 @@ export type McpRequestContext = {
 	userId: string;
 	/** OAuth `client_id` (CIMD URL or registered id) */
 	clientId: string;
-	/** OAuth registration `client_name` (self-asserted; display only) */
+	/**
+	 * (additive) The MCP connection (`mcp_connection.id`, the token's `connection_id` claim):
+	 * one per approval, so it tells apart two sign-ins of the same client. Its workspace, name and
+	 * pending switches are its own.
+	 */
+	connectionId: string;
+	/** The user's name for the connection, else the OAuth `client_name` (display only) */
 	clientName: string | null;
 	/** MCP `clientInfo` as `name version` (self-asserted; display only), when known */
 	clientInfo?: string | null;
@@ -57,6 +63,7 @@ export type PendingWorkspaceSwitch = {
 	id: string;
 	userId: string;
 	clientId: string;
+	connectionId: string;
 	clientName: string | null;
 	clientInfo?: string | null;
 	fromWorkspaceId: string;

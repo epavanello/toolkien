@@ -109,6 +109,8 @@ export interface ExecutionsService {
 	start(input: {
 		actor: WorkspaceActor;
 		clientId: string | null;
+		/** (additive) The MCP connection that started it (`mcp_connection.id`) */
+		connectionId?: string | null;
 		/** Display name of the MCP client, recorded in the audit (activity view) */
 		clientName?: string | null;
 		/** MCP `clientInfo` (`name version`), recorded with the name; display only */
@@ -126,12 +128,12 @@ export interface ExecutionsService {
 	cancel(input: { userId: string; executionId: string }): Promise<void>;
 	/**
 	 * Pending, unexpired approvals of this user's paused executions, oldest first. `scope` narrows
-	 * them to one workspace and/or the MCP client that started the execution (the MCP
+	 * them to one workspace and/or the MCP connection that started the execution (the MCP
 	 * `execution_status` listing). Read-only: nothing here decides an approval.
 	 */
 	listPendingApprovals(
 		userId: string,
-		scope?: { workspaceId?: string; clientId?: string }
+		scope?: { workspaceId?: string; connectionId?: string }
 	): Promise<PendingApproval[]>;
 	/** Called by the approval page or the MCP layer when the human answered an elicitation */
 	decideApproval(input: {

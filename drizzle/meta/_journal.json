@@ -57,6 +57,13 @@
       "when": 1794851752892,
       "tag": "0007_connector_pending_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794865511193,
+      "tag": "0008_mcp_connection",
+      "breakpoints": true
     }
   ]
 }

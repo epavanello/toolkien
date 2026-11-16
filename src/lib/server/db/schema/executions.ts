@@ -46,6 +46,8 @@ export const execution = sqliteTable(
 			.references(() => user.id, { onDelete: 'cascade' }),
 		/** OAuth client id of the MCP client that started it */
 		clientId: text('client_id'),
+		/** The MCP connection (`mcp_connection.id`) that started it, copied onto its audit events */
+		connectionId: text('connection_id'),
 		/**
 		 * Display name (OAuth registration) and MCP `clientInfo` (`name version`) of that client,
 		 * copied onto every audit event of the execution and shown with pending approvals.

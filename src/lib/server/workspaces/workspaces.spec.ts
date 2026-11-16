@@ -16,7 +16,12 @@ vi.mock('#lib/server/connectors/index.ts', () => connectors);
 vi.mock('#lib/server/limits/index.ts', () => limits);
 
 import { db } from '#lib/server/db/index.ts';
-import { auditEvent, organization, workspaceInviteLink } from '#lib/server/db/schema/index.ts';
+import {
+	auditEvent,
+	mcpConnection,
+	organization,
+	workspaceInviteLink
+} from '#lib/server/db/schema/index.ts';
 import { eq } from 'drizzle-orm';
 import {
 	acceptInvite,
@@ -258,19 +263,28 @@ describe('admin policy', () => {
 	});
 });
 
-describe('active workspace per MCP client', () => {
+describe('active workspace per MCP connection', () => {
 	it('falls back to the personal workspace and to it again when access is lost', async () => {
 		const { workspaceId, actor } = await companyWithOwner();
 		const user = await seedUser(db);
 		await seedMember(db, workspaceId, user.id, 'member');
-		expect((await getActiveWorkspace(user.id, 'claude')).kind).toBe('personal');
-		await setActiveWorkspace(user.id, 'claude', workspaceId);
-		expect((await getActiveWorkspace(user.id, 'claude')).id).toBe(workspaceId);
-		expect((await getActiveWorkspace(user.id, 'codex')).kind).toBe('personal');
+		// Two sign-ins of the same client: two connections
+		const [first, second] = [crypto.randomUUID(), crypto.randomUUID()];
+		await db.insert(mcpConnection).values([
+			{ id: first, userId: user.id, clientId: 'claude' },
+			{ id: second, userId: user.id, clientId: 'claude' }
+		]);
+		expect((await getActiveWorkspace(user.id, first)).kind).toBe('personal');
+		await setActiveWorkspace(user.id, first, workspaceId);
+		expect((await getActiveWorkspace(user.id, first)).id).toBe(workspaceId);
+		expect((await getActiveWorkspace(user.id, second)).kind).toBe('personal');
 		await removeMember(actor, user.id);
-		expect((await getActiveWorkspace(user.id, 'claude')).kind).toBe('personal');
+		expect((await getActiveWorkspace(user.id, first)).kind).toBe('personal');
 		const stranger = await seedUser(db);
-		expect(await codeOf(setActiveWorkspace(stranger.id, 'claude', workspaceId))).toBe('NOT_FOUND');
+		await seedMember(db, workspaceId, stranger.id, 'member');
+		// Someone else's connection is neither read nor moved
+		expect((await getActiveWorkspace(stranger.id, first)).kind).toBe('personal');
+		expect(await codeOf(setActiveWorkspace(stranger.id, first, workspaceId))).toBe('NOT_FOUND');
 	});
 });
 

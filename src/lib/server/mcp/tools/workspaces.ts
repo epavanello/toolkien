@@ -63,12 +63,12 @@ async function switchWorkspace(
 	env: ToolEnv,
 	{ workspace }: z.infer<typeof switchInput>
 ) {
-	const { userId, clientId, clientName } = env.request;
+	const { userId, clientId, connectionId, clientName } = env.request;
 	const clientInfo = env.request.clientInfo ?? null;
-	const subject = { userId, clientId, clientName, clientInfo };
+	const subject = { userId, clientId, connectionId, clientName, clientInfo };
 	const [workspaces, active] = await Promise.all([
 		deps.workspaces.listForUser(userId),
-		deps.workspaces.getActiveWorkspace(userId, clientId)
+		deps.workspaces.getActiveWorkspace(userId, connectionId)
 	]);
 	const target = workspaces.find((item) => item.slug === workspace || item.id === workspace);
 	if (!target) {
@@ -120,7 +120,7 @@ async function switchWorkspace(
 
 	// Asked again while a request waits (the dialog timed out or was dismissed): no new dialog,
 	// the link to the same request
-	const waiting = findPendingSwitch(userId, clientId, target.id);
+	const waiting = findPendingSwitch(userId, connectionId, target.id);
 	if (waiting) return pending(waiting.id);
 
 	const modern = env.era === 'modern';
@@ -162,10 +162,10 @@ export function registerWorkspaceTools(
 		input: z.object({}),
 		annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
 		handler: async (env) => {
-			const { userId, clientId } = env.request;
+			const { userId, connectionId } = env.request;
 			const [workspaces, active] = await Promise.all([
 				deps.workspaces.listForUser(userId),
-				deps.workspaces.getActiveWorkspace(userId, clientId)
+				deps.workspaces.getActiveWorkspace(userId, connectionId)
 			]);
 			return text(
 				listText(workspaces, active.id, {

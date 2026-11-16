@@ -19,6 +19,8 @@ export type AuditEventInput = {
 	workspaceId?: string | null;
 	userId?: string | null;
 	clientId?: string | null;
+	/** (additive) The MCP connection (`mcp_connection.id`) the event came through, if any */
+	connectionId?: string | null;
 	/** OAuth registration name of the MCP client (self-asserted; display only) */
 	clientName?: string | null;
 	/** MCP `clientInfo` of the request, `name version` (self-asserted; display only) */

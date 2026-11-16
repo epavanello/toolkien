@@ -11,12 +11,12 @@ import {
 } from '../register.ts';
 import { label } from './workspaces.ts';
 
-/** The active workspace of this client and the actor every service call takes */
+/** The active workspace of this connection and the actor every service call takes */
 export async function activeActor(
 	deps: McpDeps,
-	request: { userId: string; clientId: string }
+	request: { userId: string; connectionId: string }
 ): Promise<{ workspace: WorkspaceSummary; actor: WorkspaceActor }> {
-	const workspace = await deps.workspaces.getActiveWorkspace(request.userId, request.clientId);
+	const workspace = await deps.workspaces.getActiveWorkspace(request.userId, request.connectionId);
 	return {
 		workspace,
 		actor: { workspaceId: workspace.id, userId: request.userId, role: workspace.role }
@@ -103,6 +103,7 @@ async function recordDiscovery(
 		workspaceId: actor.workspaceId,
 		userId: actor.userId,
 		clientId: env.request.clientId,
+		connectionId: env.request.connectionId,
 		clientName: env.request.clientName,
 		clientInfo: env.request.clientInfo ?? null,
 		metadata

@@ -267,6 +267,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: row.workspaceId,
 			userId: row.userId,
 			clientId: row.clientId,
+			connectionId: row.connectionId,
 			clientName: row.clientName,
 			clientInfo: row.clientInfo,
 			executionId: row.id,
@@ -416,6 +417,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 				workspaceId: row.workspaceId,
 				userId: row.userId,
 				clientId: row.clientId,
+				connectionId: row.connectionId,
 				clientName: row.clientName,
 				clientInfo: row.clientInfo,
 				executionId: row.id,
@@ -483,7 +485,12 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 				},
 				(call) =>
 					deps.handleToolCall(
-						{ executionId: row.id, actor, clientId: row.clientId },
+						{
+							executionId: row.id,
+							actor,
+							clientId: row.clientId,
+							connectionId: row.connectionId
+						},
 						call.seq,
 						call.path,
 						call.args
@@ -510,6 +517,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 	const start: ExecutionsService['start'] = async ({
 		actor,
 		clientId,
+		connectionId,
 		clientName,
 		clientInfo,
 		ip,
@@ -549,6 +557,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 				workspaceId: actor.workspaceId,
 				userId: actor.userId,
 				clientId,
+				connectionId: connectionId ?? null,
 				clientName: clientName?.trim() || null,
 				clientInfo: clientInfo?.trim() || null,
 				status: 'running',
@@ -565,6 +574,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: row.workspaceId,
 			userId: row.userId,
 			clientId,
+			connectionId: row.connectionId,
 			clientName: row.clientName,
 			clientInfo: row.clientInfo,
 			executionId: row.id
@@ -693,7 +703,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 					eq(execution.status, 'paused'),
 					or(isNull(execution.expiresAt), gt(execution.expiresAt, now)),
 					scope.workspaceId ? eq(approval.workspaceId, scope.workspaceId) : undefined,
-					scope.clientId ? eq(execution.clientId, scope.clientId) : undefined
+					scope.connectionId ? eq(execution.connectionId, scope.connectionId) : undefined
 				)
 			)
 			.orderBy(asc(approval.createdAt));
@@ -787,6 +797,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 		const [exec] = await db
 			.select({
 				clientId: execution.clientId,
+				connectionId: execution.connectionId,
 				clientName: execution.clientName,
 				clientInfo: execution.clientInfo
 			})
@@ -798,6 +809,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: row.workspaceId,
 			userId: row.userId,
 			clientId: exec?.clientId ?? null,
+			connectionId: exec?.connectionId ?? null,
 			clientName: exec?.clientName ?? null,
 			clientInfo: exec?.clientInfo ?? null,
 			toolPath: row.path,

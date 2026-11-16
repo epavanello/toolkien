@@ -8,12 +8,7 @@ import { dev } from '$app/env';
 import { BETTER_AUTH_SECRET, ORIGIN } from '$app/env/private';
 import { eq } from 'drizzle-orm';
 import { auth, MCP_RESOURCE } from '#lib/server/auth.ts';
-import {
-	clientLabel,
-	hasLiveGrant,
-	rememberClientInfo,
-	storedClientInfo
-} from '#lib/server/clients/index.ts';
+import { hasLiveGrant, loadConnection, rememberClientInfo } from '#lib/server/clients/index.ts';
 import { db } from '#lib/server/db/index.ts';
 import { oauthClient, user } from '#lib/server/db/schema/index.ts';
 import * as limits from '#lib/server/limits/index.ts';
@@ -72,27 +67,6 @@ async function loadClient(clientId: string) {
 	return value;
 }
 
-/** Remembered client info by user and client (a lookup per request otherwise), same TTL */
-const clientInfoCache = new Map<string, { at: number; value: string | null }>();
-const CLIENT_INFO_CACHE_MAX = 5_000;
-
-const clientInfo = {
-	async remember(userId: string, clientId: string, info: string) {
-		// `initialize` is rare (once per client session): always written
-		await rememberClientInfo(userId, clientId, info);
-		clientInfoCache.set(`${userId}\0${clientId}`, { at: Date.now(), value: info });
-	},
-	async load(userId: string, clientId: string) {
-		const key = `${userId}\0${clientId}`;
-		const cached = clientInfoCache.get(key);
-		if (cached && Date.now() - cached.at < CLIENT_CACHE_MS) return cached.value;
-		const value = await storedClientInfo(userId, clientId);
-		if (clientInfoCache.size >= CLIENT_INFO_CACHE_MAX) clientInfoCache.clear();
-		clientInfoCache.set(key, { at: Date.now(), value });
-		return value;
-	}
-};
-
 async function loadUser(userId: string) {
 	const [row] = await db
 		.select({ suspendedAt: user.suspendedAt })
@@ -111,9 +85,9 @@ export const mcpEndpoint = createMcpEndpoint({
 		})(request),
 	loadClient,
 	loadUser,
-	clientLabel,
-	clientInfo,
-	hasLiveGrant: (userId, clientId) => hasLiveGrant(userId, clientId),
+	loadConnection,
+	rememberClientInfo,
+	hasLiveGrant: (userId, connectionId) => hasLiveGrant(userId, connectionId),
 	resourceMetadataUrl: `${ORIGIN}/.well-known/oauth-protected-resource/mcp`,
 	limits,
 	isAllowedOrigin: originPolicy(ORIGIN, dev)

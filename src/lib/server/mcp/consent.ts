@@ -5,26 +5,30 @@
  * must sign in (`loginPage`) and when consent is needed (`consentPage`). The page shows who is
  * asking (client name; CIMD clients are identified by their verified domain, DCR names are
  * self-asserted and marked unverified), the access requested and the workspace the client
- * starts in, and asks the user to name the client. On "Allow" the provider issues the code and
- * we store the chosen workspace and the name for this (user, client) pair.
+ * starts in, and asks the user to name the client. "Allow" creates a new MCP connection (its own
+ * name and workspace) and the provider issues the code inside `withConnectionGrant`, so the
+ * whole grant carries that connection: approving the same client again (another Claude account,
+ * another machine) makes another connection and never touches the first.
  */
 import { isCimdClientIdUrlCandidate } from '@better-auth/cimd';
 import { verifyOAuthQueryParams } from '@better-auth/oauth-provider';
 import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { auth } from '#lib/server/auth.ts';
-import { clientLabel, storeClientLabel } from '#lib/server/clients/index.ts';
+import {
+	createConnection,
+	discardConnection,
+	withConnectionGrant
+} from '#lib/server/clients/index.ts';
 import { db } from '#lib/server/db/index.ts';
 import { oauthClient } from '#lib/server/db/schema/index.ts';
 import { services } from './services.ts';
-import { applySwitch } from './workspace-switch.ts';
+import { recordConsentWorkspace } from './workspace-switch.ts';
 
 export type ConsentClient = {
 	clientId: string;
 	/** The registered name (self-asserted unless `verifiedDomain`) */
 	name: string;
-	/** (additive) The name the user already gave it, if any: the name field starts from it */
-	label: string | null;
 	/** Host of the CIMD `client_id` URL: the client proved it controls it */
 	verifiedDomain: string | null;
 	/** Self-asserted (dynamic registration): the name may be anything */
@@ -56,7 +60,7 @@ export async function verifiedQuery(query: string): Promise<URLSearchParams> {
 	return new URLSearchParams(query);
 }
 
-export async function describeClient(clientId: string, userId: string): Promise<ConsentClient> {
+export async function describeClient(clientId: string): Promise<ConsentClient> {
 	const [row] = await db
 		.select({
 			name: oauthClient.name,
@@ -67,12 +71,10 @@ export async function describeClient(clientId: string, userId: string): Promise<
 		.where(eq(oauthClient.clientId, clientId))
 		.limit(1);
 	if (!row) error(404, 'Unknown client.', { code: 'NOT_FOUND' });
-	const label = await clientLabel(userId, clientId);
 	const cimd = isCimdClientIdUrlCandidate(clientId) && row.discovery !== null;
 	return {
 		clientId,
 		name: row.name?.trim() || 'Unnamed MCP client',
-		label,
 		verifiedDomain: cimd ? new URL(clientId).host : null,
 		unverified: !cimd,
 		homepage: row.uri ?? null
@@ -112,18 +114,32 @@ export async function allowClient(input: {
 	if (!clientId) error(400, 'The request has no client.', { code: 'INVALID_INPUT' });
 	const workspace = await services.workspaces.getById(input.userId, input.workspaceId);
 	if (!workspace) error(404, 'Workspace not found.', { code: 'NOT_FOUND' });
-	await describeClient(clientId, input.userId);
-	// Stored before the code is issued, so the client's first request already lands there and
-	// carries its name
-	const clientName = await storeClientLabel(input.userId, clientId, input.label ?? null);
-	await applySwitch(
-		services,
-		{ userId: input.userId, clientId, clientName },
-		null,
-		workspace,
-		'consent'
-	);
-	return { url: await decide(input.request, input.oauthQuery, true) };
+	await describeClient(clientId);
+	// Created before the code is issued, so the client's first request already finds its name
+	// and workspace
+	const { connectionId, name } = await createConnection({
+		userId: input.userId,
+		clientId,
+		label: input.label ?? null,
+		workspaceId: workspace.id
+	});
+	let url: string;
+	try {
+		url = await withConnectionGrant(connectionId, () =>
+			decide(input.request, input.oauthQuery, true)
+		);
+	} catch (cause) {
+		await discardConnection(connectionId);
+		throw cause;
+	}
+	await recordConsentWorkspace(services, {
+		userId: input.userId,
+		clientId,
+		connectionId,
+		clientName: name,
+		workspaceId: workspace.id
+	});
+	return { url };
 }
 
 export async function denyClient(input: {

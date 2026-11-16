@@ -111,7 +111,7 @@ describe('workspace_switch', () => {
 
 		expect(getSwitchRequest(id!, 'someone-else')).toBeNull();
 		await decideSwitchRequest(deps, { requestId: id!, userId: 'u1', confirm: true });
-		expect(deps.workspaces.setActiveWorkspace).toHaveBeenCalledWith('u1', 'client-1', acme.id);
+		expect(deps.workspaces.setActiveWorkspace).toHaveBeenCalledWith('u1', 'connection-1', acme.id);
 		expect(deps.audit.record).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: 'workspace.switched',
@@ -156,7 +156,7 @@ describe('workspace_switch', () => {
 			}
 		);
 		expect(textOf(second)).toMatch(/Switched to Acme/);
-		expect(deps.workspaces.setActiveWorkspace).toHaveBeenCalledWith('u1', 'client-1', acme.id);
+		expect(deps.workspaces.setActiveWorkspace).toHaveBeenCalledWith('u1', 'connection-1', acme.id);
 		expect(getSwitchRequest(state.requestId, 'u1')?.status).toBe('confirmed');
 	});
 
@@ -277,6 +277,7 @@ describe('tools_search', () => {
 			workspaceId: acme.id,
 			userId: 'u1',
 			clientId: 'client-1',
+			connectionId: 'connection-1',
 			clientName: 'Test Client',
 			clientInfo: 'test-client 1.0.0',
 			metadata: { results: 2 }
@@ -339,6 +340,7 @@ describe('execute', () => {
 		expect(deps.executions.start).toHaveBeenCalledWith({
 			actor: { workspaceId: acme.id, userId: 'u1', role: 'member' },
 			clientId: 'client-1',
+			connectionId: 'connection-1',
 			clientName: 'Test Client',
 			clientInfo: 'test-client 1.0.0',
 			ip: null,
@@ -555,7 +557,7 @@ describe('execution_status', () => {
 		const text = textOf(result);
 		expect(deps.executions.listPendingApprovals).toHaveBeenCalledWith('u1', {
 			workspaceId: acme.id,
-			clientId: 'client-1'
+			connectionId: 'connection-1'
 		});
 		expect(deps.executions.status).not.toHaveBeenCalled();
 		expect(deps.executions.answerApproval).not.toHaveBeenCalled();

@@ -10,12 +10,9 @@ import { db } from '#lib/server/db/index.ts';
 import {
 	connector,
 	connectorCredential,
-	mcpActiveWorkspace,
-	mcpClientInfo,
-	mcpClientLabel,
+	mcpConnection,
 	member,
 	oauthClient,
-	oauthConsent,
 	organization,
 	passkey,
 	permissionLevel,
@@ -44,8 +41,7 @@ export async function exportAccount(userId: string): Promise<AccountExport> {
 		connectors,
 		credentials,
 		permissions,
-		consents,
-		active,
+		connections,
 		events
 	] = await Promise.all([
 		db.select().from(passkey).where(eq(passkey.userId, userId)),
@@ -67,30 +63,17 @@ export async function exportAccount(userId: string): Promise<AccountExport> {
 		db.select().from(permissionLevel).where(eq(permissionLevel.userId, userId)),
 		db
 			.select({
-				clientId: oauthConsent.clientId,
+				connectionId: mcpConnection.id,
+				clientId: mcpConnection.clientId,
 				name: oauthClient.name,
-				clientInfo: mcpClientInfo.info,
-				label: mcpClientLabel.label,
-				createdAt: oauthConsent.createdAt
+				clientInfo: mcpConnection.clientInfo,
+				label: mcpConnection.label,
+				workspaceId: mcpConnection.workspaceId,
+				createdAt: mcpConnection.createdAt
 			})
-			.from(oauthConsent)
-			.leftJoin(oauthClient, eq(oauthClient.clientId, oauthConsent.clientId))
-			.leftJoin(
-				mcpClientInfo,
-				and(
-					eq(mcpClientInfo.clientId, oauthConsent.clientId),
-					eq(mcpClientInfo.userId, oauthConsent.userId)
-				)
-			)
-			.leftJoin(
-				mcpClientLabel,
-				and(
-					eq(mcpClientLabel.clientId, oauthConsent.clientId),
-					eq(mcpClientLabel.userId, oauthConsent.userId)
-				)
-			)
-			.where(eq(oauthConsent.userId, userId)),
-		db.select().from(mcpActiveWorkspace).where(eq(mcpActiveWorkspace.userId, userId)),
+			.from(mcpConnection)
+			.leftJoin(oauthClient, eq(oauthClient.clientId, mcpConnection.clientId))
+			.where(eq(mcpConnection.userId, userId)),
 		listForUser(userId)
 	]);
 
@@ -143,14 +126,19 @@ export async function exportAccount(userId: string): Promise<AccountExport> {
 			level: p.level,
 			updatedAt: p.updatedAt.toISOString()
 		})),
-		mcpClients: consents.map((c) => ({
+		mcpClients: connections.map((c) => ({
+			connectionId: c.connectionId,
 			clientId: c.clientId,
 			name: c.name,
 			clientInfo: c.clientInfo,
 			label: c.label,
 			consentedAt: c.createdAt.toISOString()
 		})),
-		activeWorkspaces: active.map((a) => ({ clientId: a.clientId, workspaceId: a.workspaceId })),
+		activeWorkspaces: connections.flatMap((c) =>
+			c.workspaceId
+				? [{ connectionId: c.connectionId, clientId: c.clientId, workspaceId: c.workspaceId }]
+				: []
+		),
 		auditEvents: events.map((e) => ({ ...e, occurredAt: e.occurredAt.toISOString() }))
 	};
 }

@@ -15,10 +15,11 @@
 	import type { Column } from './data-table.ts';
 
 	/**
-	 * The AI clients (MCP clients) the signed-in user authorized, each with the workspace it works
-	 * in (a link to it), and actions: Rename (the name the activity shows), Change workspace (only
-	 * that client moves) and Disconnect behind a confirmation. Disconnecting revokes the client's access for this user in every workspace;
-	 * pass the live onboarding status's `clients` so the list updates by itself.
+	 * The AI clients (MCP connections) the signed-in user authorized, one row per sign-in (two
+	 * Claude accounts are two rows), each with the workspace it works in (a link to it), and
+	 * actions: Rename (the name the activity shows), Change workspace (only that connection moves)
+	 * and Disconnect behind a confirmation. Disconnecting revokes that connection's access in
+	 * every workspace; pass the live onboarding status's `clients` so the list updates by itself.
 	 */
 	type Props = {
 		clients: AuthorizedClient[];
@@ -83,7 +84,7 @@
 	label="Connected clients"
 	rows={clients}
 	{columns}
-	rowKey={(client) => client.clientId}
+	rowKey={(client) => client.connectionId}
 	searchable={false}
 	empty={{
 		title: 'No connected clients',
@@ -99,7 +100,7 @@
 	onConfirm={() =>
 		attempt(
 			// The live status may have finished (onboarding complete): restart it to drop the row
-			disconnectClient({ workspace, clientId: target!.clientId }).then(() =>
+			disconnectClient({ workspace, connectionId: target!.connectionId }).then(() =>
 				watchOnboarding(workspace).reconnect()
 			),
 			`${target?.name ?? 'Client'} disconnected`
@@ -115,9 +116,9 @@
 	success="Client renamed"
 >
 	{#if target}
-		{#key target.clientId}
+		{#key target.connectionId}
 			<input {...renameClient.fields.workspace.as('hidden', workspace)} />
-			<input {...renameClient.fields.clientId.as('hidden', target.clientId)} />
+			<input {...renameClient.fields.connectionId.as('hidden', target.connectionId)} />
 			<FormField
 				field={renameClient.fields.label}
 				type="text"
@@ -136,15 +137,15 @@
 <FormDialog
 	bind:open={moveOpen}
 	title="Change workspace of {target?.name ?? 'client'}"
-	description="Its next requests use this workspace's connectors and permissions. Your other clients stay where they are."
+	description="Its next requests use this workspace's connectors and permissions. Your other connections stay where they are."
 	submitLabel="Move"
 	form={moveClientWorkspace}
 	success="Workspace changed"
 >
 	{#if target}
-		{#key target.clientId}
+		{#key target.connectionId}
 			<input {...moveClientWorkspace.fields.workspace.as('hidden', workspace)} />
-			<input {...moveClientWorkspace.fields.clientId.as('hidden', target.clientId)} />
+			<input {...moveClientWorkspace.fields.connectionId.as('hidden', target.connectionId)} />
 			<FormField
 				field={moveClientWorkspace.fields.workspaceId}
 				type="select"
