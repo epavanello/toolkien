@@ -43,6 +43,17 @@ pnpm db:migrate         # creates local.db from the migrations
 pnpm dev                # http://localhost:5173 — sign up with any email, you land in your personal workspace
 ```
 
+Or in one step (fresh clones, Claude Code cloud sessions): `bash scripts/cloud-setup.sh` installs
+the dependencies (Deno and the test Chromium included), writes a dev `.env` with random secrets,
+migrates and seeds `local.db`. It is idempotent.
+
+Seed data (`pnpm db:seed`, or `pnpm db:reset` to start over): `alice@toolkien.test` (platform
+admin when listed in `PLATFORM_ADMIN_EMAILS`), `bob@toolkien.test`, `carol@toolkien.test`, each
+with a personal workspace, plus the `acme` workspace (owner, admin, member) with a synced "Dev MCP"
+connector. `pnpm dev:mcp` serves that connector (`http://localhost:8788/mcp`: echo, numbers,
+in-memory notes, a destructive tool for approvals, a failing tool). Sign-in codes print to the
+`pnpm dev` console; each address gets 5 codes per 15 minutes.
+
 Connect a client: add `http://localhost:5173/mcp` as a remote MCP server (Streamable HTTP). It
 discovers OAuth, opens the consent page and asks which workspace to start in. For a local MCP
 server to connect to, development (only) accepts `http://localhost…` connector URLs.
@@ -55,6 +66,8 @@ pnpm lint                   # prettier --check + eslint
 pnpm test                   # vitest: server (node) + component (browser) projects
 pnpm build                  # production build (adapter-node)
 pnpm db:generate            # migration from schema changes (src/lib/server/db/schema/*)
+pnpm db:seed                # seed local.db (idempotent); pnpm db:reset = delete, migrate, seed
+pnpm dev:mcp                # local MCP server for the seeded "Dev MCP" connector
 pnpm auth:schema            # regenerate Better Auth tables after changing auth plugins
 pnpm directory:validate     # check directory/servers/*.json
 cd runner && deno task test # runner (sandbox, checker, escape attempts)
