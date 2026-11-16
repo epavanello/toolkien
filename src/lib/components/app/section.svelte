@@ -52,7 +52,7 @@
 	{#if title || actions}
 		<header class={styles.header()}>
 			<div class={styles.heading()}>
-				{#if media}{@render media()}{/if}
+				{#if media}<div class="shrink-0">{@render media()}</div>{/if}
 				<div class="flex min-w-0 flex-col gap-0.5">
 					{#if title}<h2 class={styles.title()}>{title}</h2>{/if}
 					{#if description}<p class={styles.description()}>{description}</p>{/if}

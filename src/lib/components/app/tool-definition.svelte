@@ -18,6 +18,7 @@
 </script>
 
 <script lang="ts">
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { tv } from 'tailwind-variants';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import CodeBlock from './code-block.svelte';
@@ -26,14 +27,20 @@
 	/**
 	 * One upstream tool as an agent sees it: path, annotation hints, one-line summary, reviewer
 	 * note, change warnings and the generated TypeScript signature. Rows of a list inside a
-	 * `Section variant="flush"`.
+	 * `Section variant="flush"`: collapsed to path, hints and summary; the details (full
+	 * signature) open on demand. Native `<details>`, keyboard accessible.
 	 */
 	let { tool }: { tool: ToolDefinitionItem } = $props();
 
 	const styles = tv({
 		slots: {
-			root: 'flex flex-col gap-2 border-b px-4 py-3 last:border-b-0',
-			header: 'flex flex-wrap items-center gap-1.5',
+			root: 'group border-b last:border-b-0',
+			summary:
+				'flex cursor-pointer list-none gap-2 px-4 py-2.5 outline-none select-none hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset [&::-webkit-details-marker]:hidden',
+			chevron:
+				'mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90',
+			header: 'flex min-w-0 flex-wrap items-center gap-1.5',
+			body: 'flex flex-col gap-2 px-4 pb-3 ps-10',
 			text: 'text-sm text-muted-foreground',
 			warning: 'text-sm text-warning'
 		},
@@ -68,21 +75,33 @@
 	);
 </script>
 
-<article class={s.root()} data-slot="tool-definition">
-	<div class={s.header()}>
-		<ToolPath path={tool.path} unverified={tool.unverified} copy />
-		{#each hints as hint (hint.label)}
-			<Badge variant={hint.variant} class="rounded-sm">{hint.label}</Badge>
-		{/each}
-		<Badge variant="outline" class="rounded-sm">v{tool.version}</Badge>
-		{#if tool.removed}<Badge variant="secondary" class="rounded-sm">Removed upstream</Badge>{/if}
+<details class={s.root()} data-slot="tool-definition">
+	<summary class={s.summary()}>
+		<ChevronRight class={s.chevron()} aria-hidden="true" />
+		<div class="flex min-w-0 flex-1 flex-col gap-1">
+			<div class={s.header()}>
+				<!-- Copying the path must not toggle the row -->
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+				<span class="min-w-0" onclick={(event) => event.preventDefault()}>
+					<ToolPath path={tool.path} unverified={tool.unverified} copy />
+				</span>
+				{#each hints as hint (hint.label)}
+					<Badge variant={hint.variant} class="rounded-sm">{hint.label}</Badge>
+				{/each}
+				<Badge variant="outline" class="rounded-sm">v{tool.version}</Badge>
+				{#if tool.removed}<Badge variant="secondary" class="rounded-sm">Removed upstream</Badge
+					>{/if}
+			</div>
+			<p class="{s.text()} line-clamp-1 group-open:line-clamp-none">{tool.summary}</p>
+			{#if tool.descriptionChanged}
+				<p class={s.warning()} role="status">
+					The description changed in the latest version. Review it before trusting this tool.
+				</p>
+			{/if}
+		</div>
+	</summary>
+	<div class={s.body()}>
+		{#if tool.note}<p class={s.text()}>Reviewer note: {tool.note}</p>{/if}
+		<CodeBlock code={tool.declaration} />
 	</div>
-	<p class={s.text()}>{tool.summary}</p>
-	{#if tool.descriptionChanged}
-		<p class={s.warning()} role="status">
-			The description changed in the latest version. Review it before trusting this tool.
-		</p>
-	{/if}
-	{#if tool.note}<p class={s.text()}>Reviewer note: {tool.note}</p>{/if}
-	<CodeBlock code={tool.declaration} />
-</article>
+</details>

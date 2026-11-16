@@ -156,7 +156,11 @@
 			<Callout title="Token" description={c.directory.tokenHelp} />
 		{/if}
 
-		<Section variant="flush" title="Tools" description="What agents can call, as TypeScript.">
+		<Section
+			variant="flush"
+			title={`Tools (${c.tools.length})`}
+			description="What agents can call. Open a tool to see its TypeScript signature."
+		>
 			{#snippet actions()}
 				<Button size="sm" variant="outline" icon={RefreshCw} onclick={refresh}>Refresh</Button>
 			{/snippet}
