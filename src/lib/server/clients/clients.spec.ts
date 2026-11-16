@@ -10,18 +10,20 @@ import { db } from '#lib/server/db/index.ts';
 import {
 	auditEvent,
 	connector,
+	organization,
 	oauthAccessToken,
 	oauthClient,
 	oauthConsent,
 	oauthRefreshToken
 } from '#lib/server/db/schema/index.ts';
-import { seedUser } from '#lib/server/workspaces/test-db.ts';
+import { seedMember, seedUser } from '#lib/server/workspaces/test-db.ts';
 import { and, eq } from 'drizzle-orm';
 import {
 	cleanClientLabel,
 	clientLabel,
 	hasLiveGrant,
 	listAuthorizedClients,
+	moveClient,
 	needsGuide,
 	onboardingStatus,
 	rememberClientInfo,
@@ -314,6 +316,82 @@ describe('client names', () => {
 	});
 });
 
+describe('client workspaces', () => {
+	async function companyOf(userId: string, name = 'Acme') {
+		const id = crypto.randomUUID();
+		await db.insert(organization).values({
+			id,
+			name,
+			slug: `acme-${id.replace(/-/g, '')}`,
+			kind: 'company',
+			createdAt: new Date()
+		});
+		await seedMember(db, id, userId, 'owner');
+		return id;
+	}
+
+	it('each client works in its own workspace and moves alone, audited', async () => {
+		const me = await seedUser(db);
+		const acme = await companyOf(me.id);
+		const codex = await addClient('Codex');
+		const claude = await addClient('Claude Code');
+		await consent(me.id, codex, minutes(-60));
+		await consent(me.id, claude, minutes(-30));
+
+		const before = await listAuthorizedClients(me.id, NOW);
+		expect(before.map((c) => c.workspace?.id)).toEqual([
+			me.personalWorkspaceId,
+			me.personalWorkspaceId
+		]);
+
+		const moved = await moveClient(actorOf(me), claude, acme);
+		expect(moved.workspace).toMatchObject({ id: acme, name: 'Acme', kind: 'company' });
+		const after = new Map(
+			(await listAuthorizedClients(me.id, NOW)).map((c) => [c.clientId, c.workspace?.id])
+		);
+		expect(after.get(claude)).toBe(acme);
+		expect(after.get(codex)).toBe(me.personalWorkspaceId);
+
+		// Already there: nothing more to record
+		await moveClient(actorOf(me), claude, acme);
+		const events = await db
+			.select()
+			.from(auditEvent)
+			.where(and(eq(auditEvent.userId, me.id), eq(auditEvent.type, 'workspace.switched')));
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({
+			workspaceId: acme,
+			clientId: claude,
+			clientName: 'Claude Code',
+			approvedBy: 'self',
+			metadata: { fromWorkspaceId: me.personalWorkspaceId, channel: 'settings' }
+		});
+
+		// Moving or renaming it from the app is not the client being used
+		await setClientLabel(actorOf(me), claude, 'Work');
+		const [listed] = (await listAuthorizedClients(me.id, NOW)).filter((c) => c.clientId === claude);
+		expect(listed.lastUsedAt).toBeNull();
+
+		const status = await onboardingStatus(actorOf(me), NOW);
+		expect(status.workspaces.map((w) => w.id).sort()).toEqual(
+			[acme, me.personalWorkspaceId].sort()
+		);
+	});
+
+	it('refuses a workspace the user is not in, or a client they did not authorize', async () => {
+		const me = await seedUser(db);
+		const other = await seedUser(db);
+		const theirs = await companyOf(other.id, 'Theirs');
+		const codex = await addClient('Codex');
+		const notMine = await addClient('Other');
+		await consent(me.id, codex, minutes(-60));
+		await expect(moveClient(actorOf(me), codex, theirs)).rejects.toMatchObject({ status: 404 });
+		await expect(moveClient(actorOf(me), notMine, me.personalWorkspaceId)).rejects.toMatchObject({
+			status: 404
+		});
+	});
+});
+
 describe('onboarding status', () => {
 	it('starts empty and asks for the connect guide', async () => {
 		const me = await seedUser(db);
@@ -323,6 +401,9 @@ describe('onboarding status', () => {
 			connectors: [],
 			servers: [],
 			clients: [],
+			workspaces: [
+				{ id: me.personalWorkspaceId, slug: expect.any(String), name: 'Personal', kind: 'personal' }
+			],
 			triedPrompt: false,
 			firstCall: null
 		});

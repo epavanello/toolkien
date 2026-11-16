@@ -70,7 +70,7 @@
 				description="AI clients you signed in from. Disconnect one to revoke its access at once."
 				id="clients"
 			>
-				<ConnectedClients clients={status.clients} {workspace} />
+				<ConnectedClients clients={status.clients} workspaces={status.workspaces} {workspace} />
 			</Section>
 		{/if}
 	</Boundary>

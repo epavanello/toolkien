@@ -1,3 +1,5 @@
+import type { WorkspaceKind } from '#lib/server/db/schema/index.ts';
+
 /**
  * MCP clients of a user and onboarding progress (owner: onboarding; reads the OAuth, connector
  * and audit tables, writes only to revoke a client).
@@ -5,7 +7,8 @@
  * - A client counts as authorized when the user consented to it, or holds a live (unrevoked,
  *   unexpired) access or refresh token for it. Revoked/expired-only clients are not listed.
  * - `lastUsedAt` is the latest sign of activity: a token issued (refreshes rotate while the
- *   client works) or an audited call made through it. Never token values.
+ *   client works) or an audited call made through it (not what the user did to it from the
+ *   app: moves, renames, disconnects). Never token values.
  * - (additive) Disconnecting a client deletes, for that user and client only, the consent and
  *   every access and refresh token, in one transaction, and records `mcp_client.revoked`. Access
  *   tokens are JWTs verified offline, so `/mcp` also requires a live grant (`hasLiveGrant`):
@@ -18,6 +21,10 @@
  *   name everywhere the client is shown (list, activity, approvals, switch requests) from then
  *   on, and goes with the client on disconnect. Events already recorded keep the name they had.
  *   A name equal to the registered one, or empty, clears it. Renames are audited.
+ * - (additive) Each client works in its own workspace (per user and client, chosen on the
+ *   consent screen, switched by `workspace_switch` after confirmation). The list shows it, and
+ *   the user can move a client from here (`moveClient`): the user acting in the app is the
+ *   confirmation; audited as `workspace.switched` (channel `settings`) in the target workspace.
  * - Onboarding steps tick from real data only: a connector visible to the user in the
  *   workspace, an authorized client, a tool call made through a client: (changed) any audited
  *   MCP tool call counts (`tools_search`, `tools_describe`, `execute`), so the step ticks as soon
@@ -29,6 +36,11 @@ export type AuthorizedClient = {
 	name: string;
 	/** (additive) The OAuth registration name, `null` when it has none */
 	registeredName: string | null;
+	/**
+	 * (additive) The workspace the client works in for this user (`mcp_active_workspace`, else
+	 * the personal one): each client has its own, switched without touching the others
+	 */
+	workspace: ClientWorkspace | null;
 	connectedAt: Date;
 	lastUsedAt: Date | null;
 };
@@ -41,10 +53,20 @@ export type OnboardingStatus = {
 	/** (additive) The same services with their logo, for display */
 	servers: OnboardingServer[];
 	clients: AuthorizedClient[];
+	/** (additive) The user's workspaces, where a client can be moved */
+	workspaces: ClientWorkspace[];
 	/** A tool call or execution made by the user through an MCP client in this workspace */
 	triedPrompt: boolean;
 	/** (additive) The first of those calls, for the "first call arrived" state */
 	firstCall: FirstToolCall | null;
+};
+
+/** (additive) A workspace as the client list shows it */
+export type ClientWorkspace = {
+	id: string;
+	slug: string;
+	name: string;
+	kind: WorkspaceKind;
 };
 
 /** (additive) A service the user can use in the workspace (`ConnectorSummary.icon` for `icon`) */

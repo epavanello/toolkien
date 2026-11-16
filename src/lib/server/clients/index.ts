@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
 import { ORIGIN } from '$app/env/private';
 import { record } from '#lib/server/audit/index.ts';
 import { connectorIcons } from '#lib/server/connectors/index.ts';
@@ -7,6 +7,7 @@ import { db } from '#lib/server/db/index.ts';
 import {
 	auditEvent,
 	connector,
+	mcpActiveWorkspace,
 	mcpClientInfo,
 	mcpClientLabel,
 	oauthAccessToken,
@@ -14,11 +15,13 @@ import {
 	oauthConsent,
 	oauthRefreshToken
 } from '#lib/server/db/schema/index.ts';
-import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
+import { listForUser, setActiveWorkspace } from '#lib/server/workspaces/index.ts';
+import type { WorkspaceActor, WorkspaceSummary } from '#lib/server/workspaces/types.ts';
 import {
 	cleanClientLabel,
 	needsConnectGuide,
 	type AuthorizedClient,
+	type ClientWorkspace,
 	type FirstToolCall,
 	type OnboardingServer,
 	type OnboardingStatus,
@@ -31,6 +34,16 @@ export { CLIENT_LABEL_MAX, cleanClientLabel, needsConnectGuide } from './types.t
 export const mcpUrl = () => `${ORIGIN}/mcp`;
 
 const UNNAMED = 'Unnamed MCP client';
+
+/** Events recorded with a client id that are not the client being used */
+const NOT_CLIENT_USE = ['workspace.switched', 'mcp_client.renamed', 'mcp_client.revoked'] as const;
+
+const toClientWorkspace = ({ id, slug, name, kind }: WorkspaceSummary): ClientWorkspace => ({
+	id,
+	slug,
+	name,
+	kind
+});
 
 type Activity = { clientId: string; first: Date | null; last: Date | null; live: boolean };
 
@@ -68,15 +81,17 @@ const earliest = (...dates: (Date | null | undefined)[]) =>
 /** MCP clients the user has authorized (see the contract), most recently used first */
 export async function listAuthorizedClients(
 	userId: string,
-	now = new Date()
+	now = new Date(),
+	workspaces?: WorkspaceSummary[]
 ): Promise<AuthorizedClient[]> {
-	const [consents, access, refresh] = await Promise.all([
+	const [consents, access, refresh, mine] = await Promise.all([
 		db
 			.select({ clientId: oauthConsent.clientId, createdAt: oauthConsent.createdAt })
 			.from(oauthConsent)
 			.where(eq(oauthConsent.userId, userId)),
 		tokenActivity(oauthAccessToken, userId, now.getTime()),
-		tokenActivity(oauthRefreshToken, userId, now.getTime())
+		tokenActivity(oauthRefreshToken, userId, now.getTime()),
+		workspaces ?? listForUser(userId)
 	]);
 
 	const byClient = new Map<string, { consentedAt: Date | null; tokens: Activity[] }>();
@@ -94,7 +109,7 @@ export async function listAuthorizedClients(
 	if (authorized.length === 0) return [];
 	const ids = authorized.map(([clientId]) => clientId);
 
-	const [names, labels, calls] = await Promise.all([
+	const [names, labels, active, calls] = await Promise.all([
 		db
 			.select({ clientId: oauthClient.clientId, name: oauthClient.name })
 			.from(oauthClient)
@@ -105,15 +120,35 @@ export async function listAuthorizedClients(
 			.where(and(eq(mcpClientLabel.userId, userId), inArray(mcpClientLabel.clientId, ids))),
 		db
 			.select({
+				clientId: mcpActiveWorkspace.clientId,
+				workspaceId: mcpActiveWorkspace.workspaceId
+			})
+			.from(mcpActiveWorkspace)
+			.where(and(eq(mcpActiveWorkspace.userId, userId), inArray(mcpActiveWorkspace.clientId, ids))),
+		db
+			.select({
 				clientId: auditEvent.clientId,
 				last: sql<number | null>`max(${auditEvent.occurredAt})`
 			})
 			.from(auditEvent)
-			.where(and(eq(auditEvent.userId, userId), inArray(auditEvent.clientId, ids)))
+			.where(
+				and(
+					eq(auditEvent.userId, userId),
+					inArray(auditEvent.clientId, ids),
+					// Done by the user to the client (consent, settings), not by the client
+					notInArray(auditEvent.type, [...NOT_CLIENT_USE])
+				)
+			)
 			.groupBy(auditEvent.clientId)
 	]);
 	const nameOf = new Map(names.map((row) => [row.clientId, row.name?.trim() || null]));
 	const labelOf = new Map(labels.map((row) => [row.clientId, row.label]));
+	// Same resolution as `getActiveWorkspace`: a stored workspace still visible, else personal
+	const workspaceById = new Map(mine.map((workspace) => [workspace.id, workspace]));
+	const personal = mine.find((workspace) => workspace.kind === 'personal');
+	const workspaceOf = new Map(
+		active.map((row) => [row.clientId, workspaceById.get(row.workspaceId)])
+	);
 	const lastCall = new Map(calls.map((row) => [row.clientId, toDate(row.last)]));
 
 	return authorized
@@ -124,6 +159,9 @@ export async function listAuthorizedClients(
 				clientId,
 				name: labelOf.get(clientId) ?? registeredName ?? UNNAMED,
 				registeredName,
+				workspace: ((found) => (found ? toClientWorkspace(found) : null))(
+					workspaceOf.get(clientId) ?? personal
+				),
 				connectedAt: earliest(value.consentedAt, ...tokens.map((token) => token.first)) ?? now,
 				lastUsedAt: latest(...tokens.map((token) => token.last), lastCall.get(clientId))
 			};
@@ -286,6 +324,41 @@ export async function setClientLabel(
 }
 
 /**
+ * Moves one of the actor's clients to another of their workspaces (see the contract). 404 when
+ * the client is not authorized or the workspace is not theirs; nothing recorded when it is
+ * already there.
+ */
+export async function moveClient(
+	actor: WorkspaceActor,
+	clientId: string,
+	workspaceId: string
+): Promise<{ clientId: string; name: string; workspace: ClientWorkspace }> {
+	const workspaces = await listForUser(actor.userId);
+	const target = workspaces.find((workspace) => workspace.id === workspaceId);
+	if (!target) error(404, 'Workspace not found.', { code: 'NOT_FOUND' });
+	const clients = await listAuthorizedClients(actor.userId, new Date(), workspaces);
+	const client = clients.find((item) => item.clientId === clientId);
+	if (!client) {
+		error(404, 'This client is not connected to your account.', { code: 'NOT_FOUND' });
+	}
+	const workspace = toClientWorkspace(target);
+	if (client.workspace?.id === target.id) return { clientId, name: client.name, workspace };
+	await setActiveWorkspace(actor.userId, clientId, target.id);
+	await record({
+		type: 'workspace.switched',
+		outcome: 'success',
+		workspaceId: target.id,
+		userId: actor.userId,
+		clientId,
+		clientName: client.name,
+		approvedBy: 'self',
+		approverUserId: actor.userId,
+		metadata: { fromWorkspaceId: client.workspace?.id ?? null, channel: 'settings' }
+	});
+	return { clientId, name: client.name, workspace };
+}
+
+/**
  * Disconnects an MCP client for the actor's user only (see the contract): consent and every
  * access/refresh token deleted in one transaction, then audited in the actor's workspace. 404
  * when the user never authorized it (or it was already disconnected).
@@ -417,9 +490,10 @@ export async function onboardingStatus(
 	actor: WorkspaceActor,
 	now = new Date()
 ): Promise<OnboardingStatus> {
+	const workspaces = await listForUser(actor.userId);
 	const [servers, clients, firstCall] = await Promise.all([
 		visibleServers(actor),
-		listAuthorizedClients(actor.userId, now),
+		listAuthorizedClients(actor.userId, now, workspaces),
 		firstToolCall(actor)
 	]);
 	return {
@@ -427,6 +501,7 @@ export async function onboardingStatus(
 		connectors: servers.map((server) => server.name),
 		servers,
 		clients,
+		workspaces: workspaces.map(toClientWorkspace),
 		triedPrompt: firstCall !== null,
 		firstCall
 	};

@@ -1,11 +1,13 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { attempt } from '#lib/core/attempt.ts';
 	import {
 		disconnectClient,
+		moveClientWorkspace,
 		renameClient,
 		watchOnboarding
 	} from '#lib/functions/onboarding.remote.ts';
-	import type { AuthorizedClient } from '#lib/server/clients/types.ts';
+	import type { AuthorizedClient, ClientWorkspace } from '#lib/server/clients/types.ts';
 	import ConfirmDialog from './confirm-dialog.svelte';
 	import DataTable from './data-table.svelte';
 	import FormDialog from './form-dialog.svelte';
@@ -13,19 +15,38 @@
 	import type { Column } from './data-table.ts';
 
 	/**
-	 * The AI clients (MCP clients) the signed-in user authorized, with Rename (the name the
-	 * activity shows) and a Disconnect action behind a confirmation. Disconnecting revokes the client's access for this user in every workspace;
+	 * The AI clients (MCP clients) the signed-in user authorized, each with the workspace it works
+	 * in (a link to it), and actions: Rename (the name the activity shows), Change workspace (only
+	 * that client moves) and Disconnect behind a confirmation. Disconnecting revokes the client's access for this user in every workspace;
 	 * pass the live onboarding status's `clients` so the list updates by itself.
 	 */
-	type Props = { clients: AuthorizedClient[]; workspace: string };
+	type Props = {
+		clients: AuthorizedClient[];
+		/** The user's workspaces, for Change workspace */
+		workspaces: ClientWorkspace[];
+		workspace: string;
+	};
 
-	let { clients, workspace }: Props = $props();
+	let { clients, workspaces, workspace }: Props = $props();
+
+	const workspaceLabel = (item: ClientWorkspace) =>
+		item.kind === 'personal' && !/personal/i.test(item.name)
+			? `${item.name} (personal)`
+			: item.name;
+	const workspaceOptions = $derived(
+		workspaces.map((item) => ({ value: item.id, label: workspaceLabel(item) }))
+	);
 
 	let target = $state<AuthorizedClient | null>(null);
 	let confirmOpen = $state(false);
 	const ask = (client: AuthorizedClient) => {
 		target = client;
 		confirmOpen = true;
+	};
+	let moveOpen = $state(false);
+	const move = (client: AuthorizedClient) => {
+		target = client;
+		moveOpen = true;
 	};
 	let renameOpen = $state(false);
 	const rename = (client: AuthorizedClient) => {
@@ -35,6 +56,12 @@
 
 	const columns: Column<AuthorizedClient>[] = [
 		{ key: 'name', header: 'Client' },
+		{
+			key: 'workspace',
+			header: 'Workspace',
+			value: (client) => (client.workspace ? workspaceLabel(client.workspace) : null),
+			cell: workspaceCell
+		},
 		{ key: 'connectedAt', header: 'First authorized', type: 'datetime', hideOnMobile: true },
 		{ key: 'lastUsedAt', header: 'Last used', type: 'datetime' },
 		{
@@ -43,6 +70,9 @@
 			type: 'actions',
 			actions: (client) => [
 				{ label: 'Rename', onSelect: () => rename(client) },
+				...(workspaces.length > 1
+					? [{ label: 'Change workspace', onSelect: () => move(client) }]
+					: []),
 				{ label: 'Disconnect', variant: 'destructive', onSelect: () => ask(client) }
 			]
 		}
@@ -102,3 +132,39 @@
 		{/key}
 	{/if}
 </FormDialog>
+
+<FormDialog
+	bind:open={moveOpen}
+	title="Change workspace of {target?.name ?? 'client'}"
+	description="Its next requests use this workspace's connectors and permissions. Your other clients stay where they are."
+	submitLabel="Move"
+	form={moveClientWorkspace}
+	success="Workspace changed"
+>
+	{#if target}
+		{#key target.clientId}
+			<input {...moveClientWorkspace.fields.workspace.as('hidden', workspace)} />
+			<input {...moveClientWorkspace.fields.clientId.as('hidden', target.clientId)} />
+			<FormField
+				field={moveClientWorkspace.fields.workspaceId}
+				type="select"
+				label="Workspace"
+				options={workspaceOptions}
+				value={target.workspace?.id}
+			/>
+		{/key}
+	{/if}
+</FormDialog>
+
+{#snippet workspaceCell(client: AuthorizedClient)}
+	{#if client.workspace}
+		<a
+			class="text-foreground underline-offset-4 hover:underline"
+			href={resolve('/w/[workspace]', { workspace: client.workspace.slug })}
+		>
+			{workspaceLabel(client.workspace)}
+		</a>
+	{:else}
+		<span class="text-muted-foreground">—</span>
+	{/if}
+{/snippet}

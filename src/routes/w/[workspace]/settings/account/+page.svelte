@@ -109,7 +109,11 @@
 			description="MCP clients (Claude, ChatGPT, Cursor…) you signed in to Toolkien from. Disconnecting one revokes its access in every workspace."
 		>
 			{@const onboarding = await watchOnboarding(workspace)}
-			<ConnectedClients clients={onboarding.clients} {workspace} />
+			<ConnectedClients
+				clients={onboarding.clients}
+				workspaces={onboarding.workspaces}
+				{workspace}
+			/>
 		</Section>
 
 		<Section

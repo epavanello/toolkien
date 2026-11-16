@@ -96,6 +96,12 @@ email profile`, `prompt=select_account`; the callback lands on `redirectTo` (so 
   approvals and switch requests carry it; events already recorded keep their name (append-only).
   Empty or equal to the registered name clears it; renames are audited
   (`mcp_client.renamed`, previous name in metadata); it goes with the client on disconnect.
+- **Workspace per client, visible and movable from the app**: the active workspace was already
+  per user and OAuth client (`mcp_active_workspace`), but nothing showed it. Connected clients
+  now has a Workspace column (a link) and "Change workspace": the user acting in the app is the
+  confirmation, audited as `workspace.switched` with channel `settings`. Clients sharing one
+  OAuth client id (Claude web, desktop and mobile) still share one workspace: the server cannot
+  tell them apart. Moves and renames do not count as the client's "last used".
 - **Audit** is append-only (trigger); metadata never holds user ids (anonymisation only nulls
   `user_id`); members see their own events, admins with a passkey everyone's. Retention 90 days
   (job). Technical logs are separate: stdout, ids only, **14 days** (journald on the host; compose
