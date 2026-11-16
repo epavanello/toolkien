@@ -181,3 +181,36 @@ Deno.test('a catch variable gets its own hint, not the tool-result one', async (
 	);
 	assert(!r.message.includes('output schema'), r.message);
 });
+
+Deno.test('escape hatches from the type check run, with a warning per line', async () => {
+	const r = await run(
+		[
+			"const found = await (crm as any).findContacts({ query: 'a' });",
+			'// @ts-ignore',
+			"const n: number = 'not checked';",
+			"const note = '// @ts-ignore and as any inside a string are fine';",
+			'return { id: (found as unknown as { id: string }[])[0]!.id, n, note };'
+		].join('\n')
+	);
+	assertEquals(r.status, 'completed');
+	assertEquals(
+		r.warnings,
+		[
+			'Warning: line 1 casts to `any`: type checks were skipped there.',
+			'Warning: line 2 uses `@ts-ignore`: type checks were skipped there.',
+			'Warning: line 5 casts through `unknown`: type checks were skipped there.',
+			'The script ran anyway. Remove these and fix the type errors they hide: those errors are how a wrong workspace, a missing tool or stale declarations show up.'
+		].join('\n')
+	);
+});
+
+Deno.test(
+	'warnings also reach a script that fails at run time; clean scripts get none',
+	async () => {
+		const failed = await run(`return await (crm as any).nope({});`);
+		assertEquals(failed.status, 'failed');
+		assertStringIncludes(failed.warnings ?? '', 'Warning: line 1 casts to `any`');
+		const clean = await run(`return (await crm.findContacts({ query: 'a' })).length;`);
+		assertEquals(clean, { status: 'completed', result: 1, logs: '', truncated: false });
+	}
+);

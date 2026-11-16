@@ -70,7 +70,7 @@ export type RunnerFailureCode =
 	| 'cancelled'
 	| 'runner_unavailable';
 
-export type RunnerResult =
+export type RunnerResult = (
 	| {
 			status: 'completed';
 			/** JSON-serialisable return value of the script */
@@ -87,7 +87,11 @@ export type RunnerResult =
 			message: string;
 			logs: string;
 	  }
-	| { status: 'paused'; atSeq: number; logs: string };
+	| { status: 'paused'; atSeq: number; logs: string }
+) & {
+	/** The script type-checked but used escape hatches (`as any`, `@ts-ignore`, …); it still ran */
+	warnings?: string;
+};
 
 export interface RunnerClient {
 	run(

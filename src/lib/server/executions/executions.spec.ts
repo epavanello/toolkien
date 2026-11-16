@@ -188,7 +188,7 @@ function makeSystem(
 		now,
 		...extra
 	});
-	return { service, bridge, connectors, audit, runs, permissions };
+	return { service, bridge, connectors, audit, runs, permissions, runner };
 }
 
 async function seedResolved(
@@ -736,6 +736,29 @@ describe('executions + bridge', () => {
 		const ids = (sys.connectors.declarationsFor.mock.calls[0] as unknown as [unknown, string[]])[1];
 		expect(ids).not.toContain(deleteRepo.toolId);
 		expect(ids).toHaveLength(2);
+	});
+
+	it('passes checker warnings on, for completed and failed runs', async () => {
+		const sys = makeSystem(t.db, PROGRAMS);
+		const warnings = 'Warning: line 1 casts to `any`: type checks were skipped there.';
+		vi.spyOn(sys.runner, 'run')
+			.mockResolvedValueOnce({
+				status: 'completed',
+				result: 1,
+				logs: '',
+				truncated: false,
+				warnings
+			})
+			.mockResolvedValueOnce({
+				status: 'failed',
+				code: 'runtime_error',
+				message: 'TypeError',
+				logs: '',
+				warnings
+			});
+		const start = () => sys.service.start({ actor: actor(), clientId: null, code: 'x' });
+		expect(await start()).toMatchObject({ status: 'completed', result: 1, warnings });
+		expect(await start()).toMatchObject({ status: 'failed', warnings });
 	});
 
 	it('truncates large output with an explicit notice', async () => {

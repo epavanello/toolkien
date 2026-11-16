@@ -358,14 +358,16 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 		workspace: WorkspaceRef,
 		code: string,
 		message?: string,
-		logs?: string
+		logs?: string,
+		warnings?: string
 	): Promise<ExecutionOutcome> {
 		return {
 			executionId: row.id,
 			workspace,
 			status: 'failed',
 			error: { code, message: message ?? FAILURE_MESSAGES[code] ?? FAILURE_MESSAGES.internal },
-			...(logs ? { logs } : {})
+			...(logs ? { logs } : {}),
+			...(warnings ? { warnings } : {})
 		};
 	}
 
@@ -437,7 +439,8 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 				status: 'completed',
 				result: output.result,
 				logs: output.logs,
-				truncated: output.truncated
+				truncated: output.truncated,
+				...(result.warnings ? { warnings: result.warnings } : {})
 			};
 		}
 
@@ -446,7 +449,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			maxOutputBytes
 		).logs;
 		if (!(await terminate(row, ['running'], 'failed', result.code))) return currentOutcome(row.id);
-		return failedOutcome(row, workspace, result.code, result.message, logs);
+		return failedOutcome(row, workspace, result.code, result.message, logs, result.warnings);
 	}
 
 	/** Runs (or re-runs) the script of a `running` execution through the runner and the bridge */

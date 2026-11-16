@@ -8,7 +8,7 @@
  * host only knows the two in-memory files and the TypeScript lib files, with `noResolve`.
  *
  * stdin:  { code, declarations }
- * stdout: { ok: true, js, namespaces } | { ok: false, diagnostics }
+ * stdout: { ok: true, js, namespaces, warnings? } | { ok: false, diagnostics }
  */
 import ts from 'npm:typescript@6.0.3';
 import { excerpt } from './excerpt.ts';
@@ -88,7 +88,14 @@ declare class URL {
 
 export type CheckInput = { code: string; declarations: string };
 export type CheckOutput =
-	{ ok: true; js: string; namespaces: string[] } | { ok: false; diagnostics: string };
+	| {
+			ok: true;
+			js: string;
+			namespaces: string[];
+			/** Type-check escape hatches the script used: it still runs, the agent is told */
+			warnings?: string;
+	  }
+	| { ok: false; diagnostics: string };
 
 const compilerOptions: ts.CompilerOptions = {
 	target: ts.ScriptTarget.ES2023,
@@ -161,11 +168,69 @@ function forbiddenSyntax(sf: ts.SourceFile): ts.Diagnostic[] {
 	return found;
 }
 
+const MAX_WARNINGS = 10;
+/** `@ts-nocheck` is not listed: inside the function wrapper it has no effect (errors still block) */
+const SUPPRESSION = /^\/[/*]\s*@ts-(ignore|expect-error)\b/;
+
+/**
+ * Casts to `any`, double casts through `unknown` and `@ts-*` suppression comments: they skip
+ * the type check, which is how a wrong workspace, an unknown tool or stale declarations show up.
+ * Comments come from the trivia before each token of the parsed script, so text inside strings,
+ * templates and regular expressions never matches.
+ */
+function escapeHatches(sf: ts.SourceFile): string | undefined {
+	const found: { pos: number; what: string }[] = [];
+	const text = sf.getFullText();
+	const seen = new Set<number>();
+	const visit = (node: ts.Node) => {
+		if (
+			(ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) &&
+			node.type.kind === ts.SyntaxKind.AnyKeyword
+		) {
+			found.push({ pos: node.type.getStart(sf), what: 'casts to `any`' });
+		} else if (ts.isAsExpression(node)) {
+			let inner = node.expression;
+			while (ts.isParenthesizedExpression(inner)) inner = inner.expression;
+			if (ts.isAsExpression(inner) && inner.type.kind === ts.SyntaxKind.UnknownKeyword) {
+				found.push({ pos: inner.type.getStart(sf), what: 'casts through `unknown`' });
+			}
+		}
+		const children = node.getChildren(sf);
+		if (children.length === 0 || node.kind === ts.SyntaxKind.EndOfFileToken) {
+			for (const range of ts.getLeadingCommentRanges(text, node.pos) ?? []) {
+				if (seen.has(range.pos) || range.pos < PREFIX.length) continue;
+				seen.add(range.pos);
+				const directive = SUPPRESSION.exec(text.slice(range.pos, range.end));
+				if (directive) found.push({ pos: range.pos, what: `uses \`@ts-${directive[1]}\`` });
+			}
+		}
+		children.forEach(visit);
+	};
+	visit(sf);
+	if (found.length === 0) return undefined;
+	found.sort((a, b) => a.pos - b.pos);
+	const lines = found
+		.slice(0, MAX_WARNINGS)
+		.map(
+			({ pos, what }) =>
+				`Warning: line ${sf.getLineAndCharacterOfPosition(pos).line - PREFIX_LINES + 1} ${what}: type checks were skipped there.`
+		);
+	if (found.length > MAX_WARNINGS) lines.push(`… and ${found.length - MAX_WARNINGS} more`);
+	lines.push(
+		'The script ran anyway. Remove these and fix the type errors they hide: those errors are how a wrong workspace, a missing tool or stale declarations show up.'
+	);
+	return lines.join('\n');
+}
+
 type HintContext = {
 	program: ts.Program;
 	script: ts.SourceFile;
 	namespaces: string[];
 };
+
+/** For a tool or argument the declarations reject although the server has it */
+const STALE =
+	'If the server changed recently, the declarations are stale: ask the user to refresh the connector in Toolkien.';
 
 /** Innermost node of `sf` that contains `position` */
 function nodeAt(sf: ts.SourceFile, position: number): ts.Node {
@@ -235,7 +300,7 @@ function hintFor(d: ts.Diagnostic, ctx: HintContext): string | null {
 		case 2552: {
 			const name = ts.isIdentifier(node) ? node.text : '';
 			const near = closest(name, ctx.namespaces);
-			return `${near.length ? `Did you mean ${near.map((n) => `\`${n}\``).join(' or ')}? ` : ''}${known} Only the namespaces declared by tools_describe exist; there is no fetch, require or import.`;
+			return `${near.length ? `Did you mean ${near.map((n) => `\`${n}\``).join(' or ')}? ` : ''}${known} Only the namespaces declared by tools_describe exist; there is no fetch, require or import. A connector missing here is in another workspace or not added: tell the user, do not switch workspace on your own.`;
 		}
 		case 2339: // Property 'x' does not exist on type …
 		case 2551: {
@@ -253,14 +318,14 @@ function hintFor(d: ts.Diagnostic, ctx: HintContext): string | null {
 					.getProperties()
 					.map((p) => p.name);
 				const near = closest(node.text, members);
-				return `\`${ns}\` has no tool \`${node.text}\`.${near.length ? ` Did you mean ${near.map((n) => `\`${ns}.${n}\``).join(' or ')}?` : ''} Its tools: ${members.slice(0, 40).join(', ')}${members.length > 40 ? ', …' : ''}. Blocked tools are not declared.`;
+				return `\`${ns}\` has no tool \`${node.text}\`.${near.length ? ` Did you mean ${near.map((n) => `\`${ns}.${n}\``).join(' or ')}?` : ''} Its tools: ${members.slice(0, 40).join(', ')}${members.length > 40 ? ', …' : ''}. Blocked tools are not declared. ${STALE}`;
 			}
 			if (
 				parent &&
 				ts.isPropertyAccessExpression(parent) &&
 				checker.getTypeAtLocation(parent.expression).getSymbol()?.getName() === 'ToolTextResult'
 			) {
-				return 'This tool has no output schema: its result is `ToolTextResult`, text as the server wrote it (often not JSON). Read `.text` (or `.content`); call `.json()` only if the text is JSON.';
+				return 'This tool has no output schema: its result is `ToolTextResult`, text as the server wrote it (often not JSON). Read `.text` (or `.content`); call `.json<T>()` only if the text is JSON.';
 			}
 			return null;
 		}
@@ -277,7 +342,7 @@ function hintFor(d: ts.Diagnostic, ctx: HintContext): string | null {
 	}
 	const call = enclosingToolCall(node, ctx.namespaces);
 	if (call) {
-		return `In the arguments of \`${call}\`: compare with its declaration (tools_describe ["${call}"]); optional members end with \`?\`, enums accept only the listed literals.`;
+		return `In the arguments of \`${call}\`: compare with its declaration (tools_describe ["${call}"]); optional members end with \`?\`, enums accept only the listed literals. ${STALE}`;
 	}
 	return null;
 }
@@ -419,7 +484,8 @@ export function check(input: CheckInput): CheckOutput {
 		},
 		reportDiagnostics: false
 	}).outputText;
-	return { ok: true, js, namespaces: tools.namespaces };
+	const warnings = escapeHatches(script);
+	return { ok: true, js, namespaces: tools.namespaces, ...(warnings ? { warnings } : {}) };
 }
 
 if (import.meta.main) {

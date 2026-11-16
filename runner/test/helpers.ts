@@ -38,9 +38,9 @@ type ContentBlock =
 	| { type: 'resource_link'; uri: string; name: string; mimeType?: string; description?: string }
 	| { type: 'resource'; resource: { uri: string; mimeType?: string; text?: string; blob?: string } };
 declare const resend: {
-	/** @returns No output schema: returns text content. Read \`.text\`; call \`.json()\` only if the text is JSON. */
+	/** @returns No output schema: returns text content. Read \`.text\`; call \`.json<T>()\` only if the text is JSON. */
 	listDomains(args: {}): Promise<ToolTextResult>;
-	/** @returns No output schema: returns text content. Read \`.text\`; call \`.json()\` only if the text is JSON. */
+	/** @returns No output schema: returns text content. Read \`.text\`; call \`.json<T>()\` only if the text is JSON. */
 	getStats(args: {}): Promise<ToolTextResult>;
 };
 `;

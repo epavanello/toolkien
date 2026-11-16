@@ -323,7 +323,7 @@ describe('toolDeclaration', () => {
 		expect(text).toContain('@default 10');
 		expect(text).toContain('}): Promise<ToolTextResult>;');
 		expect(text).toContain(
-			'@returns No output schema: returns text content. Read `.text`; call `.json()` only if the text is JSON.'
+			'@returns No output schema: returns text content. Read `.text`; call `.json<T>()` only if the text is JSON.'
 		);
 	});
 

@@ -198,6 +198,15 @@ email profile`, `prompt=select_account`; the callback lands on `redirectTo` (so 
   one at a time in seq order, so a pause at seq N means nothing after N reached the bridge.
 - **Type check in a sandboxed TypeScript compiler**, not `deno check` (which could read host files
   into diagnostics); the wrapper must not be escaped; no imports of any kind.
+- **Type-check escape hatches warn, they do not block**: a script that type-checks but casts to
+  `any` (`as any`, `<any>`), double-casts through `unknown` or uses `@ts-ignore` /
+  `@ts-expect-error` still runs, and the result carries one warning line per spot (found in the
+  parsed AST and its comment trivia, so strings never match; `@ts-nocheck` is inert inside the
+  function wrapper, so not reported). Agents used casts to get past "Cannot find name" (wrong
+  workspace) or a missing tool (stale declarations), which are exactly what the check reports.
+  Blocking would be stricter but would break legitimate narrowing; type errors still block. The
+  rules (describe first, never silence, what the errors mean, `.json<T>()`) are written once in
+  the `execute` description; the instructions and contextual checker hints point to them.
 - Fresh `deno run` per execution with no permissions, cleared env, V8 heap limit, `ulimit -d`
   (Linux), wall-clock timeout; read-only container, `cap_drop: ALL`, internal network only.
   gVisor recommended. Development starts a local supervisor with the `deno` binary.

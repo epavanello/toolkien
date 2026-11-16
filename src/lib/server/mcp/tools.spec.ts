@@ -331,6 +331,26 @@ describe('execute', () => {
 		expect(text).toContain('Hint: Nothing ran.');
 	});
 
+	it('shows checker warnings before the result', async () => {
+		const { call, deps } = setup();
+		const warnings = 'Warning: line 1 casts to `any`: type checks were skipped there.';
+		deps.executions.start.mockResolvedValueOnce(outcome({ result: 1, warnings }));
+		const result = await call('execute', { code: '(x as any)' });
+		expect('isError' in result && result.isError).toBeFalsy();
+		expect(textOf(result)).toContain(`${warnings}\nResult:\n1`);
+	});
+
+	it('teaches the type-check rules once, in the execute description', () => {
+		const { tools } = setup();
+		const execute = tools.get('execute')!.config.description;
+		expect(execute).toMatch(/Never silence them \(`as any`, `as unknown as`, `@ts-ignore`/);
+		expect(execute).toMatch(/do not switch workspace on your own/);
+		expect(execute).toMatch(/refresh the connector in Toolkien/);
+		expect(execute).toMatch(/`\.json<T>\(\)`, not `JSON\.parse\(x\.text\)`/);
+		expect(INSTRUCTIONS).toMatch(/execute's description says what they mean/);
+		expect(INSTRUCTIONS).not.toMatch(/ToolTextResult/);
+	});
+
 	it('prints results by size and says when they were cut', async () => {
 		const { call, deps } = setup();
 		deps.executions.start.mockResolvedValueOnce(outcome({ result: { a: 1 } }));

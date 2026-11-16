@@ -16,7 +16,7 @@ export const UNVERIFIED_WARNING =
 
 /** Per tool, when there is no output schema: the return type is `ToolTextResult` */
 export const NO_OUTPUT_SCHEMA_NOTE =
-	'No output schema: returns text content. Read `.text`; call `.json()` only if the text is JSON.';
+	'No output schema: returns text content. Read `.text`; call `.json<T>()` only if the text is JSON.';
 
 /** Return type of tools without an output schema */
 export const TEXT_RESULT_TYPE = 'ToolTextResult';

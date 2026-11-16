@@ -2,6 +2,7 @@
  * One execution: type-check in a sandboxed checker process, then run the script in a fresh
  * `deno run` with no permissions, relaying tool calls to the app.
  */
+import type { CheckOutput } from './checker.ts';
 import type { SupervisorConfig } from './config.ts';
 import { excerpt } from './excerpt.ts';
 import { byteLength, completedOutput, LogBuffer, truncateBytes } from './output.ts';
@@ -28,9 +29,6 @@ export type JobIO = {
 	/** Forward a tool call to the app */
 	toolCall(call: { seq: number; path: string; args: unknown }): void;
 };
-
-type CheckOutput =
-	{ ok: true; js: string; namespaces: string[] } | { ok: false; diagnostics: string };
 
 export function clampLimits(limits: RunnerLimits, caps: SupervisorConfig['caps']): RunnerLimits {
 	return {
@@ -272,6 +270,8 @@ export class JobRun {
 	/** seq → sandbox call id, for calls waiting for the app */
 	#pending = new Map<number, number>();
 	#finished = false;
+	/** Checker warnings (type-check escape hatches), attached to whatever result comes */
+	#warnings: string | undefined;
 	#resolve!: (result: RunnerResult) => void;
 	readonly done: Promise<RunnerResult>;
 
@@ -304,7 +304,7 @@ export class JobRun {
 				// already exited
 			}
 		}
-		this.#resolve(result);
+		this.#resolve(this.#warnings ? { ...result, warnings: this.#warnings } : result);
 		void this.#cleanup();
 	}
 
@@ -333,6 +333,7 @@ export class JobRun {
 				this.#fail('type_error', checked.diagnostics);
 				return this.done;
 			}
+			this.#warnings = checked.warnings;
 			await this.#spawn(
 				checked.js,
 				checked.namespaces.filter((n) => IDENTIFIER.test(n))

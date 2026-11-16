@@ -50,6 +50,8 @@ export type ExecutionOutcome = {
 	truncated?: boolean;
 	/** `failed`: content-free category + message for the agent */
 	error?: { code: string; message: string };
+	/** `completed` / `failed`: type-check escape hatches the script used (runner text) */
+	warnings?: string;
 	/** `awaiting_approval` */
 	approval?: ApprovalPrompt;
 };

@@ -82,6 +82,7 @@ export async function renderOutcome(
 		const hint = code ? FAILURE_HINTS[code] : undefined;
 		if (hint) parts.push(`Hint: ${hint}`);
 	}
+	if (outcome.warnings) parts.push(outcome.warnings);
 	parts.push(...resultText(outcome));
 	if (outcome.logs) parts.push('Logs:', outcome.logs);
 	return {
@@ -160,9 +161,11 @@ export function registerExecutionTools(
 			'`code` is the BODY of an async function: use `await`, and `return` the value you want back. No import/export and no dynamic import.',
 			'Each connector instance is a global object named by its namespace, with the functions declared by tools_describe; one script can call several connectors and several instances of the same server. Example:',
 			'`const a = await posthogDevmotion.query({ query: "select count() from events" }); const b = await posthogDevpost.query({ query: "select count() from events" }); return { devmotion: a, devpost: b };`.',
-			'Type errors against the declarations come back immediately, before anything runs, with the line, a caret and a hint. The return value and console.log output come back, truncated past the output limit: filter or summarize inside the script.',
+			'Call tools_describe before using a tool, and call it exactly as declared. The script is type-checked before anything runs; type errors come back with the line, a caret and a hint.',
+			'Never silence them (`as any`, `as unknown as`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`): they report real problems, and a script that uses these gets a warning. "Cannot find name" for a connector means the active workspace is the wrong one or the connector is not added: tell the user, do not switch workspace on your own. Arguments rejected for a server that changed recently mean stale declarations: the user can refresh the connector in Toolkien.',
+			'Return only what you need: the return value and console.log output come back, truncated past the output limit.',
 			'A failed tool call throws `ToolCallError` (`e.code`, `e.path`, `e.message` with the server text): catch it to continue. Runtime errors report the script line.',
-			'Tools without an output schema return `ToolTextResult`: read `.text` (often plain text, not JSON); call `.json()` only if the text is JSON.',
+			'Tools without an output schema return `ToolTextResult`: read `.text` (often plain text); if it is JSON, use `.json<T>()`, not `JSON.parse(x.text)`.',
 			'Some upstream tools require bookkeeping fields (e.g. conversation ids); pass what their descriptions say, and if a value is only known after a first call, make the first call, read it from the result, then reuse it.',
 			'Long scripts answer `running` after about 45 s: then call execution_status with the executionId to get the result.',
 			'No network, filesystem or environment access: only the declared tool functions.',

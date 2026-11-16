@@ -52,10 +52,14 @@ export type RunnerFailureCode =
 	| 'cancelled'
 	| 'runner_unavailable';
 
-export type RunnerResult =
+export type RunnerResult = (
 	| { status: 'completed'; result: unknown; logs: string; truncated: boolean }
 	| { status: 'failed'; code: RunnerFailureCode; message: string; logs: string }
-	| { status: 'paused'; atSeq: number; logs: string };
+	| { status: 'paused'; atSeq: number; logs: string }
+) & {
+	/** The script type-checked but used escape hatches (`as any`, `@ts-ignore`, …); it still ran */
+	warnings?: string;
+};
 
 export type AppToSupervisor =
 	| { type: 'job'; job: RunnerJob }
