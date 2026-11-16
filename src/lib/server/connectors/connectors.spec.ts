@@ -246,28 +246,35 @@ describe('directory connector without auth', () => {
 			summary: 'Ask about a repo.',
 			unverified: false
 		});
-		// Every word must match: "repository" is not in any text
-		expect(await connectors.searchTools(bob, 'question about repository')).toEqual([]);
+		// Any word matches: "repository" is in no text, "question" still finds the tool
+		expect((await connectors.searchTools(bob, 'question about repository'))[0]?.path).toBe(
+			'deepwiki.askQuestion'
+		);
+		expect(await connectors.searchTools(bob, 'repository')).toEqual([]);
 		const paths = async (query: string) =>
 			(await connectors.searchTools(bob, query))
 				.map((h) => h.path)
 				.filter((p) => p.startsWith('deepwiki.'));
 		// Exact name > name prefix > name words > instance (namespace) > description
 		expect(await paths('ask_question')).toEqual(['deepwiki.askQuestion']);
-		expect(await paths('readWikiStructure')).toEqual(['deepwiki.readWikiStructure']);
+		// `wiki` is also inside `deepwiki`: a weaker hit, after the named tool
+		expect(await paths('readWikiStructure')).toEqual([
+			'deepwiki.readWikiStructure',
+			'deepwiki.askQuestion'
+		]);
 		expect(await paths('wiki')).toEqual(['deepwiki.readWikiStructure', 'deepwiki.askQuestion']);
 		expect(await paths('deepwiki repo')).toEqual([
 			'deepwiki.askQuestion',
 			'deepwiki.readWikiStructure'
 		]);
 		expect(await paths('read')).toEqual(['deepwiki.readWikiStructure']);
-		// Case-insensitive; both match "repo" in the description only, so path order
+		// Case-insensitive; both match "repo", only one has "wiki" in its name
 		expect(await paths('REPO Wiki')).toEqual([
-			'deepwiki.askQuestion',
-			'deepwiki.readWikiStructure'
+			'deepwiki.readWikiStructure',
+			'deepwiki.askQuestion'
 		]);
 		// LIKE wildcards in the query are literal, never "match anything"
-		expect(await connectors.searchTools(bob, '100% repo')).toEqual([]);
+		expect(await connectors.searchTools(bob, '100% _x')).toEqual([]);
 		const [described] = await connectors.describeTools(bob, [
 			'deepwiki.askQuestion',
 			'nope.nothing'
@@ -795,12 +802,15 @@ describe('several instances of one server', () => {
 				accountHint: 'DevMotion'
 			})
 		]);
-		// The instance label narrows a query that matches both instances
+		// The instance label ranks first the instance it names
 		expect((await connectors.searchTools(bob, 'devmotion query')).map((h) => h.path)).toEqual([
-			'posthogDevmotion.query'
+			'posthogDevmotion.query',
+			'posthogDevpost.query'
 		]);
+		// `DevMotion` is `dev motion`: `dev` also matches the Devpost instance, ranked after
 		expect((await connectors.searchTools(bob, 'DevMotion')).map((h) => h.accountHint)).toEqual([
-			'DevMotion'
+			'DevMotion',
+			'Devpost'
 		]);
 		expect((await connectors.searchTools(bob, 'hogql query')).map((h) => h.path).sort()).toEqual([
 			'posthogDevmotion.query',
@@ -1064,5 +1074,83 @@ describe('free URLs of directory servers', () => {
 			needsReview: false,
 			unverified: false
 		});
+	});
+});
+
+describe('multi-word tool search', () => {
+	const tool = (name: string, description: string): FakeTool => ({
+		name,
+		description,
+		inputSchema: { type: 'object', properties: {} }
+	});
+	const devpost = createFakeServer({
+		host: 'mcp.devpost.example',
+		tools: [
+			tool('reddit_get_post_comments', 'Get the comment tree of a Reddit post.'),
+			tool('reddit_get_subreddit_rules', 'Get the posting rules and flairs of a subreddit.'),
+			tool('reddit_list_posts', 'List hot, new or top posts of a subreddit.'),
+			tool('reddit_comment', 'Reply to a Reddit post or comment.'),
+			tool('reddit_submit_post', 'Submit a text or link post to a subreddit.'),
+			tool('reddit_search_subreddits', 'Find subreddits by topic.'),
+			tool('run_growth_scan', 'Scan Reddit and X for posts, comments and subreddit threads.'),
+			tool('add_growth_signal', 'Record a growth signal: a post, comment or subreddit mention.'),
+			tool('list_growth_assets', 'List growth assets.'),
+			tool('x_post', 'Publish a post on X.')
+		]
+	});
+	servers.push(devpost);
+	const paths = async (query: string, limit?: number) =>
+		(await connectors.searchTools(bob, query, limit))
+			.map((h) => h.path)
+			.filter((p) => p.startsWith('devPost.'));
+
+	beforeAll(async () => {
+		const added = await connectors.add(alice, {
+			scope: 'shared',
+			onlyForMe: false,
+			name: 'DevPost',
+			authType: 'none',
+			source: { type: 'url', url: 'https://mcp.devpost.example/mcp' }
+		});
+		expect(added).toMatchObject({ namespace: 'devPost', status: 'active', toolCount: 10 });
+	});
+
+	it('finds camelCase tool names by their words', async () => {
+		const reddit = await paths('reddit');
+		expect(reddit.slice(0, 6).sort()).toEqual([
+			'devPost.redditComment',
+			'devPost.redditGetPostComments',
+			'devPost.redditGetSubredditRules',
+			'devPost.redditListPosts',
+			'devPost.redditSearchSubreddits',
+			'devPost.redditSubmitPost'
+		]);
+		expect(await paths('subreddit rules')).toEqual(
+			expect.arrayContaining(['devPost.redditGetSubredditRules'])
+		);
+		expect((await paths('subreddit rules'))[0]).toBe('devPost.redditGetSubredditRules');
+	});
+
+	it('ranks tools by matched words instead of requiring every word', async () => {
+		// Production: 4 unrelated growth tools (every word in their descriptions)
+		const four = await paths('reddit post comments subreddit');
+		expect(four[0]).toBe('devPost.redditGetPostComments');
+		expect(four.slice(0, 3)).not.toContain('devPost.runGrowthScan');
+		// Production: 0 results ("No tools match")
+		const long = await paths('reddit get post comments subreddit rules list posts');
+		expect(long.slice(0, 3).sort()).toEqual([
+			'devPost.redditGetPostComments',
+			'devPost.redditGetSubredditRules',
+			'devPost.redditListPosts'
+		]);
+		// A word missing from every tool does not hide the others
+		expect((await paths('reddit list posts xyzzy'))[0]).toBe('devPost.redditListPosts');
+		// Plural and singular find each other
+		expect((await paths('submit posts'))[0]).toBe('devPost.redditSubmitPost');
+	});
+
+	it('keeps the limit and returns nothing when no word matches', async () => {
+		expect(await connectors.searchTools(bob, 'reddit get post comments', 2)).toHaveLength(2);
+		expect(await connectors.searchTools(bob, 'xyzzy plugh')).toEqual([]);
 	});
 });

@@ -25,12 +25,15 @@ removed after this merge).
   supported in MVCC mode"), so `CREATE VIRTUAL TABLE … USING fts5` cannot run there. Instead the
   plain table `tool_search_text` holds one lowercased text per live tool (name split
   camelCase/snake_case, path, namespace, connector name, instance label, title, first description
-  line, directory tags), rebuilt on sync and rename. Every query word must match
-  (`LIKE '%word%'`, wildcards escaped; a few stopwords dropped), ranked in TypeScript: exact name,
-  then name prefix, name words, instance (namespace/name/label), description, then path. Same
-  behaviour on local SQLite and Turso; no stemming or bm25, fine at the scale of one workspace's
-  tools. The FTS5 table was removed from migration `0001` (renamed `0001_audit_guards`) since
-  production had never been migrated; runtime code also avoids SQLite-only pragmas.
+  line, directory tags), rebuilt on sync and rename. Any query word matches (`LIKE '%word%'`,
+  wildcards escaped; a few stopwords dropped; a plural `s` dropped), so a long natural-language
+  query never returns nothing because one word is absent (requiring every word did: agents
+  concluded tools did not exist). Ranked in TypeScript, bm25-like: query words starting a word of
+  the tool name count 2, of the search text 1; ties by exact name, name prefix, name words,
+  instance (namespace/name/label), description, then path. Same behaviour on local SQLite and
+  Turso; no real stemming or bm25, fine at the scale of one workspace's tools. The FTS5 table
+  was removed from migration `0001` (renamed `0001_audit_guards`) since production had never
+  been migrated; runtime code also avoids SQLite-only pragmas.
 - **Single instance**: rate limits, concurrency slots, caches, `list_changed` watchers and jobs
   live in memory; anything that must survive a restart (paused executions, approvals) is in the DB.
 - **Jobs** are registered in one place (`jobs/builtin.ts`, dynamic imports, no import-time side

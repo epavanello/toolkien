@@ -11,7 +11,7 @@ import { visibleToolIds } from '#lib/server/permissions/index.ts';
 import { moduleDeclaration, type ToolTypeInput } from '#lib/server/typegen/index.ts';
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 import { visibleTo } from './access.ts';
-import { likePattern, queryWords, rank } from './search.ts';
+import { likePattern, queryWords, rank, score, stem } from './search.ts';
 import type { ResolvedTool, ToolAnnotations, ToolDescription, ToolSearchHit } from './types.ts';
 
 /**
@@ -141,9 +141,11 @@ export const toTypeInput = (record: ToolRecord): ToolTypeInput => ({
 });
 
 /**
- * Every query word must appear in the tool's search text (`LIKE '%word%'`, wildcards escaped);
- * hits are ranked by `rank` (exact name, name prefix, name, instance, description), then path.
- * A query without words lists every usable tool by path.
+ * A tool is a hit when any query word appears in its search text (`LIKE '%word%'`, wildcards
+ * escaped, plural `s` dropped): a long natural-language query never ends with zero results
+ * because one word is missing. Hits are ordered by `score` (query words matched, name words
+ * counting double), then `rank` (exact name, name prefix, name, instance, description), then
+ * path. A query without words lists every usable tool by path.
  */
 export async function searchTools(
 	actor: WorkspaceActor,
@@ -156,18 +158,33 @@ export async function searchTools(
 	if (terms.length === 0) {
 		rows = (await usableTools(actor).orderBy(tool.path)) as ToolRecord[];
 	} else {
+		const matches = and(
+			eq(toolSearchText.workspaceId, actor.workspaceId),
+			or(
+				...[...new Set(terms.map(stem))].map(
+					(term) => sql`${toolSearchText.text} LIKE ${likePattern(term)} ESCAPE '\\'`
+				)
+			)
+		);
+		const texts = new Map(
+			(
+				await db
+					.select({ toolId: toolSearchText.toolId, text: toolSearchText.text })
+					.from(toolSearchText)
+					.where(matches)
+			).map((row) => [row.toolId, row.text])
+		);
 		const matching = db
 			.select({ toolId: toolSearchText.toolId })
 			.from(toolSearchText)
-			.where(
-				and(
-					eq(toolSearchText.workspaceId, actor.workspaceId),
-					...terms.map((term) => sql`${toolSearchText.text} LIKE ${likePattern(term)} ESCAPE '\\'`)
-				)
-			);
+			.where(matches);
 		rows = ((await usableTools(actor, inArray(tool.id, matching))) as ToolRecord[])
-			.map((row) => ({ row, rank: rank(row, terms) }))
-			.sort((a, b) => a.rank - b.rank || (a.row.path < b.row.path ? -1 : 1))
+			.map((row) => ({
+				row,
+				score: score(row, texts.get(row.id) ?? '', terms),
+				rank: rank(row, terms)
+			}))
+			.sort((a, b) => b.score - a.score || a.rank - b.rank || (a.row.path < b.row.path ? -1 : 1))
 			.map(({ row }) => row);
 	}
 	const allowed = await withoutBlocked(actor, rows);

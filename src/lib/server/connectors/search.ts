@@ -1,7 +1,8 @@
 /**
  * Portable tool search: one lowercased text per tool (`tool_search_text`), matched with
- * `LIKE '%word%'` for every query word (all must match), ranked here. No FTS5: Turso in MVCC
- * mode rejects virtual tables, and the same SQL must run on local SQLite.
+ * `LIKE '%word%'` for any query word (a tool matching one word is a hit), ranked here by how many
+ * words it matches. No FTS5: Turso in MVCC mode rejects virtual tables, and the same SQL must run
+ * on local SQLite.
  */
 
 /** Query words dropped unless the query has nothing else ("list issues of a repo") */
@@ -35,6 +36,14 @@ export function queryWords(query: string): string[] {
 	const all = [...new Set(words(query))];
 	const meaningful = all.filter((w) => !STOPWORDS.has(w));
 	return (meaningful.length > 0 ? meaningful : all).slice(0, MAX_QUERY_WORDS);
+}
+
+/**
+ * Query word as matched: a plural `s` is dropped (`posts` → `post`, `rules` → `rule`; not
+ * `access`), so `posts` also finds `listPost`. A stem is a prefix of the word: no match is lost.
+ */
+export function stem(word: string): string {
+	return word.length > 3 && word.endsWith('s') && !word.endsWith('ss') ? word.slice(0, -1) : word;
 }
 
 /** `LIKE` pattern matching `word` anywhere, `%` `_` `\` escaped (use with `ESCAPE '\'`) */
@@ -76,10 +85,30 @@ export function searchText(s: SearchSource): string {
 	);
 }
 
+/** How many of `stems` begin one of `candidates` */
+const hits = (stems: string[], candidates: string[]) =>
+	stems.filter((s) => candidates.some((w) => w.startsWith(s))).length;
+
 /**
- * Rank of a tool that matched every query word (lower is better): 0 exact name, 1 name prefix,
- * 2 every word in the name, 3 every word in name, namespace, connector name or label,
- * 4 otherwise (title, description, tags).
+ * Relevance of a hit (higher is better): every query word that begins a word of the tool name
+ * counts 2, every query word that begins a word of its search text counts 1. A query of many
+ * words therefore ranks the tools matching most of them, by name first, without requiring all.
+ * Hits matched only inside a word (`wiki` in `deepwiki`) score 0 and come last.
+ */
+export function score(
+	s: Pick<SearchSource, 'path' | 'namespace' | 'upstreamName'>,
+	text: string,
+	query: string[]
+): number {
+	const stems = [...new Set(query.map(stem))];
+	const name = [...words(functionName(s)), ...words(s.upstreamName)];
+	return 2 * hits(stems, name) + hits(stems, text.split(' '));
+}
+
+/**
+ * Tie-break between hits of equal `score` (lower is better): 0 exact name, 1 name prefix,
+ * 2 every query word in the name, 3 every query word in name, namespace, connector name or
+ * label, 4 otherwise (title, description, tags, or not every query word matched).
  */
 export function rank(
 	s: Pick<SearchSource, 'path' | 'namespace' | 'upstreamName' | 'connectorName' | 'label'>,

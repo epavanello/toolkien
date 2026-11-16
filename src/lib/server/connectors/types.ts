@@ -366,9 +366,10 @@ export interface ConnectorsService {
 	refreshStale(actor: WorkspaceActor): Promise<void>;
 	/**
 	 * Keyword search over the tools the actor can see and call (connector visible, credential
-	 * usable, not suspended) minus the tools `permissions.visibleToolIds` hides (blocked). Every
-	 * query word must match; exact names rank first, then name prefixes, names, instances
-	 * (namespace, connector name, label) and descriptions.
+	 * usable, not suspended) minus the tools `permissions.visibleToolIds` hides (blocked). A tool
+	 * matching any query word is a hit; hits matching more words rank first (name words count
+	 * double), then exact names, name prefixes, names, instances (namespace, connector name,
+	 * label) and descriptions. Empty only when no word matches any tool.
 	 */
 	searchTools(actor: WorkspaceActor, query: string, limit?: number): Promise<ToolSearchHit[]>;
 	/** Same visibility as `searchTools`; unknown or blocked paths are omitted */
