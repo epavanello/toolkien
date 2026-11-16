@@ -1,0 +1,1 @@
+ALTER TABLE `connector` ADD `pending_changes` text;

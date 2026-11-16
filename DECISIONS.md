@@ -154,7 +154,35 @@ email profile`, `prompt=select_account`; the callback lands on `redirectTo` (so 
   member leaves (`revokeUserCredentials`). No pre-registered clients (GitHub → pasted token);
   custom auth headers unsupported.
 - **Refresh triggers**: `list_changed` watcher, 6 h staleness on session open, unknown tool /
-  invalid params on call, manual refresh.
+  invalid params on call, a daily resync, manual refresh. All run the same sync (versions,
+  `signatureHash` → "to confirm", description-change flag, `connector.synced` audit with the
+  reason); none adds permission semantics.
+- **Daily resync** (job `connectors.resync`, `connectors/resync.ts`): upstreams that do not
+  advertise `tools.listChanged` change silently (DevPost added arguments to a tool and agents kept
+  the old declaration until someone pressed Refresh). Hourly runs pick connectors last synced
+  more than 24 h ago, oldest first, at most 25 per run, one at a time (load spreads over the day
+  and a deploy never hits every upstream at once); reason `scheduled`, no actor. In memory like
+  every job (single instance): a failed attempt waits a day, a restart may retry it once.
+  Skipped: never synced, suspended, disabled, `pending_auth`, and `listChanged` upstreams (their
+  watcher refreshes them while open). Credential: the shared one; for per-member connectors the
+  owner's, else the most recently saved member credential (the catalog is one per connector,
+  whoever loads it, as with session-open refreshes); none stored → skipped.
+- **Rejected calls** (`unknown_tool` / `invalid_params`: JSON-RPC -32601/-32602, or an `isError`
+  result whose text is the TypeScript SDK 1.x wrapping of them, "MCP error -32602: Input
+  validation error…", or a validation message): the sync runs before the error returns, so the
+  hint is true when the agent reads it ("…refreshed the catalog. Describe `x` again
+  (tools_describe) and retry with the current signature:" + the declaration), at most once per
+  connector every 10 minutes (an agent looping on bad arguments is not a `tools/list` loop).
+  Inside the window the hint says a recent refresh already ran.
+- **Checked vs changed**: "Tools updated" (list and connector panel) is the last catalog change,
+  derived from the tools' version and removal times (no stored copy); the last check
+  (`last_synced_at`) follows it, quieter ("· checked 2 h ago"). A background sync that changes a
+  catalog synced before stores the change summary in `connector.pending_changes` (counts add up,
+  paths deduplicated, `since` = first unreviewed change), shown to managers as a notice in the
+  panel (same wording as the Refresh toast: "Signature changed: … (permissions to confirm)") and
+  a "… · Review" button on the list row, until one of them presses "Mark reviewed". Per
+  connector, managers only: members still see "to confirm" on their own tool levels. A manual
+  refresh never stores it (its author saw the toast).
 - Script values come from `toScriptValue` (structured content, else parsed text), matching the
   generated `.d.ts`.
 - **Development only**: plain `http://` to loopback is allowed (local MCP servers); production

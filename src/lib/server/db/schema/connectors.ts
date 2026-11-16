@@ -39,6 +39,21 @@ export type ToolAnnotations = {
 
 export type JsonSchema = Record<string, unknown>;
 
+/**
+ * Catalog changes background syncs (scheduled, `list_changed`, rejected call, session open)
+ * found since someone who manages the connector last reviewed them. Same shape as a manual
+ * refresh's result; counts add up across syncs, paths are deduplicated.
+ */
+export type CatalogChanges = {
+	/** ISO time of the first unreviewed change */
+	since: string;
+	added: number;
+	updated: number;
+	removed: number;
+	signatureChanged: string[];
+	descriptionChanged: string[];
+};
+
 export const connector = sqliteTable(
 	'connector',
 	{
@@ -81,6 +96,8 @@ export const connector = sqliteTable(
 		serverInfo: json<{ name: string; version: string } | null>('server_info'),
 		/** Upstream advertises `tools.listChanged`: a watcher listens for changes */
 		toolsListChanged: integer('tools_list_changed', { mode: 'boolean' }).notNull().default(false),
+		/** Unreviewed changes found by background syncs; cleared when a manager reviews them */
+		pendingChanges: json<CatalogChanges | null>('pending_changes'),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt(),
 		updatedAt: updatedAt()

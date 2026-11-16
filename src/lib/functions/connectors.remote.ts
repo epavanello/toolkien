@@ -3,6 +3,7 @@ import { resolve } from '$app/paths';
 import { error, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
+	acknowledgeChanges,
 	addAndConnect,
 	rename,
 	disconnect,
@@ -213,6 +214,17 @@ export const refreshConnector = command(
 		// The panel shows the levels of the tools it lists
 		void listPermissions(workspace).refresh();
 		return result;
+	}
+);
+
+/** "Mark reviewed": clears the changes background syncs found (managers) */
+export const acknowledgeConnectorChanges = command(
+	z.object({ workspace: slug, id }),
+	async ({ workspace, id }) => {
+		const { actor } = await requireWorkspace(workspace);
+		await acknowledgeChanges(actor, id);
+		void listConnectors(workspace).refresh();
+		void getConnector({ workspace, id }).refresh();
 	}
 );
 

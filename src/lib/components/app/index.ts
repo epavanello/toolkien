@@ -21,7 +21,7 @@ export { default as CopyButton } from './copy-button.svelte';
 export { default as DataTable } from './data-table.svelte';
 export { default as DirectoryBrowser } from './directory-browser.svelte';
 export { default as Disclosure } from './disclosure.svelte';
-export type { Column, InlineAction, TableFilter, TableGroup } from './data-table.ts';
+export type { Column, InlineAction, SecondaryTime, TableFilter, TableGroup } from './data-table.ts';
 export { default as EmptyState } from './empty-state.svelte';
 export { default as ErrorState } from './error-state.svelte';
 export { describeError, type ErrorDescription, type ErrorKind } from './error-state.ts';

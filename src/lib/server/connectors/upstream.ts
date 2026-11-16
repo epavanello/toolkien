@@ -203,8 +203,23 @@ const textOf = (content: unknown[]): string =>
 		.join('\n');
 
 const INVALID_ARGS =
-	/invalid (argument|param|input)|validation (error|failed)|required (property|parameter)|must have required|unexpected (property|argument)/i;
+	/invalid (argument|param|input)|validation (error|failed)|required (property|parameter)|must have required|unexpected (property|argument)|MCP error -32602\b/i;
 const UNKNOWN_TOOL = /unknown tool|tool .*not found|no such tool|tool not found/i;
+/**
+ * TypeScript SDK 1.x servers (`McpServer`) turn protocol errors into tool results:
+ * `isError` + "MCP error -32602: Tool x not found" / "…: Input validation error: …"
+ */
+const UNKNOWN_TOOL_RESULT = /MCP error -32601\b|MCP error -32602: Tool \S+ (not found|disabled)/i;
+
+/** What an `isError` result is: a rejected tool name, rejected arguments, or the tool's answer */
+export const classifyToolError = (
+	text: string
+): 'unknown_tool' | 'invalid_params' | 'upstream_error' =>
+	UNKNOWN_TOOL_RESULT.test(text)
+		? 'unknown_tool'
+		: INVALID_ARGS.test(text)
+			? 'invalid_params'
+			: 'upstream_error';
 
 /** Error text for the agent: upstream text is the tool's own answer, capped */
 const cap = (text: string) => (text.length > 2000 ? `${text.slice(0, 2000)}…` : text);
@@ -238,9 +253,7 @@ export async function callUpstreamTool(
 						const text = textOf(content);
 						return {
 							ok: false as const,
-							code: INVALID_ARGS.test(text)
-								? ('invalid_params' as const)
-								: ('upstream_error' as const),
+							code: classifyToolError(text),
 							message: cap(text || 'The tool reported an error.')
 						};
 					}

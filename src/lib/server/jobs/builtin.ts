@@ -61,6 +61,19 @@ registerJob({
 	}
 });
 
+// Hourly, a few connectors per run: daily resync of upstreams that do not announce
+// `tools/list_changed` (see `connectors/resync.ts`)
+registerJob({
+	name: 'connectors.resync',
+	intervalMs: HOUR,
+	runOnStart: true,
+	run: async () => {
+		const { resyncStaleConnectors } = await import('#lib/server/connectors/index.ts');
+		const synced = await resyncStaleConnectors();
+		if (synced > 0) console.info(`[jobs] connectors.resync synced ${synced} connectors`);
+	}
+});
+
 // Daily, idempotent: a no-op until the transit key is rotated, then it moves every wrapped DEK
 // to the new key version so `min_decryption_version` can be raised.
 registerJob({

@@ -1,6 +1,6 @@
 import { dev } from '$app/env';
 import { error, isHttpError } from '@sveltejs/kit';
-import { and, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, max, or, sql } from 'drizzle-orm';
 import { record } from '#lib/server/audit/index.ts';
 import { db } from '#lib/server/db/index.ts';
 import {
@@ -43,6 +43,7 @@ import { findDirectoryEntryByUrl, getDirectoryEntry } from './directory.ts';
 import { connectorIcons, refreshConnectorIcon } from './icon.ts';
 import { resolveTool, summaryOf, toTypeInput, type ToolRecord } from './discovery.ts';
 import { completeUpstreamOAuth, revokeUpstreamTokens, startUpstreamOAuth } from './oauth.ts';
+import { claimRejectionResync, rejectionHint } from './resync.ts';
 import { upstreamCredential } from './session.ts';
 import { rebuildSearch, requireAuthentication, syncConnector } from './sync.ts';
 import type {
@@ -79,6 +80,26 @@ async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<C
 				or(isNull(connectorCredential.userId), eq(connectorCredential.userId, actor.userId))
 			)
 		);
+	// The catalog changed when a tool got a version (added or changed) or was removed
+	const changes = await db
+		.select({
+			connectorId: tool.connectorId,
+			versioned: max(toolVersion.createdAt),
+			removed: max(tool.removedAt)
+		})
+		.from(tool)
+		.innerJoin(toolVersion, eq(toolVersion.toolId, tool.id))
+		.where(inArray(tool.connectorId, ids))
+		.groupBy(tool.connectorId);
+	const lastChanged = new Map(
+		changes.map((c) => [
+			c.connectorId,
+			[c.versioned, c.removed].reduce<Date | null>(
+				(latest, at) => (at && (!latest || at > latest) ? at : latest),
+				null
+			)
+		])
+	);
 	const toolCount = new Map(counts.map((c) => [c.connectorId, c.n]));
 	const icons = await connectorIcons(rows);
 	return rows.map((row) => {
@@ -108,6 +129,8 @@ async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<C
 					: credentials.some((c) => c.connectorId === row.id && c.userId === owner),
 			toolCount: toolCount.get(row.id) ?? 0,
 			lastSyncedAt: row.lastSyncedAt,
+			lastChangedAt: lastChanged.get(row.id) ?? null,
+			pendingChanges: canManage(actor, row) ? (row.pendingChanges ?? null) : null,
 			canManage: canManage(actor, row),
 			canAuthenticate: canAuthenticate(actor, row),
 			protocolVersion: row.protocolVersion,
@@ -658,6 +681,15 @@ export const syncTools: ConnectorsService['syncTools'] = async (actor, connector
 	return result;
 };
 
+export const acknowledgeChanges: ConnectorsService['acknowledgeChanges'] = async (
+	actor,
+	connectorId
+) => {
+	const row = await getVisible(actor, connectorId);
+	assertCanManage(actor, row);
+	await db.update(connector).set({ pendingChanges: null }).where(eq(connector.id, row.id));
+};
+
 export const refreshStale: ConnectorsService['refreshStale'] = async (actor) => {
 	const rows = await db
 		.select()
@@ -721,14 +753,14 @@ export const callTool: ConnectorsService['callTool'] = async (actor, resolved, a
 	}
 
 	if (!result.ok && (result.code === 'unknown_tool' || result.code === 'invalid_params')) {
-		await syncConnector(row, owner, 'call_error', actor.userId).catch(() => undefined);
+		// Awaited (the hint below must be true when the agent reads it), debounced per connector
+		const refreshed = claimRejectionResync(row.id);
+		if (refreshed)
+			await syncConnector(row, owner, 'call_error', actor.userId).catch(() => undefined);
 		const fresh = await resolveTool(actor, resolved.path);
-		if (!fresh) {
-			return {
-				...result,
-				message: `${result.message}\n\n${resolved.path} no longer exists on the server. Search the tools again.`
-			};
-		}
+		const hint = (changed: boolean, declaration: string | null) =>
+			`${result.message}\n\n${rejectionHint({ path: resolved.path, refreshed, changed, declaration })}`;
+		if (!fresh) return { ...result, message: hint(false, null) };
 		const declaration = await moduleDeclaration([
 			toTypeInput({
 				id: fresh.toolId,
@@ -749,10 +781,9 @@ export const callTool: ConnectorsService['callTool'] = async (actor, resolved, a
 				version: 0
 			})
 		]);
-		const changed = fresh.signatureHash !== resolved.signatureHash;
 		return {
 			...result,
-			message: `${result.message}\n\n${changed ? 'The tool definition changed upstream and was refreshed.' : 'Definitions were refreshed.'} Current signature of ${fresh.path}:\n${declaration}`
+			message: hint(fresh.signatureHash !== resolved.signatureHash, declaration)
 		};
 	}
 	return result;

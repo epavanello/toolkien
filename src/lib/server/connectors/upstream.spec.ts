@@ -11,7 +11,8 @@ vi.mock('#lib/server/net/index.ts', async () => {
 	};
 });
 
-const { callUpstreamTool, listTools, toScriptValue } = await import('./upstream.ts');
+const { callUpstreamTool, classifyToolError, listTools, toScriptValue } =
+	await import('./upstream.ts');
 
 const echo = {
 	name: 'echo_text',
@@ -86,5 +87,23 @@ describe('upstream client', () => {
 			{}
 		);
 		expect(result).toMatchObject({ ok: false, code: 'unknown_tool' });
+	});
+});
+
+describe('tool error results', () => {
+	it('tells rejected names and arguments from the tool answering with an error', () => {
+		// TypeScript SDK 1.x servers wrap protocol errors in `isError` results
+		expect(classifyToolError('MCP error -32602: Tool save_growth_goal not found')).toBe(
+			'unknown_tool'
+		);
+		expect(
+			classifyToolError(
+				'MCP error -32602: Input validation error: Invalid arguments for tool save_growth_goal: [...]'
+			)
+		).toBe('invalid_params');
+		expect(classifyToolError('Invalid arguments: missing required property title')).toBe(
+			'invalid_params'
+		);
+		expect(classifyToolError('Rate limited, try again in a minute.')).toBe('upstream_error');
 	});
 });

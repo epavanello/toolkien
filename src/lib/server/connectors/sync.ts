@@ -9,7 +9,7 @@ import { detectAuth } from './detect.ts';
 import { getDirectoryEntry } from './directory.ts';
 import { searchText } from './search.ts';
 import { upstreamCredential } from './session.ts';
-import type { SyncReason, SyncResult, ToolAnnotations } from './types.ts';
+import type { CatalogChanges, SyncReason, SyncResult, ToolAnnotations } from './types.ts';
 import { listTools, UpstreamError, type SessionInfo, type UpstreamTool } from './upstream.ts';
 
 /**
@@ -19,6 +19,10 @@ import { listTools, UpstreamError, type SessionInfo, type UpstreamTool } from '.
  * permissions compare their confirmed hash with the current version's, so a changed signature
  * is "to confirm" without touching permission rows. The `tool_search_text` rows of the
  * connector are rebuilt in the same transaction.
+ *
+ * Syncs nobody watches (every reason but `manual`) that change the catalog of a connector
+ * synced before add their result to `connector.pending_changes`, shown to managers until they
+ * review it; the first load of a catalog is not news.
  */
 
 /** Verified directory annotations override what the server reports */
@@ -44,11 +48,35 @@ async function existingTools(connectorId: string): Promise<ExistingTool[]> {
 	return rows.map((row) => ({ ...row.tool, version: row.version }));
 }
 
-/** Applies a `tools/list` result; pure database work, no network */
+export const isCatalogChange = (result: SyncResult) =>
+	result.added + result.updated + result.removed > 0;
+
+/** `previous` plus one more sync's changes: counts add up, paths are deduplicated */
+export function mergeChanges(
+	previous: CatalogChanges | null,
+	result: SyncResult,
+	at: Date
+): CatalogChanges {
+	const union = (a: string[] = [], b: string[]) => [...new Set([...a, ...b])];
+	return {
+		since: previous?.since ?? at.toISOString(),
+		added: (previous?.added ?? 0) + result.added,
+		updated: (previous?.updated ?? 0) + result.updated,
+		removed: (previous?.removed ?? 0) + result.removed,
+		signatureChanged: union(previous?.signatureChanged, result.signatureChanged),
+		descriptionChanged: union(previous?.descriptionChanged, result.descriptionChanged)
+	};
+}
+
+/**
+ * Applies a `tools/list` result; pure database work, no network. `notify`: keep the changes
+ * as `pending_changes` (background syncs).
+ */
 export async function applyToolList(
 	conn: ConnectorRow,
 	upstreamTools: UpstreamTool[],
-	info: SessionInfo
+	info: SessionInfo,
+	opts: { notify?: boolean } = {}
 ): Promise<SyncResult> {
 	const entry = conn.source === 'directory' ? getDirectoryEntry(conn.directoryId) : null;
 	const existing = await existingTools(conn.id);
@@ -148,6 +176,19 @@ export async function applyToolList(
 
 		await rebuildSearch(tx, conn);
 
+		// Read inside the transaction (`conn` may be an old copy; another background sync may
+		// have added changes meanwhile)
+		const [current] =
+			opts.notify && isCatalogChange(result)
+				? await tx
+						.select({
+							lastSyncedAt: connector.lastSyncedAt,
+							pendingChanges: connector.pendingChanges
+						})
+						.from(connector)
+						.where(eq(connector.id, conn.id))
+				: [];
+		const notify = current !== undefined && current.lastSyncedAt !== null;
 		await tx
 			.update(connector)
 			.set({
@@ -156,7 +197,8 @@ export async function applyToolList(
 				lastSyncedAt: now,
 				protocolVersion: info.protocolVersion,
 				serverInfo: info.serverInfo,
-				toolsListChanged: info.toolsListChanged
+				toolsListChanged: info.toolsListChanged,
+				...(notify ? { pendingChanges: mergeChanges(current.pendingChanges, result, now) } : {})
 			})
 			.where(eq(connector.id, conn.id));
 	});
@@ -323,7 +365,9 @@ async function runSync(
 		);
 	}
 
-	const result = await applyToolList(conn, listed.tools, listed.info);
+	const result = await applyToolList(conn, listed.tools, listed.info, {
+		notify: reason !== 'manual'
+	});
 	await record({
 		type: 'connector.synced',
 		outcome: 'success',

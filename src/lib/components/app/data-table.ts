@@ -24,6 +24,11 @@ export type Column<T> = {
 	 */
 	logo?: (row: T) => string | null | undefined;
 	/**
+	 * `datetime` cells: a quieter second date after the value (`· checked 2 h ago`); `null`
+	 * hides it
+	 */
+	secondary?: (row: T) => SecondaryTime | null;
+	/**
 	 * A small button after the cell value (e.g. "Connect" next to a pending status); `null`
 	 * hides it. Clicks do not open the row.
 	 */
@@ -33,6 +38,9 @@ export type Column<T> = {
 	/** Hidden below the `md` breakpoint */
 	hideOnMobile?: boolean;
 };
+
+/** A second date shown after a main one, in words: `checked` → `· checked 2 h ago` */
+export type SecondaryTime = { label: string; value: Date | string | number | null };
 
 export type InlineAction = {
 	label: string;

@@ -121,6 +121,10 @@ const { db } = await import('#lib/server/db/index.ts');
 const schema = await import('#lib/server/db/schema/index.ts');
 const { seedWorkspace } = await import('./testing/db.ts');
 const connectors = await import('./index.ts');
+const resync = await import('./resync.ts');
+const resyncSync = await import('./sync.ts');
+const { createPermissionsService } = await import('#lib/server/permissions/service.ts');
+const record = async () => undefined;
 const { OAuthCallbackError } = connectors;
 
 const actor = (userId: keyof typeof roles): WorkspaceActor => ({
@@ -411,7 +415,9 @@ describe('free URL with a pasted token', () => {
 		const tool = (await connectors.resolveTool(bob, 'issues.createIssue'))!;
 		const result = await connectors.callTool(bob, tool, { name: 'x' });
 		expect(result).toMatchObject({ ok: false, code: 'invalid_params' });
-		expect(!result.ok && result.message).toContain('Current signature of issues.createIssue');
+		expect(!result.ok && result.message).toContain(
+			'Describe issues.createIssue again (tools_describe) and retry with the current signature:'
+		);
 		expect(!result.ok && result.message).toContain('createIssue(args: {');
 	});
 
@@ -747,6 +753,230 @@ describe('refreshStale', () => {
 		await connectors.refreshStale(bob);
 		const after = (await connectors.list(bob)).find((c) => c.id === added.id)!;
 		expect(after.lastSyncedAt!.getTime()).toBeGreaterThan(old.getTime());
+	});
+});
+
+describe('scheduled resync', () => {
+	const DAY = 24 * 60 * 60 * 1000;
+	let plain: FakeServer;
+	let ids: Record<'plain' | 'live' | 'fresh' | 'suspended', string>;
+	let create: string;
+
+	const add = async (host: string, tools: FakeTool[], listChanged = false) => {
+		const server = createFakeServer({ host, tools, listChanged });
+		servers.push(server);
+		const added = await connectors.add(alice, {
+			scope: 'shared',
+			onlyForMe: false,
+			source: { type: 'url', url: `https://${host}/mcp` }
+		});
+		return { server, id: added.id, namespace: added.namespace };
+	};
+	const row = async (id: string) =>
+		(await db.select().from(schema.connector).where(eq(schema.connector.id, id)))[0];
+	const age = (id: string, at: Date) =>
+		db.update(schema.connector).set({ lastSyncedAt: at }).where(eq(schema.connector.id, id));
+
+	beforeAll(async () => {
+		resync.resetResyncState();
+		const first = await add('mcp.daily.example', issuesTools);
+		plain = first.server;
+		create = `${first.namespace}.createIssue`;
+		const live = await add('mcp.daily-live.example', [issuesTools[0]], true);
+		const fresh = await add('mcp.daily-fresh.example', [issuesTools[0]]);
+		const suspended = await add('mcp.daily-off.example', [issuesTools[0]]);
+		ids = { plain: first.id, live: live.id, fresh: fresh.id, suspended: suspended.id };
+		const old = new Date(Date.now() - 2 * DAY);
+		for (const id of [ids.plain, ids.live, ids.suspended]) await age(id, old);
+		await db
+			.update(schema.connector)
+			.set({ suspendedAt: new Date() })
+			.where(eq(schema.connector.id, ids.suspended));
+	});
+
+	it('picks only connectors older than a day that do not announce list_changed', async () => {
+		expect((await row(ids.live)).toolsListChanged).toBe(true);
+		const due = (await resync.dueForResync()).map((c) => c.id);
+		expect(due).toContain(ids.plain);
+		expect(due).not.toContain(ids.live);
+		expect(due).not.toContain(ids.fresh);
+		expect(due).not.toContain(ids.suspended);
+	});
+
+	it('resyncs with reason "scheduled"; a changed signature still needs confirmation', async () => {
+		const permissions = createPermissionsService({ db: db as never, audit: { record } });
+		const before = (await connectors.resolveTool(alice, create))!;
+		await permissions.setLevel({
+			workspaceId: 'ws-1',
+			actorUserId: alice.userId,
+			userId: alice.userId,
+			toolId: before.toolId,
+			level: 'allow'
+		});
+		const level = () =>
+			permissions.getEffectiveLevel({
+				workspaceId: 'ws-1',
+				userId: alice.userId,
+				toolId: before.toolId
+			});
+		expect(await level()).toMatchObject({ level: 'allow', needsConfirmation: false });
+		const listedBefore = (await connectors.list(alice)).find((c) => c.id === ids.plain)!;
+
+		plain.tools.splice(1, 1, {
+			...issuesTools[1],
+			inputSchema: {
+				type: 'object',
+				properties: {
+					title: { type: 'string' },
+					labels: { type: 'array', items: { type: 'string' } }
+				},
+				required: ['title']
+			}
+		});
+		const now = Date.now();
+		expect(await resync.resyncStaleConnectors(now)).toBeGreaterThanOrEqual(1);
+
+		const synced = await row(ids.plain);
+		expect(synced.lastSyncedAt!.getTime()).toBeGreaterThan(now - DAY);
+		const events = await db
+			.select()
+			.from(schema.auditEvent)
+			.where(
+				and(
+					eq(schema.auditEvent.connectorId, ids.plain),
+					eq(schema.auditEvent.type, 'connector.synced')
+				)
+			);
+		expect(events.at(-1)?.metadata).toMatchObject({ reason: 'scheduled', updated: 1 });
+		expect(await level()).toMatchObject({ level: 'ask', needsConfirmation: true });
+
+		// Kept for review: managers see it, members do not; the change moved "Tools updated"
+		const listed = (await connectors.list(alice)).find((c) => c.id === ids.plain)!;
+		expect(listed.pendingChanges).toMatchObject({
+			updated: 1,
+			signatureChanged: [create]
+		});
+		expect(listed.lastChangedAt!.getTime()).toBeGreaterThan(listedBefore.lastChangedAt!.getTime());
+		expect((await connectors.list(bob)).find((c) => c.id === ids.plain)!.pendingChanges).toBe(null);
+		// Due again a day later is not before: the same run time picks nothing
+		expect((await resync.dueForResync(now)).map((c) => c.id)).not.toContain(ids.plain);
+	});
+
+	it('a check that finds nothing moves only the last check', async () => {
+		await age(ids.plain, new Date(Date.now() - 2 * DAY));
+		const before = (await connectors.list(alice)).find((c) => c.id === ids.plain)!;
+		resync.resetResyncState();
+		await resync.resyncStaleConnectors();
+		const after = (await connectors.list(alice)).find((c) => c.id === ids.plain)!;
+		expect(after.lastSyncedAt!.getTime()).toBeGreaterThan(before.lastSyncedAt!.getTime());
+		expect(after.lastChangedAt).toEqual(before.lastChangedAt);
+		expect(after.pendingChanges).toEqual(before.pendingChanges);
+	});
+
+	it('only managers clear the changes to review', async () => {
+		await expect(connectors.acknowledgeChanges(bob, ids.plain)).rejects.toMatchObject({
+			status: 403
+		});
+		await connectors.acknowledgeChanges(alice, ids.plain);
+		expect((await row(ids.plain)).pendingChanges).toBe(null);
+	});
+
+	it('a manual refresh is shown to its author, not kept for review', async () => {
+		plain.tools.splice(0, plain.tools.length, ...issuesTools);
+		await connectors.syncTools(alice, ids.plain, 'manual');
+		expect((await row(ids.plain)).pendingChanges).toBe(null);
+	});
+
+	it('merges changes across background syncs', () => {
+		const at = new Date('2026-11-16T10:00:00Z');
+		const first = resyncSync.mergeChanges(
+			null,
+			{ added: 1, updated: 1, removed: 0, signatureChanged: ['a.b'], descriptionChanged: [] },
+			at
+		);
+		const merged = resyncSync.mergeChanges(
+			first,
+			{
+				added: 0,
+				updated: 2,
+				removed: 1,
+				signatureChanged: ['a.b', 'a.c'],
+				descriptionChanged: ['a.c']
+			},
+			new Date('2026-11-17T10:00:00Z')
+		);
+		expect(merged).toEqual({
+			since: at.toISOString(),
+			added: 1,
+			updated: 3,
+			removed: 1,
+			signatureChanged: ['a.b', 'a.c'],
+			descriptionChanged: ['a.c']
+		});
+	});
+});
+
+describe('rejected calls', () => {
+	beforeEach(() => resync.resetResyncState());
+
+	it('resyncs at most once per connector every 10 minutes', () => {
+		const t = Date.now();
+		expect(resync.claimRejectionResync('c-1', t)).toBe(true);
+		expect(resync.claimRejectionResync('c-1', t + 60_000)).toBe(false);
+		expect(resync.claimRejectionResync('c-2', t + 60_000)).toBe(true);
+		expect(resync.claimRejectionResync('c-1', t + resync.REJECTION_RESYNC_MS)).toBe(true);
+	});
+
+	it('debounces the resync and always hints to describe again and retry', async () => {
+		servers.push(createFakeServer({ host: 'mcp.reject.example', tools: issuesTools }));
+		const { id, namespace } = await connectors.add(alice, {
+			scope: 'shared',
+			onlyForMe: false,
+			source: { type: 'url', url: 'https://mcp.reject.example/mcp' }
+		});
+		const tool = (await connectors.resolveTool(alice, `${namespace}.createIssue`))!;
+		const syncs = async () =>
+			(
+				await db
+					.select()
+					.from(schema.auditEvent)
+					.where(
+						and(
+							eq(schema.auditEvent.connectorId, id),
+							eq(schema.auditEvent.type, 'connector.synced')
+						)
+					)
+			).filter((e) => e.metadata?.reason === 'call_error').length;
+
+		const first = await connectors.callTool(alice, tool, { name: 'x' });
+		const second = await connectors.callTool(alice, tool, { name: 'y' });
+		expect(await syncs()).toBe(1);
+		for (const result of [first, second]) {
+			expect(result).toMatchObject({ ok: false, code: 'invalid_params' });
+			expect(!result.ok && result.message).toContain(
+				`Describe ${namespace}.createIssue again (tools_describe) and retry`
+			);
+		}
+		expect(!first.ok && first.message).toContain('Toolkien refreshed the catalog: this tool');
+		expect(!second.ok && second.message).toContain('in the last few minutes');
+	});
+
+	it('words the hint by what the refresh found', () => {
+		const base = {
+			path: 'gh.createIssue',
+			declaration: 'createIssue(args: {}): Promise<unknown>;'
+		};
+		expect(resync.rejectionHint({ ...base, refreshed: true, changed: true })).toBe(
+			'The tool definition changed upstream and Toolkien refreshed the catalog. Describe gh.createIssue again (tools_describe) and retry with the current signature:\ncreateIssue(args: {}): Promise<unknown>;'
+		);
+		expect(resync.rejectionHint({ ...base, refreshed: true, changed: false })).toMatch(
+			/^Toolkien refreshed the catalog: this tool did not change/
+		);
+		expect(
+			resync.rejectionHint({ ...base, declaration: null, refreshed: false, changed: false })
+		).toBe(
+			'Toolkien refreshed the tool catalog: gh.createIssue no longer exists on the server. Search the tools again.'
+		);
 	});
 });
 

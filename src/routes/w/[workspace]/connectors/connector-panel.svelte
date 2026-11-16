@@ -17,7 +17,11 @@
 	} from '#lib/components/app/index.ts';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { attempt } from '#lib/core/attempt.ts';
-	import { getConnector, refreshConnector } from '#lib/functions/connectors.remote.ts';
+	import {
+		acknowledgeConnectorChanges,
+		getConnector,
+		refreshConnector
+	} from '#lib/functions/connectors.remote.ts';
 	import { listPermissions } from '#lib/functions/permissions.remote.ts';
 	import type { ConnectorSummary } from '#lib/server/connectors/types.ts';
 	import {
@@ -26,8 +30,10 @@
 		authLabel,
 		checkLabel,
 		describeSync,
+		lastCheck,
 		needsSignIn,
 		signInLabel,
+		syncSummary,
 		untrustedReason
 	} from './connectors.ts';
 
@@ -54,6 +60,7 @@
 
 	const refresh = () =>
 		attempt(refreshConnector({ workspace, id }).then((result) => describeSync(result)));
+	const markReviewed = () => attempt(acknowledgeConnectorChanges({ workspace, id }));
 </script>
 
 <SidePanel bind:open title="Connector" size="xl">
@@ -103,7 +110,12 @@
 						label: 'Server',
 						value: c.serverInfo ? `${c.serverInfo.name} ${c.serverInfo.version}` : null
 					},
-					{ label: 'Last sync', value: c.lastSyncedAt, type: 'datetime' },
+					{
+						label: 'Tools updated',
+						value: c.lastChangedAt,
+						type: 'datetime',
+						secondary: lastCheck(c)
+					},
 					{
 						label: 'Directory',
 						value: c.directory
@@ -156,6 +168,20 @@
 			</Callout>
 		{:else if c.statusMessage}
 			<Callout title="Note" description={c.statusMessage} />
+		{/if}
+		{#if c.pendingChanges}
+			{@const summary = syncSummary(c.pendingChanges)}
+			<!-- Changes a background sync found: the tools to confirm are marked in the list below -->
+			<Callout
+				tone={summary.details ? 'warning' : 'info'}
+				title={`Tools changed on the server: ${summary.changes}`}
+				time={{ label: 'since', value: c.pendingChanges.since }}
+				description={summary.details ?? 'Toolkien picked up the new definitions on its own.'}
+			>
+				{#snippet action()}
+					<Button size="sm" variant="outline" onclick={markReviewed}>Mark reviewed</Button>
+				{/snippet}
+			</Callout>
 		{/if}
 		{#if c.unverified}
 			<Callout

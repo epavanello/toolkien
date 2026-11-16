@@ -38,9 +38,11 @@
 		accessStatus,
 		audienceLabel,
 		describeSync,
+		lastCheck,
 		needsSignIn,
 		oauthNotice,
-		signInLabel
+		signInLabel,
+		syncSummary
 	} from './connectors.ts';
 
 	const workspace = $derived(page.params.workspace!);
@@ -139,10 +141,21 @@
 					? { label: signInLabel(row), variant: 'primary', onSelect: () => connect(row) }
 					: row.status === 'error' && row.authenticated && !row.suspended
 						? { label: 'Retry', onSelect: () => refresh(row) }
-						: null
+						: row.pendingChanges
+							? {
+									label: `${syncSummary(row.pendingChanges).changes} · Review`,
+									onSelect: () => open(row)
+								}
+							: null
 		},
 		{ key: 'toolCount', header: 'Tools', type: 'number', hideOnMobile: true },
-		{ key: 'lastSyncedAt', header: 'Last sync', type: 'datetime', hideOnMobile: true },
+		{
+			key: 'lastChangedAt',
+			header: 'Tools updated',
+			type: 'datetime',
+			secondary: lastCheck,
+			hideOnMobile: true
+		},
 		{
 			key: 'actions',
 			header: 'Actions',

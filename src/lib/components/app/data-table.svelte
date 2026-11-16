@@ -207,6 +207,7 @@
 							{#each columns as column (column.key)}
 								{@const value = cellValue(column, row)}
 								{@const inline = column.inlineAction?.(row) ?? null}
+								{@const secondary = column.type === 'datetime' ? column.secondary?.(row) : null}
 								<Table.Cell
 									class={cellClass({
 										type: column.type ?? 'text',
@@ -239,6 +240,12 @@
 										<ServiceLogo name={String(value)} src={column.logo(row)} withName />
 									{:else}
 										{value}
+									{/if}
+									{#if secondary?.value != null}
+										<span class="text-muted-foreground">
+											· {secondary.label}
+											<RelativeTime value={secondary.value} />
+										</span>
 									{/if}
 									{#if inline}
 										<!-- The button must not open the row -->

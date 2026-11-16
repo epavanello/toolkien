@@ -1,5 +1,6 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { SecondaryTime } from './data-table.ts';
 
 	export type KeyValueItem = {
 		label: string;
@@ -8,6 +9,8 @@
 		/** How the value renders; `snippet` for anything custom */
 		type?: 'text' | 'mono' | 'datetime' | 'status' | 'list';
 		copy?: boolean;
+		/** A quieter second date after the value (`· checked 2 h ago`) */
+		secondary?: SecondaryTime | null;
 		snippet?: Snippet;
 	};
 </script>
@@ -58,6 +61,12 @@
 					<StatusBadge status={String(item.value)} />
 				{:else}
 					{item.value}
+				{/if}
+				{#if item.secondary?.value != null}
+					<span class="text-muted-foreground">
+						· {item.secondary.label}
+						<RelativeTime value={item.secondary.value} />
+					</span>
 				{/if}
 			</dd>
 		{/each}

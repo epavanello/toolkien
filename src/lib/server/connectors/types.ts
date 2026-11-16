@@ -1,4 +1,5 @@
 import type {
+	CatalogChanges,
 	ConnectorAuthType,
 	ConnectorScope,
 	ConnectorSource,
@@ -9,6 +10,7 @@ import type {
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 
 export type {
+	CatalogChanges,
 	ConnectorAuthType,
 	ConnectorScope,
 	ConnectorSource,
@@ -144,7 +146,18 @@ export type ConnectorSummary = {
 	/** Whether the viewing user has a usable credential (shared: the admin's one) */
 	authenticated: boolean;
 	toolCount: number;
+	/** Last time Toolkien checked the upstream catalog (any sync, changed or not) */
 	lastSyncedAt: Date | null;
+	/**
+	 * (additive) Last time the catalog actually changed: derived from the tools' versions and
+	 * removals, so a check that found nothing does not move it
+	 */
+	lastChangedAt: Date | null;
+	/**
+	 * (additive) Changes background syncs found that nobody reviewed yet; only for viewers who
+	 * manage the connector (`null` otherwise). Cleared by `acknowledgeChanges`.
+	 */
+	pendingChanges: CatalogChanges | null;
 	/** (additive) The actor may edit / remove it (admins; members for their own connectors) */
 	canManage: boolean;
 	/**
@@ -227,7 +240,13 @@ export type AddAndConnectResult = { connector: ConnectorSummary; next: AddConnec
 /** (additive) Rename an instance: new label and/or namespace; tool paths follow the namespace */
 export type RenameConnectorInput = { label?: string | null; namespace?: string; name?: string };
 
-export type SyncReason = 'manual' | 'session' | 'list_changed' | 'call_error' | 'cache_expired';
+/**
+ * Why a sync ran. Everything but `manual` runs with nobody watching the result, so its
+ * changes are kept as the connector's `pendingChanges` (see `CatalogChanges`).
+ * (additive) `scheduled`: the daily resync of upstreams that do not announce `list_changed`.
+ */
+export type SyncReason =
+	'manual' | 'session' | 'list_changed' | 'call_error' | 'cache_expired' | 'scheduled';
 
 export type SyncResult = {
 	added: number;
@@ -294,7 +313,11 @@ export type UpstreamCallResult =
 	| { ok: true; structuredContent?: unknown; content: unknown[]; isError?: false }
 	| {
 			ok: false;
-			/** `unknown_tool` / `invalid_params` trigger a refresh; the message has the new signature */
+			/**
+			 * `unknown_tool` / `invalid_params` trigger a refresh (at most once per connector every
+			 * 10 minutes); the message says so, asks to describe the tool again and retry, and
+			 * carries the current signature
+			 */
 			code: 'unknown_tool' | 'invalid_params' | 'auth_required' | 'upstream_error' | 'timeout';
 			message: string;
 	  };
@@ -339,6 +362,8 @@ export interface ConnectorsService {
 	/** Stores a pasted token / API key (sealed) */
 	setToken(actor: WorkspaceActor, connectorId: string, token: string): Promise<void>;
 	syncTools(actor: WorkspaceActor, connectorId: string, reason: SyncReason): Promise<SyncResult>;
+	/** (additive) Clears the connector's `pendingChanges` (managers only: 403 otherwise) */
+	acknowledgeChanges(actor: WorkspaceActor, connectorId: string): Promise<void>;
 	/** (additive) One connector with its tools; 404 when the actor cannot see it */
 	get(actor: WorkspaceActor, connectorId: string): Promise<ConnectorDetail>;
 	/**

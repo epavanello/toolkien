@@ -14,8 +14,9 @@ export { handleOAuthCallback, OAuthCallbackError, withOAuthResult } from './call
 export { connectorIcons, readConnectorIcon } from './icon.ts';
 /** Public directory pages (`/directory`, the landing showcase) */
 export { directoryShowcase, getDirectoryEntry };
-/** Job `connectors.oauth_flows` (registered in `jobs/builtin.ts`) */
+/** Jobs `connectors.oauth_flows` and `connectors.resync` (registered in `jobs/builtin.ts`) */
 export { purgeExpiredFlows };
+export { resyncStaleConnectors } from './resync.ts';
 
 export const listDirectory: ConnectorsService['listDirectory'] = listDirectoryEntries;
 export const list: ConnectorsService['list'] = service.list;
@@ -31,6 +32,8 @@ export const startOAuth: ConnectorsService['startOAuth'] = service.startOAuth;
 export const completeOAuth: ConnectorsService['completeOAuth'] = service.completeOAuth;
 export const setToken: ConnectorsService['setToken'] = service.setToken;
 export const syncTools: ConnectorsService['syncTools'] = service.syncTools;
+export const acknowledgeChanges: ConnectorsService['acknowledgeChanges'] =
+	service.acknowledgeChanges;
 export const refreshStale: ConnectorsService['refreshStale'] = service.refreshStale;
 export const searchTools: ConnectorsService['searchTools'] = discovery.searchTools;
 export const describeTools: ConnectorsService['describeTools'] = discovery.describeTools;

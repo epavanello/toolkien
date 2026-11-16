@@ -1,4 +1,5 @@
 import { toast } from 'svelte-sonner';
+import type { SecondaryTime } from '#lib/components/app/index.ts';
 import type {
 	ConnectorAuthType,
 	ConnectorSummary,
@@ -40,29 +41,44 @@ export const signInLabel = (c: Pick<ConnectorSummary, 'authType' | 'authenticate
 			? 'Reconnect'
 			: 'Connect';
 
-/** Toast after a manual refresh; changed signatures and descriptions are warnings */
-export function describeSync(result: SyncResult) {
+/**
+ * What a sync changed, in words: `changes` ("1 added, 4 updated" or "No changes") and the
+ * tools to look at (`details`, a warning when set). One wording for the Refresh toast and the
+ * notice of changes found in the background.
+ */
+export function syncSummary(result: SyncResult) {
 	const changes = [
 		result.added && `${result.added} added`,
 		result.updated && `${result.updated} updated`,
 		result.removed && `${result.removed} removed`
 	].filter(Boolean);
-	const summary = changes.length > 0 ? changes.join(', ') : 'No changes';
-	if (result.signatureChanged.length > 0 || result.descriptionChanged.length > 0) {
-		toast.warning(`Tools refreshed: ${summary}`, {
-			description: [
-				result.signatureChanged.length > 0 &&
-					`Signature changed: ${result.signatureChanged.join(', ')} (permissions to confirm).`,
-				result.descriptionChanged.length > 0 &&
-					`Description changed: ${result.descriptionChanged.join(', ')}. Review before trusting.`
-			]
-				.filter(Boolean)
-				.join(' ')
-		});
-	} else {
-		toast.success(`Tools refreshed: ${summary}`);
-	}
+	const details = [
+		result.signatureChanged.length > 0 &&
+			`Signature changed: ${result.signatureChanged.join(', ')} (permissions to confirm).`,
+		result.descriptionChanged.length > 0 &&
+			`Description changed: ${result.descriptionChanged.join(', ')}. Review before trusting.`
+	].filter(Boolean);
+	return {
+		changes: changes.length > 0 ? changes.join(', ') : 'No changes',
+		details: details.length > 0 ? details.join(' ') : null
+	};
 }
+
+/** Toast after a manual refresh; changed signatures and descriptions are warnings */
+export function describeSync(result: SyncResult) {
+	const { changes, details } = syncSummary(result);
+	if (details) toast.warning(`Tools refreshed: ${changes}`, { description: details });
+	else toast.success(`Tools refreshed: ${changes}`);
+}
+
+/**
+ * The last check, shown after "Tools updated" (the last change): a check that found nothing
+ * is not news (`3 days ago · checked 2 h ago`)
+ */
+export const lastCheck = (c: Pick<ConnectorSummary, 'lastSyncedAt'>): SecondaryTime => ({
+	label: 'checked',
+	value: c.lastSyncedAt
+});
 
 /** Directory check level, in words */
 export const checkLabel = (status: 'tested' | 'documented' | 'needs-review') =>
