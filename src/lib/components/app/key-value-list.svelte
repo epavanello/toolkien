@@ -22,9 +22,10 @@
 		base: 'grid gap-x-6 gap-y-2 text-sm',
 		variants: {
 			columns: {
-				1: 'grid-cols-[minmax(8rem,auto)_1fr]',
+				// Narrow lists stack the label above its value; `minmax(0,1fr)` lets long values truncate
+				1: 'grid-cols-1 @sm:grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]',
 				// Two pairs per row only when the list itself is wide (side panels stay single)
-				2: 'grid-cols-[minmax(8rem,auto)_1fr] @2xl:grid-cols-[minmax(8rem,auto)_1fr_minmax(8rem,auto)_1fr]'
+				2: 'grid-cols-1 @sm:grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] @3xl:grid-cols-[minmax(7rem,auto)_minmax(0,1fr)_minmax(7rem,auto)_minmax(0,1fr)]'
 			}
 		},
 		defaultVariants: { columns: 1 }
@@ -39,7 +40,7 @@
 <div class="@container">
 	<dl class={variants({ columns })} data-slot="key-value-list">
 		{#each items as item (item.label)}
-			<dt class="text-muted-foreground">{item.label}</dt>
+			<dt class="text-muted-foreground not-first:mt-2 @sm:not-first:mt-0">{item.label}</dt>
 			<dd class="min-w-0">
 				{#if item.snippet}
 					{@render item.snippet()}
@@ -50,7 +51,7 @@
 				{:else if item.value == null || item.value === ''}
 					<span class="text-muted-foreground">—</span>
 				{:else if item.type === 'mono'}
-					<Mono value={String(item.value)} copy={item.copy} truncate />
+					<Mono value={String(item.value)} copy={item.copy} truncate field />
 				{:else if item.type === 'datetime' || item.value instanceof Date}
 					<RelativeTime value={item.value} />
 				{:else if item.type === 'status'}
