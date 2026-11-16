@@ -59,7 +59,8 @@ async function switchWorkspace(
 	{ workspace }: z.infer<typeof switchInput>
 ) {
 	const { userId, clientId, clientName } = env.request;
-	const subject = { userId, clientId, clientName };
+	const clientInfo = env.request.clientInfo ?? null;
+	const subject = { userId, clientId, clientName, clientInfo };
 	const [workspaces, active] = await Promise.all([
 		deps.workspaces.listForUser(userId),
 		deps.workspaces.getActiveWorkspace(userId, clientId)
@@ -108,6 +109,7 @@ async function switchWorkspace(
 		userId,
 		clientId,
 		clientName,
+		clientInfo,
 		fromWorkspaceId: active.id,
 		toWorkspaceId: target.id
 	});

@@ -22,7 +22,9 @@ import {
 	listAuthorizedClients,
 	needsGuide,
 	onboardingStatus,
-	revokeClient
+	rememberClientInfo,
+	revokeClient,
+	storedClientInfo
 } from './index.ts';
 
 const NOW = new Date('2026-11-14T12:00:00Z');
@@ -219,6 +221,23 @@ describe('disconnecting a client', () => {
 		});
 		await refreshToken(me.id, client, { createdAt: minutes(-100), expiresAt: minutes(-1) });
 		expect(await hasLiveGrant(me.id, client, NOW)).toBe(false);
+	});
+});
+
+describe('MCP client info', () => {
+	it('is kept per user and client, updated, and goes with a disconnect', async () => {
+		const me = await seedUser(db);
+		const other = await seedUser(db);
+		const cursor = await addClient('Cursor');
+		await consent(me.id, cursor, minutes(-60));
+		expect(await storedClientInfo(me.id, cursor)).toBeNull();
+		await rememberClientInfo(me.id, cursor, 'cursor-vscode 1.0.0');
+		await rememberClientInfo(me.id, cursor, 'cursor-vscode 1.1.0');
+		await rememberClientInfo(other.id, cursor, 'cursor-vscode 0.9.0');
+		expect(await storedClientInfo(me.id, cursor)).toBe('cursor-vscode 1.1.0');
+		await revokeClient({ workspaceId: crypto.randomUUID(), userId: me.id, role: 'owner' }, cursor);
+		expect(await storedClientInfo(me.id, cursor)).toBeNull();
+		expect(await storedClientInfo(other.id, cursor)).toBe('cursor-vscode 0.9.0');
 	});
 });
 

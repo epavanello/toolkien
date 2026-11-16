@@ -10,6 +10,9 @@
  *   every access and refresh token, in one transaction, and records `mcp_client.revoked`. Access
  *   tokens are JWTs verified offline, so `/mcp` also requires a live grant (`hasLiveGrant`):
  *   a token issued before the disconnect stops working at once, not when it expires.
+ * - (additive) The MCP `clientInfo` a client sent in `initialize` (`name version`) is kept per
+ *   user and client (`rememberClientInfo`) to label its later stateless requests in the
+ *   activity; it goes with the client on disconnect. Self-asserted, display only.
  * - Onboarding steps tick from real data only: a connector visible to the user in the
  *   workspace, an authorized client, a tool call made through a client: (changed) any audited
  *   MCP tool call counts (`tools_search`, `tools_describe`, `execute`), so the step ticks as soon

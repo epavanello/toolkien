@@ -6,7 +6,7 @@ vi.mock('#lib/server/db/index.ts', async () => {
 });
 
 import { db } from '#lib/server/db/index.ts';
-import { auditEvent } from '#lib/server/db/schema/index.ts';
+import { auditEvent, oauthClient } from '#lib/server/db/schema/index.ts';
 import { seedUser } from '#lib/server/workspaces/test-db.ts';
 import {
 	anonymizeUser,
@@ -108,6 +108,9 @@ describe('csv export', () => {
 			type: 'tool.called',
 			outcome: 'success',
 			workspaceId,
+			clientId: 'dcr-client-1',
+			clientName: 'Claude Code',
+			clientInfo: 'claude-code 2.1.3',
 			toolPath: 'github.createIssue',
 			durationMs: 840,
 			metadata: { seq: 1 }
@@ -116,13 +119,62 @@ describe('csv export', () => {
 		const csv = await exportCsv({ workspaceId });
 		const lines = csv.trim().split('\r\n');
 		expect(lines[0]).toBe(
-			'occurred_at,type,outcome,user_id,user_name,client,connector_id,tool,execution_id,duration_ms,approved_by,approver_user_id,metadata'
+			'occurred_at,type,outcome,user_id,user_name,client,client_info,connector_id,tool,execution_id,duration_ms,approved_by,approver_user_id,metadata'
 		);
 		expect(lines).toHaveLength(2);
 		expect(lines[1]).toContain('tool.called,success');
 		expect(lines[1]).toContain('github.createIssue');
+		expect(lines[1]).toContain(',Claude Code,claude-code 2.1.3,');
 		expect(lines[1]).toContain('"{""seq"":1}"');
 		expect(auditCsv([])).toBe(`${lines[0]}\r\n`);
+	});
+});
+
+describe('client of an event', () => {
+	it('names the execution client from any of its events, with the MCP client info', () => {
+		const t = (s: number) => new Date(Date.UTC(2026, 10, 14, 10, 0, s));
+		const [entry] = groupByExecution([
+			view({ id: 'b', occurredAt: t(2), type: 'tool.called', executionId: 'x', clientId: 'c' }),
+			view({
+				id: 'a',
+				occurredAt: t(1),
+				type: 'execution.started',
+				executionId: 'x',
+				clientId: 'c',
+				clientName: 'Cursor',
+				clientInfo: 'cursor-vscode 1.0.0'
+			})
+		]);
+		expect(entry).toMatchObject({ clientName: 'Cursor', clientInfo: 'cursor-vscode 1.0.0' });
+	});
+
+	it("falls back to the client's registered name for events recorded without one", async () => {
+		const workspaceId = crypto.randomUUID();
+		const clientId = `client-${crypto.randomUUID()}`;
+		await db.insert(oauthClient).values({
+			id: crypto.randomUUID(),
+			clientId,
+			name: 'Codex',
+			redirectUris: ['http://127.0.0.1:1455/callback']
+		});
+		await record({ type: 'tool.called', outcome: 'success', workspaceId, clientId });
+		await record({
+			type: 'tools.searched',
+			outcome: 'success',
+			workspaceId,
+			clientId,
+			clientName: 'Codex CLI',
+			clientInfo: 'codex-mcp-client 0.40.0'
+		});
+		await record({ type: 'auth.login', outcome: 'success', workspaceId });
+		const { events } = await queryViews({ workspaceId });
+		const byType = new Map(events.map((event) => [event.type, event]));
+		expect(byType.get('tool.called')).toMatchObject({ clientName: 'Codex', clientInfo: null });
+		expect(byType.get('tools.searched')).toMatchObject({
+			clientName: 'Codex CLI',
+			clientInfo: 'codex-mcp-client 0.40.0'
+		});
+		expect(byType.get('auth.login')).toMatchObject({ clientName: null });
 	});
 });
 

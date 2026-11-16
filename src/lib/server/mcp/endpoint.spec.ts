@@ -17,6 +17,10 @@ function setup(overrides: Partial<McpEndpointDeps> = {}) {
 		loadClient: vi.fn(async () => ({ name: 'Claude', disabled: false })),
 		loadUser: vi.fn(async () => ({ suspended: false })),
 		hasLiveGrant: vi.fn(async () => true),
+		clientInfo: {
+			remember: vi.fn(async () => {}),
+			load: vi.fn(async (): Promise<string | null> => null)
+		},
 		resourceMetadataUrl: 'https://toolkien.test/.well-known/oauth-protected-resource/mcp',
 		limits: {
 			checkRateLimit: vi.fn(() => ({ allowed: true as const })),
@@ -34,10 +38,15 @@ function setup(overrides: Partial<McpEndpointDeps> = {}) {
 		...overrides
 	} satisfies McpEndpointDeps;
 	const endpoint = createMcpEndpoint(deps);
-	const post = (headers: Record<string, string> = {}) =>
-		endpoint(new Request('https://toolkien.test/mcp', { method: 'POST', headers, body: '{}' }), {
-			clientAddress: '203.0.113.7'
-		});
+	const post = (headers: Record<string, string> = {}, body: unknown = {}) =>
+		endpoint(
+			new Request('https://toolkien.test/mcp', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json', ...headers },
+				body: JSON.stringify(body)
+			}),
+			{ clientAddress: '203.0.113.7' }
+		);
 	return { deps, endpoint, post };
 }
 
@@ -122,9 +131,84 @@ describe('/mcp endpoint', () => {
 			userId: 'u1',
 			clientId: 'client-1',
 			clientName: 'Claude',
+			clientInfo: null,
 			clientAddress: '203.0.113.7',
 			scopes: ['openid', 'offline_access']
 		});
+	});
+
+	it('labels requests with the MCP client info of the 2026-07-28 envelope', async () => {
+		const { post, deps } = setup();
+		await post(
+			{},
+			{
+				jsonrpc: '2.0',
+				id: 1,
+				method: 'tools/call',
+				params: {
+					name: 'tools_search',
+					arguments: { query: 'issues' },
+					_meta: {
+						'io.modelcontextprotocol/clientInfo': { name: 'claude-code', version: '2.1.3' }
+					}
+				}
+			}
+		);
+		expect(deps.handle).toHaveBeenCalledWith(
+			expect.any(Request),
+			expect.objectContaining({ clientInfo: 'claude-code 2.1.3' })
+		);
+		expect(deps.clientInfo.remember).not.toHaveBeenCalled();
+		expect(deps.clientInfo.load).not.toHaveBeenCalled();
+	});
+
+	it('remembers the client info of a 2025-era initialize for later stateless requests', async () => {
+		const { post, deps } = setup();
+		await post(
+			{},
+			{
+				jsonrpc: '2.0',
+				id: 0,
+				method: 'initialize',
+				params: {
+					protocolVersion: '2025-11-25',
+					capabilities: {},
+					clientInfo: { name: 'cursor-vscode\n', version: '1.0.0' }
+				}
+			}
+		);
+		expect(deps.clientInfo.remember).toHaveBeenCalledWith('u1', 'client-1', 'cursor-vscode 1.0.0');
+
+		vi.mocked(deps.clientInfo.load).mockResolvedValueOnce('cursor-vscode 1.0.0');
+		await post({}, { jsonrpc: '2.0', id: 1, method: 'tools/list' });
+		expect(deps.clientInfo.load).toHaveBeenCalledWith('u1', 'client-1');
+		expect(deps.handle).toHaveBeenLastCalledWith(
+			expect.any(Request),
+			expect.objectContaining({ clientInfo: 'cursor-vscode 1.0.0' })
+		);
+	});
+
+	it('never fails a request over client info, and leaves the body for the handler', async () => {
+		const { post, deps } = setup({
+			clientInfo: {
+				remember: vi.fn(async () => {
+					throw new Error('db down');
+				}),
+				load: vi.fn(async () => null)
+			}
+		});
+		vi.mocked(deps.handle).mockImplementationOnce(
+			async (request: Request) => new Response(await request.text())
+		);
+		const body = {
+			jsonrpc: '2.0',
+			id: 0,
+			method: 'initialize',
+			params: { clientInfo: { name: 'x', version: '1' } }
+		};
+		const response = await post({}, body);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual(body);
 	});
 
 	it('refuses tokens without a user or client', async () => {

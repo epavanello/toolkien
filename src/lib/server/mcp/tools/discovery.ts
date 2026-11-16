@@ -104,6 +104,7 @@ async function recordDiscovery(
 		userId: actor.userId,
 		clientId: env.request.clientId,
 		clientName: env.request.clientName,
+		clientInfo: env.request.clientInfo ?? null,
 		metadata
 	});
 }

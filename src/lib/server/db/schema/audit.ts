@@ -71,6 +71,11 @@ export const auditEvent = sqliteTable(
 		/** OAuth client id and display name (Claude, Codex, Cursor…) */
 		clientId: text('client_id'),
 		clientName: text('client_name'),
+		/**
+		 * MCP `clientInfo` of the request, `name version` (`claude-code 2.1.3`). Self-asserted by
+		 * the client like the name: display only.
+		 */
+		clientInfo: text('client_info'),
 		connectorId: text('connector_id'),
 		/** `namespace.tool`, e.g. `github.createIssue` */
 		toolPath: text('tool_path'),

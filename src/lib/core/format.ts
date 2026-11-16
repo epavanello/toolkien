@@ -103,3 +103,19 @@ export const machineDate = (value: DateInput) => {
 	const date = toDate(value);
 	return date && !Number.isNaN(date.getTime()) ? date.toISOString() : undefined;
 };
+
+/**
+ * How the activity names an MCP client: its OAuth registration name and the MCP `clientInfo`
+ * (`name version`), e.g. `Claude Code (claude-code 2.1.3)`; either alone when the other is
+ * missing or says the same. Both are self-asserted by the client: display only.
+ */
+export function clientLabel(
+	name: string | null | undefined,
+	info: string | null | undefined
+): string | null {
+	const cleanName = name?.trim() || null;
+	const cleanInfo = info?.trim() || null;
+	if (!cleanName) return cleanInfo;
+	if (!cleanInfo || cleanInfo.toLowerCase() === cleanName.toLowerCase()) return cleanName;
+	return `${cleanName} (${cleanInfo})`;
+}

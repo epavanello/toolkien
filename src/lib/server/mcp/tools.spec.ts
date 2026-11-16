@@ -241,6 +241,7 @@ describe('tools_search', () => {
 			userId: 'u1',
 			clientId: 'client-1',
 			clientName: 'Test Client',
+			clientInfo: 'test-client 1.0.0',
 			metadata: { results: 2 }
 		});
 		expect(JSON.stringify(vi.mocked(deps.audit.record).mock.calls)).not.toContain('secret');
@@ -302,6 +303,7 @@ describe('execute', () => {
 			actor: { workspaceId: acme.id, userId: 'u1', role: 'member' },
 			clientId: 'client-1',
 			clientName: 'Test Client',
+			clientInfo: 'test-client 1.0.0',
 			ip: null,
 			code: 'return 1'
 		});
@@ -481,7 +483,9 @@ describe('execution_status', () => {
 		executionId,
 		workspaceId: acme.id,
 		status: 'pending' as const,
-		createdAt: new Date('2026-11-14T11:30:00Z')
+		createdAt: new Date('2026-11-14T11:30:00Z'),
+		clientName: 'Test Client',
+		clientInfo: null
 	});
 
 	it("without an id lists this client's executions awaiting approval with their links", async () => {

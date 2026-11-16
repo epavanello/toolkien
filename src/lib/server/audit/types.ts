@@ -19,7 +19,10 @@ export type AuditEventInput = {
 	workspaceId?: string | null;
 	userId?: string | null;
 	clientId?: string | null;
+	/** OAuth registration name of the MCP client (self-asserted; display only) */
 	clientName?: string | null;
+	/** MCP `clientInfo` of the request, `name version` (self-asserted; display only) */
+	clientInfo?: string | null;
 	connectorId?: string | null;
 	toolPath?: string | null;
 	executionId?: string | null;
@@ -93,6 +96,7 @@ export type TimelineEntry =
 			userId: string | null;
 			userName: string | null;
 			clientName: string | null;
+			clientInfo: string | null;
 			durationMs: number | null;
 			toolCalls: number;
 			/** Newest first */

@@ -10,7 +10,12 @@ import type { PendingWorkspaceSwitch } from './types.ts';
 
 export type SwitchChannel = 'elicitation_form' | 'link' | 'consent';
 
-type SwitchSubject = { userId: string; clientId: string; clientName: string | null };
+type SwitchSubject = {
+	userId: string;
+	clientId: string;
+	clientName: string | null;
+	clientInfo?: string | null;
+};
 
 export async function applySwitch(
 	deps: Pick<McpDeps, 'workspaces' | 'audit'>,
@@ -27,6 +32,7 @@ export async function applySwitch(
 		userId: subject.userId,
 		clientId: subject.clientId,
 		clientName: subject.clientName,
+		clientInfo: subject.clientInfo ?? null,
 		approvedBy: 'self',
 		approverUserId: subject.userId,
 		metadata: { fromWorkspaceId, channel }
@@ -47,6 +53,7 @@ export async function recordRefusedSwitch(
 		userId: subject.userId,
 		clientId: subject.clientId,
 		clientName: subject.clientName,
+		clientInfo: subject.clientInfo ?? null,
 		metadata: { fromWorkspaceId, channel }
 	});
 }

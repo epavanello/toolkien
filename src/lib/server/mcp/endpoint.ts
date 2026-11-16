@@ -9,12 +9,15 @@
  *    client the user disconnected (access tokens are JWTs verified offline: without a live
  *    grant they get the challenge again instead of working until they expire).
  * 6. Rate limit per user.
- * 7. The MCP handler, with the client name captured for audit.
+ * 7. The MCP handler, with the client name (OAuth registration) and the MCP `clientInfo` captured
+ *    for the audit: from the request's 2026-07-28 envelope, else from `initialize` (remembered
+ *    per user and client, since 2025-era clients send it only once). Display only.
  *
  * Cookies are never read here (the hooks skip sessions on `/mcp`).
  */
 import { isHttpError } from '@sveltejs/kit';
 import type { LimitsService } from '#lib/server/limits/types.ts';
+import { peekClientInfo } from './client-info.ts';
 import type { HandleMcpRequest, McpRequestContext } from './types.ts';
 
 /** Verified claims of the access token (subset of the JWT payload) */
@@ -31,6 +34,11 @@ export type McpEndpointDeps = {
 	loadUser: (userId: string) => Promise<{ suspended: boolean } | null>;
 	/** The user still grants the client access (consent or live refresh token) */
 	hasLiveGrant: (userId: string, clientId: string) => Promise<boolean>;
+	/** MCP `clientInfo` (`name version`) a client sent in `initialize`, per user and client */
+	clientInfo: {
+		remember: (userId: string, clientId: string, info: string) => Promise<void>;
+		load: (userId: string, clientId: string) => Promise<string | null>;
+	};
 	/** RFC 9728 metadata URL, sent in the challenge when the grant is gone */
 	resourceMetadataUrl: string;
 	limits: Pick<LimitsService, 'checkRateLimit' | 'assertNotSuspended' | 'getLimits'>;
@@ -116,12 +124,31 @@ export function createMcpEndpoint(deps: McpEndpointDeps) {
 				userId,
 				clientId,
 				clientName: client.name,
+				clientInfo: await requestClientInfo(deps, verified, userId, clientId),
 				clientAddress: meta.clientAddress,
 				scopes: typeof claims.scope === 'string' ? claims.scope.split(' ').filter(Boolean) : []
 			};
 			return deps.handle(verified, ctx);
 		});
 	};
+}
+
+/** Never fails the request: client info is a label for the activity, nothing more */
+async function requestClientInfo(
+	deps: McpEndpointDeps,
+	request: Request,
+	userId: string,
+	clientId: string
+): Promise<string | null> {
+	try {
+		const peeked = await peekClientInfo(request);
+		if (peeked.info && peeked.fromInitialize) {
+			await deps.clientInfo.remember(userId, clientId, peeked.info);
+		}
+		return peeked.info ?? (await deps.clientInfo.load(userId, clientId));
+	} catch {
+		return null;
+	}
 }
 
 /**

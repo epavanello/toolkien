@@ -185,6 +185,7 @@ export function registerExecutionTools(
 				actor,
 				clientId: env.request.clientId,
 				clientName: env.request.clientName,
+				clientInfo: env.request.clientInfo ?? null,
 				ip: env.request.clientAddress ?? null,
 				code
 			});

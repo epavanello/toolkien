@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, inArray, lt, lte, or, type SQL } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
-import { auditEvent, user } from '#lib/server/db/schema/index.ts';
+import { auditEvent, oauthClient, user } from '#lib/server/db/schema/index.ts';
 import { auditCsv } from './csv.ts';
 import { groupByExecution } from './timeline.ts';
 import type {
@@ -62,16 +62,27 @@ function conditions(q: AuditQuery): SQL[] {
 	return where;
 }
 
-const viewColumns = { event: auditEvent, userName: user.name };
+/**
+ * The acting user's name, and the client's registered name for events recorded without one
+ * (before every event carried it): a join on the OAuth client, display only.
+ */
+const viewColumns = {
+	event: auditEvent,
+	userName: user.name,
+	registeredClientName: oauthClient.name
+};
 
 const toView = ({
 	event,
-	userName
+	userName,
+	registeredClientName
 }: {
 	event: typeof auditEvent.$inferSelect;
 	userName: string | null;
+	registeredClientName: string | null;
 }): AuditEventView => ({
 	...event,
+	clientName: event.clientName?.trim() || registeredClientName?.trim() || null,
 	metadata: event.metadata ?? undefined,
 	userName
 });
@@ -85,6 +96,7 @@ export async function queryViews(
 		.select(viewColumns)
 		.from(auditEvent)
 		.leftJoin(user, eq(user.id, auditEvent.userId))
+		.leftJoin(oauthClient, eq(oauthClient.clientId, auditEvent.clientId))
 		.where(and(...conditions(q)))
 		.orderBy(desc(auditEvent.occurredAt), desc(auditEvent.id))
 		.limit(limit + 1);
@@ -121,6 +133,7 @@ export async function timeline(
 				.select(viewColumns)
 				.from(auditEvent)
 				.leftJoin(user, eq(user.id, auditEvent.userId))
+				.leftJoin(oauthClient, eq(oauthClient.clientId, auditEvent.clientId))
 				.where(and(...scope))
 				.limit(MAX_PAGE * 4)
 		).map(toView);

@@ -31,7 +31,10 @@ export type McpRequestContext = {
 	userId: string;
 	/** OAuth `client_id` (CIMD URL or registered id) */
 	clientId: string;
+	/** OAuth registration `client_name` (self-asserted; display only) */
 	clientName: string | null;
+	/** MCP `clientInfo` as `name version` (self-asserted; display only), when known */
+	clientInfo?: string | null;
 	scopes: string[];
 	/** Client IP (per-IP execution rate limit); absent in tests */
 	clientAddress?: string;
@@ -54,6 +57,7 @@ export type PendingWorkspaceSwitch = {
 	userId: string;
 	clientId: string;
 	clientName: string | null;
+	clientInfo?: string | null;
 	fromWorkspaceId: string;
 	toWorkspaceId: string;
 	status: 'pending' | 'confirmed' | 'rejected';

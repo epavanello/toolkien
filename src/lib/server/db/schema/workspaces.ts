@@ -2,8 +2,8 @@
  * Workspaces. A workspace IS a Better Auth organization (`organization`, `member`,
  * `invitation` live in `auth.ts`, generated); its extra columns (`kind`, `deleteScheduledAt`,
  * `suspendedAt`) are declared as `additionalFields` in `#lib/server/auth.ts`. This file holds
- * what Better Auth does not model: policy, link invites, the MCP active workspace and the
- * workspace data key.
+ * what Better Auth does not model: policy, link invites, the MCP active workspace, the MCP
+ * client info and the workspace data key.
  */
 import { sql } from 'drizzle-orm';
 import {
@@ -96,6 +96,27 @@ export const mcpActiveWorkspace = sqliteTable(
 		workspaceId: text('workspace_id')
 			.notNull()
 			.references(() => organization.id, { onDelete: 'cascade' }),
+		updatedAt: updatedAt()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.clientId] })]
+);
+
+/**
+ * The MCP `clientInfo` (implementation name and version, e.g. `claude-code 2.1.3`) a client
+ * sent in its last `initialize`, per user and OAuth client. 2025-era clients are served
+ * statelessly and only send it once, at `initialize`; later requests are labelled with it in the
+ * audit. Self-asserted metadata, display only (never a security decision).
+ */
+export const mcpClientInfo = sqliteTable(
+	'mcp_client_info',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		/** OAuth `client_id` of the MCP client (CIMD URL or registered id) */
+		clientId: text('client_id').notNull(),
+		/** `name version`, sanitized and length-capped */
+		info: text('info').notNull(),
 		updatedAt: updatedAt()
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.clientId] })]

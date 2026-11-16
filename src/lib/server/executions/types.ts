@@ -62,6 +62,9 @@ export type PendingApproval = ApprovalPrompt & {
 	workspaceId: string;
 	status: ApprovalStatus;
 	createdAt: Date;
+	/** MCP client that started the execution (self-asserted name and `name version`; display only) */
+	clientName: string | null;
+	clientInfo: string | null;
 };
 
 /** The three answers offered to the human (elicitation and approval page) */
@@ -88,6 +91,8 @@ export interface ExecutionsService {
 		clientId: string | null;
 		/** Display name of the MCP client, recorded in the audit (activity view) */
 		clientName?: string | null;
+		/** MCP `clientInfo` (`name version`), recorded with the name; display only */
+		clientInfo?: string | null;
 		/** Client IP, for the per-IP execution rate limit */
 		ip?: string | null;
 		code: string;

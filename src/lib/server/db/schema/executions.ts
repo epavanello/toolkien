@@ -46,6 +46,13 @@ export const execution = sqliteTable(
 			.references(() => user.id, { onDelete: 'cascade' }),
 		/** OAuth client id of the MCP client that started it */
 		clientId: text('client_id'),
+		/**
+		 * Display name (OAuth registration) and MCP `clientInfo` (`name version`) of that client,
+		 * copied onto every audit event of the execution and shown with pending approvals.
+		 * Self-asserted: display only.
+		 */
+		clientName: text('client_name'),
+		clientInfo: text('client_info'),
 		status: text('status', { enum: EXECUTION_STATUSES }).notNull().default('running'),
 		/**
 		 * Sealed durable state `{ code, approvals }` needed to re-run the script on resume.

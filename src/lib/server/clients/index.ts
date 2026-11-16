@@ -7,6 +7,7 @@ import { db } from '#lib/server/db/index.ts';
 import {
 	auditEvent,
 	connector,
+	mcpClientInfo,
 	oauthAccessToken,
 	oauthClient,
 	oauthConsent,
@@ -156,6 +157,30 @@ export async function hasLiveGrant(
 }
 
 /**
+ * Remembers the MCP `clientInfo` (`name version`) a client sent in `initialize`, so its later
+ * stateless requests are labelled with it in the activity. Display-only metadata.
+ */
+export async function rememberClientInfo(userId: string, clientId: string, info: string) {
+	await db
+		.insert(mcpClientInfo)
+		.values({ userId, clientId, info })
+		.onConflictDoUpdate({
+			target: [mcpClientInfo.userId, mcpClientInfo.clientId],
+			set: { info, updatedAt: new Date() }
+		});
+}
+
+/** The client info remembered by `rememberClientInfo`, if any */
+export async function storedClientInfo(userId: string, clientId: string): Promise<string | null> {
+	const [row] = await db
+		.select({ info: mcpClientInfo.info })
+		.from(mcpClientInfo)
+		.where(and(eq(mcpClientInfo.userId, userId), eq(mcpClientInfo.clientId, clientId)))
+		.limit(1);
+	return row?.info ?? null;
+}
+
+/**
  * Disconnects an MCP client for the actor's user only (see the contract): consent and every
  * access/refresh token deleted in one transaction, then audited in the actor's workspace. 404
  * when the user never authorized it (or it was already disconnected).
@@ -179,6 +204,9 @@ export async function revokeClient(
 			.delete(oauthConsent)
 			.where(and(eq(oauthConsent.userId, userId), eq(oauthConsent.clientId, clientId)))
 			.returning({ id: oauthConsent.id });
+		await tx
+			.delete(mcpClientInfo)
+			.where(and(eq(mcpClientInfo.userId, userId), eq(mcpClientInfo.clientId, clientId)));
 		return {
 			accessTokens: accessTokens.length,
 			refreshTokens: refreshTokens.length,

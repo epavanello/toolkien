@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	clientLabel,
 	formatDateTime,
 	formatDuration,
 	formatFullDate,
@@ -56,5 +57,15 @@ describe('format', () => {
 		expect(machineDate('2026-11-14')).toBe('2026-11-14');
 		expect(isRecent(date, new Date(2026, 10, 14, 18, 0))).toBe(true);
 		expect(isRecent(date, new Date(2026, 10, 20))).toBe(false);
+	});
+});
+
+describe('clientLabel', () => {
+	it('names the client by its registration and MCP client info', () => {
+		expect(clientLabel('Claude Code', 'claude-code 2.1.3')).toBe('Claude Code (claude-code 2.1.3)');
+		expect(clientLabel('Cursor', null)).toBe('Cursor');
+		expect(clientLabel(null, 'codex-mcp-client 0.40.0')).toBe('codex-mcp-client 0.40.0');
+		expect(clientLabel(' Codex ', 'codex')).toBe('Codex');
+		expect(clientLabel('  ', undefined)).toBeNull();
 	});
 });

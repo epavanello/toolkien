@@ -267,6 +267,8 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: row.workspaceId,
 			userId: row.userId,
 			clientId: row.clientId,
+			clientName: row.clientName,
+			clientInfo: row.clientInfo,
 			executionId: row.id,
 			durationMs,
 			metadata: { toolCalls: toolCallCount, errorCode }
@@ -412,6 +414,8 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 				workspaceId: row.workspaceId,
 				userId: row.userId,
 				clientId: row.clientId,
+				clientName: row.clientName,
+				clientInfo: row.clientInfo,
 				executionId: row.id,
 				toolPath: blocking.path,
 				metadata: { seq: blocking.callSeq, approvalId: blocking.id }
@@ -500,7 +504,14 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 		return finalize(row, result, limits.execMaxOutputBytes);
 	}
 
-	const start: ExecutionsService['start'] = async ({ actor, clientId, clientName, ip, code }) => {
+	const start: ExecutionsService['start'] = async ({
+		actor,
+		clientId,
+		clientName,
+		clientInfo,
+		ip,
+		code
+	}) => {
 		const workspace = await deps.workspaces.getById(actor.userId, actor.workspaceId);
 		if (!workspace) error(404, 'Workspace not found.', { code: 'NOT_FOUND' });
 		if (workspace.suspended || workspace.deleteScheduledAt) {
@@ -535,6 +546,8 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 				workspaceId: actor.workspaceId,
 				userId: actor.userId,
 				clientId,
+				clientName: clientName?.trim() || null,
+				clientInfo: clientInfo?.trim() || null,
 				status: 'running',
 				stateCiphertext: sealed.ciphertext,
 				stateNonce: sealed.nonce,
@@ -549,7 +562,8 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: row.workspaceId,
 			userId: row.userId,
 			clientId,
-			clientName: clientName ?? null,
+			clientName: row.clientName,
+			clientInfo: row.clientInfo,
 			executionId: row.id
 		});
 		return launch(row, code, { ...actor, role: workspace.role });
@@ -629,14 +643,28 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 		await terminate(row, ['running', 'paused'], 'cancelled', null);
 	};
 
-	async function toPending(row: ApprovalRow): Promise<PendingApproval> {
+	type ClientRef = { clientName: string | null; clientInfo: string | null };
+
+	async function clientOf(executionId: string): Promise<ClientRef> {
+		const [row] = await db
+			.select({ clientName: execution.clientName, clientInfo: execution.clientInfo })
+			.from(execution)
+			.where(eq(execution.id, executionId))
+			.limit(1);
+		return row ?? { clientName: null, clientInfo: null };
+	}
+
+	async function toPending(row: ApprovalRow, client?: ClientRef): Promise<PendingApproval> {
 		const workspace = await workspaceRef(row.workspaceId);
+		const { clientName, clientInfo } = client ?? (await clientOf(row.executionId));
 		return {
 			...(await promptFor(row, workspace.name)),
 			executionId: row.executionId,
 			workspaceId: row.workspaceId,
 			status: row.status,
-			createdAt: row.createdAt
+			createdAt: row.createdAt,
+			clientName,
+			clientInfo
 		};
 	}
 
@@ -646,7 +674,11 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 	) => {
 		const now = clock();
 		const rows = await db
-			.select({ approval })
+			.select({
+				approval,
+				clientName: execution.clientName,
+				clientInfo: execution.clientInfo
+			})
 			.from(approval)
 			.innerJoin(execution, eq(execution.id, approval.executionId))
 			.where(
@@ -662,7 +694,11 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 				)
 			)
 			.orderBy(asc(approval.createdAt));
-		return Promise.all(rows.map((row) => toPending(row.approval)));
+		return Promise.all(
+			rows.map(({ approval: row, clientName, clientInfo }) =>
+				toPending(row, { clientName, clientInfo })
+			)
+		);
 	};
 
 	/** The execution's user decides; an admin/owner of the workspace may decide for a member */
@@ -746,7 +782,11 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			.where(and(eq(execution.id, row.executionId), eq(execution.status, 'paused')));
 
 		const [exec] = await db
-			.select({ clientId: execution.clientId })
+			.select({
+				clientId: execution.clientId,
+				clientName: execution.clientName,
+				clientInfo: execution.clientInfo
+			})
 			.from(execution)
 			.where(eq(execution.id, row.executionId));
 		await record({
@@ -755,6 +795,8 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceId: row.workspaceId,
 			userId: row.userId,
 			clientId: exec?.clientId ?? null,
+			clientName: exec?.clientName ?? null,
+			clientInfo: exec?.clientInfo ?? null,
 			toolPath: row.path,
 			executionId: row.executionId,
 			approvedBy: approved ? role : null,

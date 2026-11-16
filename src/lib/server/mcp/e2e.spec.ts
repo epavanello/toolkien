@@ -387,6 +387,18 @@ describe('MCP', () => {
 		);
 		const result = await client.callTool({ name: 'workspace_list', arguments: {} });
 		expect(JSON.stringify(result.content)).toContain('Active workspace: Personal');
+		// Later stateless requests are labelled with the clientInfo of `initialize`
+		await client.callTool({ name: 'tools_search', arguments: { query: 'issues' } });
+		const { eq } = await import('drizzle-orm');
+		const [searched] = await db
+			.select()
+			.from(schema.auditEvent)
+			.where(eq(schema.auditEvent.type, 'tools.searched'));
+		expect(searched).toMatchObject({
+			clientId: dcrClientId,
+			clientName: 'DCR Test Client',
+			clientInfo: 'legacy-test 1.0.0'
+		});
 		await client.close();
 	});
 
@@ -431,6 +443,15 @@ describe('MCP', () => {
 
 		const list = await client.callTool({ name: 'workspace_list', arguments: {} });
 		expect(JSON.stringify(list.content)).toContain('Active workspace: Acme (acme)');
+		const { eq } = await import('drizzle-orm');
+		const [switched] = await db
+			.select()
+			.from(schema.auditEvent)
+			.where(eq(schema.auditEvent.type, 'workspace.switched'));
+		expect(switched).toMatchObject({
+			clientName: 'DCR Test Client',
+			clientInfo: 'modern-test 1.0.0'
+		});
 		await client.close();
 	});
 	it('serves a Resend-like connector: verbatim descriptions, text results, bookkeeping params', async () => {

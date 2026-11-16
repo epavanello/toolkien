@@ -65,6 +65,18 @@ removed after this merge).
 - **Policy** (`checkConnectorPolicy`, single source): members add connectors only for themselves
   and only if allowed; `allowFreeUrls` and `allowedServers` apply to everyone (admins change the
   policy for an exception).
+- **Which client made a request** (Activity, CSV): every audit event of an MCP request now
+  carries the client, not only `execution.started` and searches (tool calls, approvals, pauses
+  and ends had only the opaque OAuth client id, so their rows and CSV lines named no client).
+  Two sources, both self-asserted and display only: the OAuth registration `client_name`
+  (optional in DCR, so sometimes missing, and shared by every app behind one OAuth client) and
+  the MCP `clientInfo` (`name version`, e.g. `claude-code 2.1.3`): from the 2026-07-28 request
+  envelope, else from the 2025-era `initialize`, remembered per user and client
+  (`mcp_client_info`) since those clients are served statelessly and send it once. Executions
+  copy both onto their events (`execution.client_name` / `client_info`); events recorded
+  before fall back to the registered name by joining the OAuth client. Shown as
+  `via Claude Code (claude-code 2.1.3)` on executions and standalone events, `client` and
+  `client_info` CSV columns.
 - **Audit** is append-only (trigger); metadata never holds user ids (anonymisation only nulls
   `user_id`); members see their own events, admins with a passkey everyone's. Retention 90 days
   (job). Technical logs are separate: stdout, ids only, **14 days** (journald on the host; compose
@@ -87,7 +99,8 @@ removed after this merge).
 
 - One `/mcp` handler for **2026-07-28 and 2025-11-25**, stateless (no `Mcp-Session-Id`, POST only),
   fresh server per request. Pipeline: Origin → per-IP limit → bearer + audience → disabled client
-  / suspended user / kill switch → per-user limit → handler (client name and IP in the context).
+  / suspended user / kill switch → per-user limit → handler (client name, MCP client info and IP in
+  the context).
 - **Approvals**: 2026-07-28 clients get form elicitation (else URL mode, else a link); 2025 clients
   always get the out-of-band link (stateless legacy cannot carry an elicitation answer). There is
   no approve tool: the model can never answer.

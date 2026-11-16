@@ -1005,3 +1005,44 @@ describe('pending approvals listing', () => {
 		expect(expiring.status).toBe('awaiting_approval');
 	});
 });
+
+describe('client of an execution', () => {
+	it('labels every audit event of the execution and its pending approvals with the client', async () => {
+		const sys = makeSystem(t.db, PROGRAMS);
+		const paused = await sys.service.start({
+			actor: actor(),
+			clientId: 'dcr-1',
+			clientName: ' Claude Code ',
+			clientInfo: 'claude-code 2.1.3',
+			code: 'readThenWrite'
+		});
+		const [pending] = await sys.service.listPendingApprovals(user);
+		expect(pending).toMatchObject({ clientName: 'Claude Code', clientInfo: 'claude-code 2.1.3' });
+		expect(
+			await sys.service.getApproval({ approvalId: paused.approval!.approvalId, viewerUserId: user })
+		).toMatchObject({ clientName: 'Claude Code', clientInfo: 'claude-code 2.1.3' });
+
+		await sys.service.decideApproval({
+			approvalId: paused.approval!.approvalId,
+			deciderUserId: user,
+			decision: { decision: 'approve', scope: 'once' }
+		});
+		await sys.service.status({ userId: user, executionId: paused.executionId, resume: true });
+		const events = sys.audit.record.mock.calls.map(
+			(c) => (c as unknown as [{ type: string; clientName?: string; clientInfo?: string }])[0]
+		);
+		expect(events.map((e) => e.type)).toEqual(
+			expect.arrayContaining([
+				'execution.started',
+				'tool.called',
+				'approval.requested',
+				'execution.paused',
+				'approval.decided',
+				'execution.completed'
+			])
+		);
+		for (const e of events) {
+			expect(e).toMatchObject({ clientName: 'Claude Code', clientInfo: 'claude-code 2.1.3' });
+		}
+	});
+});

@@ -11,6 +11,7 @@ import {
 	connector,
 	connectorCredential,
 	mcpActiveWorkspace,
+	mcpClientInfo,
 	member,
 	oauthClient,
 	oauthConsent,
@@ -67,10 +68,18 @@ export async function exportAccount(userId: string): Promise<AccountExport> {
 			.select({
 				clientId: oauthConsent.clientId,
 				name: oauthClient.name,
+				clientInfo: mcpClientInfo.info,
 				createdAt: oauthConsent.createdAt
 			})
 			.from(oauthConsent)
 			.leftJoin(oauthClient, eq(oauthClient.clientId, oauthConsent.clientId))
+			.leftJoin(
+				mcpClientInfo,
+				and(
+					eq(mcpClientInfo.clientId, oauthConsent.clientId),
+					eq(mcpClientInfo.userId, oauthConsent.userId)
+				)
+			)
 			.where(eq(oauthConsent.userId, userId)),
 		db.select().from(mcpActiveWorkspace).where(eq(mcpActiveWorkspace.userId, userId)),
 		listForUser(userId)
@@ -128,6 +137,7 @@ export async function exportAccount(userId: string): Promise<AccountExport> {
 		mcpClients: consents.map((c) => ({
 			clientId: c.clientId,
 			name: c.name,
+			clientInfo: c.clientInfo,
 			consentedAt: c.createdAt.toISOString()
 		})),
 		activeWorkspaces: active.map((a) => ({ clientId: a.clientId, workspaceId: a.workspaceId })),

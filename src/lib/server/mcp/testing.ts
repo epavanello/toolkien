@@ -111,7 +111,13 @@ export function fakeDeps(options: { active?: WorkspaceSummary } = {}) {
 
 export function fakeEnv(overrides: Partial<ToolEnv> = {}): ToolEnv {
 	return {
-		request: { userId: 'u1', clientId: 'client-1', clientName: 'Test Client', scopes: [] },
+		request: {
+			userId: 'u1',
+			clientId: 'client-1',
+			clientName: 'Test Client',
+			clientInfo: 'test-client 1.0.0',
+			scopes: []
+		},
 		era: 'legacy',
 		capabilities: { elicitation: { form: false, url: false } },
 		inputResponses: undefined,

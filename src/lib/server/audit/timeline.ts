@@ -30,6 +30,16 @@ export function groupByExecution(events: AuditEventView[]): TimelineEntry[] {
 	});
 }
 
+/** The client of an execution: the first event (newest first) that names one, with its info */
+function clientOf(events: AuditEventView[]) {
+	const named = events.find((event) => event.clientName) ?? null;
+	const withInfo = events.find((event) => event.clientInfo) ?? null;
+	return {
+		clientName: named?.clientName ?? null,
+		clientInfo: (named?.clientInfo || withInfo?.clientInfo) ?? null
+	};
+}
+
 function executionEntry(executionId: string, events: AuditEventView[]): TimelineEntry {
 	const sorted = [...events].sort(
 		(a, b) => b.occurredAt.getTime() - a.occurredAt.getTime() || b.id.localeCompare(a.id)
@@ -49,7 +59,7 @@ function executionEntry(executionId: string, events: AuditEventView[]): Timeline
 		outcome,
 		userId: withUser.userId ?? null,
 		userName: withUser.userName,
-		clientName: sorted.find((event) => event.clientName)?.clientName ?? null,
+		...clientOf(sorted),
 		durationMs: end?.durationMs ?? null,
 		toolCalls: sorted.filter((event) => event.type === 'tool.called').length,
 		events: sorted
