@@ -38,7 +38,7 @@ export type {
  * - Every definition refresh that changes a tool saves a new `tool_version`; a changed
  *   `signatureHash` sends confirmed permissions back to "to confirm", and changed descriptions
  *   of unverified connectors raise a `connector.descriptions_changed` audit event.
- * - Refresh triggers: upstream `list_changed`, session open with a 6 h cache, call failure
+ * - Refresh triggers: upstream `list_changed`, the daily resync of stale catalogs, call failure
  *   for unknown tool / invalid params, and the UI button.
  */
 
@@ -243,10 +243,9 @@ export type RenameConnectorInput = { label?: string | null; namespace?: string; 
 /**
  * Why a sync ran. Everything but `manual` runs with nobody watching the result, so its
  * changes are kept as the connector's `pendingChanges` (see `CatalogChanges`).
- * (additive) `scheduled`: the daily resync of upstreams that do not announce `list_changed`.
+ * (additive) `scheduled`: the daily resync of stale catalogs (`resync.ts`).
  */
-export type SyncReason =
-	'manual' | 'session' | 'list_changed' | 'call_error' | 'cache_expired' | 'scheduled';
+export type SyncReason = 'manual' | 'list_changed' | 'call_error' | 'scheduled';
 
 export type SyncResult = {
 	added: number;
@@ -384,11 +383,6 @@ export interface ConnectorsService {
 	 * number of credentials deleted. No permission check: callers authorise the removal.
 	 */
 	revokeUserCredentials(workspaceId: string, userId: string): Promise<number>;
-	/**
-	 * (additive) Session open: syncs the actor's usable connectors whose definitions are older
-	 * than 6 h (or never synced). Never throws; failures land in the connector status.
-	 */
-	refreshStale(actor: WorkspaceActor): Promise<void>;
 	/**
 	 * Keyword search over the tools the actor can see and call (connector visible, credential
 	 * usable, not suspended) minus the tools `permissions.visibleToolIds` hides (blocked). A tool

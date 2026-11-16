@@ -95,104 +95,105 @@
 					<Button size="sm" variant="destructive" onclick={() => onRemove(c)}>Remove</Button>
 				{/if}
 			{/snippet}
-			<KeyValueList
-				columns={2}
-				items={[
-					{ label: 'Server URL', value: c.url, type: 'mono', copy: true },
-					{ label: 'Namespace', value: c.namespace, type: 'mono' },
-					{ label: 'Instance', value: c.label },
-					{ label: 'Used by', value: audienceLabel(c) },
-					{ label: 'Authentication', value: authLabel(c.authType) },
-					{ label: 'Your access', value: accessStatus(c), type: 'status' },
-					{ label: 'Status', value: c.suspended ? 'suspended' : c.status, type: 'status' },
-					{ label: 'MCP version', value: c.protocolVersion, type: 'mono' },
-					{
-						label: 'Server',
-						value: c.serverInfo ? `${c.serverInfo.name} ${c.serverInfo.version}` : null
-					},
-					{
-						label: 'Tools updated',
-						value: c.lastChangedAt,
-						type: 'datetime',
-						secondary: lastCheck(c)
-					},
-					{
-						label: 'Directory',
-						value: c.directory
-							? `${checkLabel(c.directory.verification.status)} by ${c.directory.verification.by}`
-							: 'Not in the directory'
-					},
-					{
-						label: 'Checked',
-						value: c.directory ? c.directory.verification.on : null,
-						type: 'datetime'
-					}
-				]}
-			/>
+			<div class="flex flex-col gap-4">
+				{#if c.suspended}
+					<Callout
+						tone="danger"
+						title="Suspended"
+						description="This connector is suspended: its tools cannot be called until an admin lifts the suspension."
+					/>
+				{:else if needsSignIn(c)}
+					<Callout
+						tone="warning"
+						title="This server needs you to sign in"
+						description={c.statusMessage ??
+							(c.authType === 'token'
+								? 'Paste a token or API key from the server so agents can use its tools.'
+								: `Sign in with your ${c.name} account so agents can use its tools.`)}
+					>
+						{#snippet action()}
+							<Button size="sm" onclick={() => onConnect(c)}>{signInLabel(c)}</Button>
+						{/snippet}
+					</Callout>
+				{:else if !c.authenticated}
+					<Callout
+						tone="warning"
+						title="Not connected"
+						description="An admin must connect this shared connector before agents can use it."
+					/>
+				{:else if c.status === 'error'}
+					<Callout
+						tone="danger"
+						title="Could not load the tools"
+						description={c.statusMessage ?? 'The server did not answer as expected.'}
+					>
+						{#snippet action()}
+							<Button size="sm" variant="outline" icon={RefreshCw} onclick={refresh}>Retry</Button>
+						{/snippet}
+					</Callout>
+				{:else if c.statusMessage}
+					<Callout title="Note" description={c.statusMessage} />
+				{/if}
+				{#if c.pendingChanges}
+					{@const summary = syncSummary(c.pendingChanges)}
+					<!-- Changes a background sync found: the tools to confirm are marked in the list below -->
+					<Callout
+						tone={summary.details ? 'warning' : 'info'}
+						title={`Tools changed on the server: ${summary.changes}`}
+						time={{ label: 'since', value: c.pendingChanges.since }}
+						description={summary.details ?? 'Toolkien picked up the new definitions on its own.'}
+					>
+						{#snippet action()}
+							<Button size="sm" variant="outline" onclick={markReviewed}>Mark reviewed</Button>
+						{/snippet}
+					</Callout>
+				{/if}
+				{#if c.unverified}
+					<Callout
+						tone="warning"
+						title="Untrusted tool descriptions"
+						description={untrustedReason(c)}
+					/>
+				{/if}
+				{#if c.directory?.tokenHelp && !c.authenticated}
+					<Callout title="Token" description={c.directory.tokenHelp} />
+				{/if}
+				<KeyValueList
+					columns={2}
+					items={[
+						{ label: 'Server URL', value: c.url, type: 'mono', copy: true },
+						{ label: 'Namespace', value: c.namespace, type: 'mono' },
+						{ label: 'Instance', value: c.label },
+						{ label: 'Used by', value: audienceLabel(c) },
+						{ label: 'Authentication', value: authLabel(c.authType) },
+						{ label: 'Your access', value: accessStatus(c), type: 'status' },
+						{ label: 'Status', value: c.suspended ? 'suspended' : c.status, type: 'status' },
+						{ label: 'MCP version', value: c.protocolVersion, type: 'mono' },
+						{
+							label: 'Server',
+							value: c.serverInfo ? `${c.serverInfo.name} ${c.serverInfo.version}` : null
+						},
+						{
+							label: 'Tools updated',
+							value: c.lastChangedAt,
+							type: 'datetime',
+							secondary: lastCheck(c)
+						},
+						{
+							label: 'Directory',
+							value: c.directory
+								? `${checkLabel(c.directory.verification.status)} by ${c.directory.verification.by}`
+								: 'Not in the directory'
+						},
+						{
+							label: 'Directory checked',
+							value: c.directory ? c.directory.verification.on : null,
+							type: 'datetime'
+						}
+					]}
+				/>
+			</div>
 		</Section>
-
-		{#if c.suspended}
-			<Callout
-				tone="danger"
-				title="Suspended"
-				description="This connector is suspended: its tools cannot be called until an admin lifts the suspension."
-			/>
-		{:else if needsSignIn(c)}
-			<Callout
-				tone="warning"
-				title="This server needs you to sign in"
-				description={c.statusMessage ??
-					(c.authType === 'token'
-						? 'Paste a token or API key from the server so agents can use its tools.'
-						: `Sign in with your ${c.name} account so agents can use its tools.`)}
-			>
-				{#snippet action()}
-					<Button size="sm" onclick={() => onConnect(c)}>{signInLabel(c)}</Button>
-				{/snippet}
-			</Callout>
-		{:else if !c.authenticated}
-			<Callout
-				tone="warning"
-				title="Not connected"
-				description="An admin must connect this shared connector before agents can use it."
-			/>
-		{:else if c.status === 'error'}
-			<Callout
-				tone="danger"
-				title="Could not load the tools"
-				description={c.statusMessage ?? 'The server did not answer as expected.'}
-			>
-				{#snippet action()}
-					<Button size="sm" variant="outline" icon={RefreshCw} onclick={refresh}>Retry</Button>
-				{/snippet}
-			</Callout>
-		{:else if c.statusMessage}
-			<Callout title="Note" description={c.statusMessage} />
-		{/if}
-		{#if c.pendingChanges}
-			{@const summary = syncSummary(c.pendingChanges)}
-			<!-- Changes a background sync found: the tools to confirm are marked in the list below -->
-			<Callout
-				tone={summary.details ? 'warning' : 'info'}
-				title={`Tools changed on the server: ${summary.changes}`}
-				time={{ label: 'since', value: c.pendingChanges.since }}
-				description={summary.details ?? 'Toolkien picked up the new definitions on its own.'}
-			>
-				{#snippet action()}
-					<Button size="sm" variant="outline" onclick={markReviewed}>Mark reviewed</Button>
-				{/snippet}
-			</Callout>
-		{/if}
-		{#if c.unverified}
-			<Callout
-				tone="warning"
-				title="Untrusted tool descriptions"
-				description={untrustedReason(c)}
-			/>
-		{/if}
-		{#if c.directory?.tokenHelp && !c.authenticated}
-			<Callout title="Token" description={c.directory.tokenHelp} />
-		{/if}
 
 		<Section
 			variant="flush"

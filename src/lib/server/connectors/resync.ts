@@ -1,22 +1,23 @@
-import { and, asc, eq, inArray, isNotNull, isNull, lt, notInArray } from 'drizzle-orm';
+import { and, asc, inArray, isNotNull, isNull, lt, notInArray } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
 import { connector } from '#lib/server/db/schema/index.ts';
 import type { McpToolName } from '#lib/server/mcp/types.ts';
 import type { ConnectorRow } from './access.ts';
 import { listCredentials } from './credentials.ts';
 import { syncConnector } from './sync.ts';
+import { watchedIds } from './watch.ts';
 
 /**
  * Keeping catalogs fresh without anyone pressing Refresh (single instance, in memory like the
  * `list_changed` watchers):
  *
- * - **Daily resync** (job `connectors.resync`, hourly): connectors whose upstream does not
- *   announce `tools/list_changed`, last synced more than a day ago, are synced again through
- *   the same path as Refresh (reason `scheduled`, no actor). A few per run, oldest first, one
- *   at a time, so a deploy or a day of new connectors never hits every upstream in the same
- *   minute. A failed attempt is not retried by the job for a day (the failure lands in the
- *   connector status as for any sync). Never-synced, suspended, disabled and `pending_auth`
- *   connectors are skipped: they wait for someone to connect them.
+ * - **Stale catalogs** (job `connectors.resync`, hourly): one rule, a catalog is stale when it
+ *   was last synced more than a day ago and no `list_changed` watcher is open on it. Stale
+ *   catalogs are synced again through the same path as Refresh (reason `scheduled`, no actor),
+ *   a few per run, oldest first, one at a time, so a deploy or a day of new connectors never
+ *   hits every upstream in the same minute. A failed attempt is not retried for a day (the
+ *   failure lands in the connector status as for any sync). Never-synced, suspended, disabled
+ *   and `pending_auth` connectors are skipped: they wait for someone to connect them.
  * - **Rejected calls**: an upstream answer of unknown tool / invalid arguments resyncs the
  *   connector at most once every 10 minutes, so an agent retrying bad arguments in a loop
  *   does not turn into a `tools/list` loop.
@@ -38,18 +39,17 @@ const recent = (map: Map<string, number>, windowMs: number, now: number) => {
 	return [...map.keys()];
 };
 
-/** Connectors the next scheduled run syncs, oldest first */
+/** Stale connectors the next scheduled run syncs, oldest first */
 export async function dueForResync(
 	now = Date.now(),
 	limit = RESYNC_BATCH
 ): Promise<ConnectorRow[]> {
-	const skip = recent(attempts, RESYNC_AFTER_MS, now);
+	const skip = [...recent(attempts, RESYNC_AFTER_MS, now), ...watchedIds()];
 	return db
 		.select()
 		.from(connector)
 		.where(
 			and(
-				eq(connector.toolsListChanged, false),
 				isNull(connector.suspendedAt),
 				inArray(connector.status, ['active', 'error']),
 				isNotNull(connector.lastSyncedAt),

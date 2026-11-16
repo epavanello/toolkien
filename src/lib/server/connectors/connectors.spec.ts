@@ -123,6 +123,7 @@ const { seedWorkspace } = await import('./testing/db.ts');
 const connectors = await import('./index.ts');
 const resync = await import('./resync.ts');
 const resyncSync = await import('./sync.ts');
+const { stopWatch } = await import('./watch.ts');
 const { createPermissionsService } = await import('#lib/server/permissions/service.ts');
 const record = async () => undefined;
 const { OAuthCallbackError } = connectors;
@@ -736,26 +737,6 @@ describe('tools/list_changed', () => {
 	});
 });
 
-describe('refreshStale', () => {
-	it('syncs connectors older than the 6 h cache', async () => {
-		const server = createFakeServer({ host: 'mcp.stale.example', tools: [issuesTools[0]] });
-		servers.push(server);
-		const added = await connectors.add(alice, {
-			scope: 'shared',
-			onlyForMe: false,
-			source: { type: 'url', url: 'https://mcp.stale.example/mcp' }
-		});
-		const old = new Date(Date.now() - 7 * 60 * 60 * 1000);
-		await db
-			.update(schema.connector)
-			.set({ lastSyncedAt: old })
-			.where(eq(schema.connector.id, added.id));
-		await connectors.refreshStale(bob);
-		const after = (await connectors.list(bob)).find((c) => c.id === added.id)!;
-		expect(after.lastSyncedAt!.getTime()).toBeGreaterThan(old.getTime());
-	});
-});
-
 describe('scheduled resync', () => {
 	const DAY = 24 * 60 * 60 * 1000;
 	let plain: FakeServer;
@@ -794,13 +775,17 @@ describe('scheduled resync', () => {
 			.where(eq(schema.connector.id, ids.suspended));
 	});
 
-	it('picks only connectors older than a day that do not announce list_changed', async () => {
-		expect((await row(ids.live)).toolsListChanged).toBe(true);
-		const due = (await resync.dueForResync()).map((c) => c.id);
-		expect(due).toContain(ids.plain);
-		expect(due).not.toContain(ids.live);
-		expect(due).not.toContain(ids.fresh);
-		expect(due).not.toContain(ids.suspended);
+	it('picks connectors synced more than a day ago with no open list_changed watcher', async () => {
+		const due = async () => (await resync.dueForResync()).map((c) => c.id);
+		expect(await due()).toEqual(expect.arrayContaining([ids.plain, ids.live]));
+		expect(await due()).not.toContain(ids.fresh);
+		expect(await due()).not.toContain(ids.suspended);
+		// A manual refresh opens the watcher: the catalog stays fresh while it is open
+		await connectors.syncTools(alice, ids.live, 'manual');
+		await age(ids.live, new Date(Date.now() - 2 * DAY));
+		await waitFor(async () => !(await due()).includes(ids.live));
+		await stopWatch(ids.live);
+		expect(await due()).toContain(ids.live);
 	});
 
 	it('resyncs with reason "scheduled"; a changed signature still needs confirmation', async () => {

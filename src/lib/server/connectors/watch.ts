@@ -5,9 +5,9 @@ import { openToolsWatch } from './upstream.ts';
 /**
  * `tools/list_changed` listeners. For upstreams that advertise `tools.listChanged`, a long-lived
  * connection (a `subscriptions/listen` stream on 2026-07-28, the GET stream on 2025 servers)
- * is opened after a successful sync with the same credential, and closed after `IDLE_MS`
- * (the next session-open refresh reopens it). In-memory, single instance; a restart simply
- * falls back to the 6 h cache + session-open refresh.
+ * is opened after a successful sync with the same credential, and closed after `IDLE_MS`.
+ * In-memory, single instance: without an open watcher (closed, restart) the catalog is stale
+ * after a day like any other (`resync.ts`).
  */
 
 export const IDLE_MS = 6 * 60 * 60 * 1000;
@@ -17,7 +17,7 @@ type Watch = { close: () => Promise<void>; timer: ReturnType<typeof setTimeout> 
 const watches = new Map<string, Watch>();
 const opening = new Set<string>();
 
-export const isWatching = (connectorId: string) => watches.has(connectorId);
+export const watchedIds = () => [...watches.keys()];
 
 export async function ensureWatch(
 	conn: ConnectorRow,
@@ -42,7 +42,7 @@ export async function ensureWatch(
 			}
 		});
 	} catch {
-		// Best effort: refresh still happens on session open and on call errors
+		// Best effort: the daily resync and rejected calls still refresh
 	} finally {
 		opening.delete(conn.id);
 	}

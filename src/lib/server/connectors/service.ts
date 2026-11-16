@@ -58,9 +58,6 @@ import type {
 import { callUpstreamTool, listTools, UpstreamError } from './upstream.ts';
 import { ensureWatch, stopWatch } from './watch.ts';
 
-/** Definitions older than this are reloaded when a session opens */
-export const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-
 const deny = (message: string): never => error(403, message, { code: 'POLICY_DENIED' });
 
 async function summaries(actor: WorkspaceActor, rows: ConnectorRow[]): Promise<ConnectorSummary[]> {
@@ -688,34 +685,6 @@ export const acknowledgeChanges: ConnectorsService['acknowledgeChanges'] = async
 	const row = await getVisible(actor, connectorId);
 	assertCanManage(actor, row);
 	await db.update(connector).set({ pendingChanges: null }).where(eq(connector.id, row.id));
-};
-
-export const refreshStale: ConnectorsService['refreshStale'] = async (actor) => {
-	const rows = await db
-		.select()
-		.from(connector)
-		.where(
-			and(visibleTo(actor), isNull(connector.suspendedAt), sql`${connector.status} <> 'disabled'`)
-		);
-	const now = Date.now();
-	await Promise.allSettled(
-		rows.map(async (row) => {
-			const owner = credentialUserId(actor, row);
-			await refreshConnectorIcon(row);
-			if (row.authType !== 'none' && !(await findCredential(row.id, owner))) return;
-			const stale = !row.lastSyncedAt || now - row.lastSyncedAt.getTime() > CACHE_TTL_MS;
-			if (stale) {
-				await syncConnector(
-					row,
-					owner,
-					row.lastSyncedAt ? 'cache_expired' : 'session',
-					actor.userId
-				);
-			}
-			const current = await getVisible(actor, row.id);
-			await ensureWatch(current, owner, () => scheduleSync(current, owner));
-		})
-	);
 };
 
 export const callTool: ConnectorsService['callTool'] = async (actor, resolved, args) => {

@@ -61,8 +61,7 @@ registerJob({
 	}
 });
 
-// Hourly, a few connectors per run: daily resync of upstreams that do not announce
-// `tools/list_changed` (see `connectors/resync.ts`)
+// Hourly, a few connectors per run: resync of stale catalogs (see `connectors/resync.ts`)
 registerJob({
 	name: 'connectors.resync',
 	intervalMs: HOUR,

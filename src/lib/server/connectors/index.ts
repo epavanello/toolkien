@@ -34,7 +34,6 @@ export const setToken: ConnectorsService['setToken'] = service.setToken;
 export const syncTools: ConnectorsService['syncTools'] = service.syncTools;
 export const acknowledgeChanges: ConnectorsService['acknowledgeChanges'] =
 	service.acknowledgeChanges;
-export const refreshStale: ConnectorsService['refreshStale'] = service.refreshStale;
 export const searchTools: ConnectorsService['searchTools'] = discovery.searchTools;
 export const describeTools: ConnectorsService['describeTools'] = discovery.describeTools;
 export const declarationsFor: ConnectorsService['declarationsFor'] = discovery.declarationsFor;

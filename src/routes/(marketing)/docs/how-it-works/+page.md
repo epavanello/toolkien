@@ -64,4 +64,4 @@ The active workspace is chosen per client, at consent time or with `workspace_sw
 
 ## Keeping definitions fresh
 
-Definitions refresh when the server announces a change, when a session opens (with a 6-hour cache), when a call fails because a tool or its parameters changed (the error includes the new signature), and from the **Refresh** button. Each change is versioned; when a signature you approved changes, the tool goes back to _to confirm_.
+Definitions refresh when the server announces a change, at least once a day, when a call fails because a tool or its parameters changed (the error includes the new signature), and from the **Refresh** button. Each change is versioned; when a signature you approved changes, the tool goes back to _to confirm_.

@@ -40,9 +40,9 @@ export type ToolAnnotations = {
 export type JsonSchema = Record<string, unknown>;
 
 /**
- * Catalog changes background syncs (scheduled, `list_changed`, rejected call, session open)
- * found since someone who manages the connector last reviewed them. Same shape as a manual
- * refresh's result; counts add up across syncs, paths are deduplicated.
+ * Catalog changes background syncs (scheduled, `list_changed`, rejected call) found since
+ * someone who manages the connector last reviewed them. Same shape as a manual refresh's result;
+ * counts add up across syncs, paths are deduplicated.
  */
 export type CatalogChanges = {
 	/** ISO time of the first unreviewed change */
