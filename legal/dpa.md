@@ -6,7 +6,7 @@ updated: 2026-11-14
 
 > **Draft generated automatically: to be reviewed by a lawyer or DPO before publication.** This text is not legal advice.
 
-This Data Processing Agreement ("DPA") forms part of the [terms of service](/legal/terms) between the customer ("Controller") and **[Operator legal name]** ("Processor") for the managed Toolkien service. It does not apply to self-hosted instances, whose operators act as controller or processor themselves.
+This Data Processing Agreement ("DPA") forms part of the [terms of service](/legal/terms) between the customer ("Controller") and the Toolkien maintainers ("Processor") for the managed Toolkien service. It does not apply to self-hosted instances, whose operators act as controller or processor themselves.
 
 ## 1. Subject matter and duration
 

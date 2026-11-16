@@ -8,7 +8,7 @@ updated: 2026-11-14
 
 ## 1. Scope
 
-These terms govern your use of the managed Toolkien service ("the Service") operated by **[Operator legal name]** ("we"). Toolkien's source code is published under the **AGPL-3.0** license; that license, not these terms, governs your use of the code. If you self-host Toolkien, these terms do not apply to your instance and you are responsible for operating it lawfully, including as controller or processor of your users' data.
+These terms govern your use of the managed Toolkien service ("the Service") operated by the Toolkien maintainers ("we"). Toolkien's source code is published under the **AGPL-3.0** license; that license, not these terms, governs your use of the code. If you self-host Toolkien, these terms do not apply to your instance and you are responsible for operating it lawfully, including as controller or processor of your users' data.
 
 ## 2. The Service
 

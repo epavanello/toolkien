@@ -1,14 +1,12 @@
 ---
 title: Privacy policy
 description: How the managed Toolkien service handles personal data.
-updated: 2026-11-14
+updated: 2026-11-16
 ---
-
-> **Draft generated automatically: to be reviewed by a lawyer or DPO before publication.** This text is not legal advice.
 
 ## Who we are
 
-This policy covers the managed Toolkien service operated by **[Operator legal name]**, **[registered address]**, reachable at [toolkien@emadev.co](mailto:toolkien@emadev.co) ("we"). Toolkien is open source: if you run your own instance, you are the controller (and, for your users' content, the processor) of the data it handles, and this policy does not apply to your instance.
+This policy covers the managed Toolkien service operated by the Toolkien maintainers, reachable at [toolkien@emadev.co](mailto:toolkien@emadev.co) ("we"). Toolkien is open source: if you run your own instance, you are the controller (and, for your users' content, the processor) of the data it handles, and this policy does not apply to your instance.
 
 ## The principle: data minimisation
 

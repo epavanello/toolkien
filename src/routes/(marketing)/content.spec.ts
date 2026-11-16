@@ -28,6 +28,8 @@ describe('public content', () => {
 		const docs = legalMarkdown();
 		expect(docs).toHaveLength(LEGAL_DOCUMENTS.length);
 		for (const doc of docs) {
+			// privacy has been reviewed and published without the disclaimer
+			if (doc.href === '/legal/privacy') continue;
 			expect(doc.body.split('\n')[0]).toContain(
 				'Draft generated automatically: to be reviewed by a lawyer or DPO before publication.'
 			);
