@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotImplementedError } from '#lib/server/not-implemented.ts';
 import { elicitationModes } from './elicitation.ts';
 import { errorResult, type ToolEnv, type ToolResult } from './register.ts';
-import { clearSwitchRequests, getSwitchRequest } from './switch-requests.ts';
+import { clearSwitchRequests, getSwitchRequest, listPendingSwitches } from './switch-requests.ts';
 import {
 	acme,
 	fakeDeps,
@@ -82,6 +82,7 @@ describe('workspace_list', () => {
 		expect(text).toContain('Active workspace: Acme (acme)');
 		expect(text).toMatch(/Acme \(acme\): company, member \[active\]/);
 		expect(text).toMatch(/Personal \(personal-u1\): personal, owner$/m);
+		expect(text).toContain('Connected as: Test Client (test-client 1.0.0)');
 	});
 });
 
@@ -133,38 +134,74 @@ describe('workspace_switch', () => {
 		const request = first.inputRequests!.confirm_switch;
 		expect(request.method).toBe('elicitation/create');
 		expect(JSON.stringify(request.params)).toContain('From: Personal');
-		expect(JSON.parse(first.requestState!)).toEqual({
-			kind: 'switch_form',
-			toWorkspaceId: acme.id
-		});
+		const state = JSON.parse(first.requestState!);
+		expect(state).toEqual({ kind: 'switch_form', requestId: expect.any(String) });
+		expect(JSON.stringify(request.params)).toContain(`consent?switch=${state.requestId}`);
+		expect(deps.audit.record).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'workspace.switched',
+				outcome: 'pending',
+				workspaceId: acme.id,
+				metadata: { fromWorkspaceId: personal.id, channel: 'elicitation_form' }
+			})
+		);
 
 		const second = await call(
 			'workspace_switch',
 			{ workspace: 'acme' },
 			{
 				...modernForm,
-				requestState: { kind: 'switch_form', toWorkspaceId: acme.id },
+				requestState: state,
 				inputResponses: { confirm_switch: { action: 'accept', content: { confirm: true } } }
 			}
 		);
 		expect(textOf(second)).toMatch(/Switched to Acme/);
 		expect(deps.workspaces.setActiveWorkspace).toHaveBeenCalledWith('u1', 'client-1', acme.id);
+		expect(getSwitchRequest(state.requestId, 'u1')?.status).toBe('confirmed');
 	});
 
 	it('records a refusal and keeps the workspace when declined', async () => {
 		const { call, deps } = setup();
+		const first = asInputRequired(
+			await call('workspace_switch', { workspace: 'acme' }, modernForm)
+		);
 		const result = await call(
 			'workspace_switch',
 			{ workspace: 'acme' },
 			{
 				...modernForm,
-				requestState: { kind: 'switch_form', toWorkspaceId: acme.id },
+				requestState: JSON.parse(first.requestState!),
 				inputResponses: { confirm_switch: { action: 'decline' } }
 			}
 		);
 		expect(textOf(result)).toMatch(/still Personal/);
 		expect(deps.workspaces.setActiveWorkspace).not.toHaveBeenCalled();
 		expect(deps.audit.record).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'denied' }));
+	});
+
+	it('answers a retry after an unanswered dialog with the link to the same request', async () => {
+		const { call, deps } = setup();
+		const first = asInputRequired(
+			await call('workspace_switch', { workspace: 'acme' }, modernForm)
+		);
+		const { requestId } = JSON.parse(first.requestState!);
+		const retry = textOf(await call('workspace_switch', { workspace: 'acme' }, modernForm));
+		expect(retry).toContain('pending_confirmation');
+		expect(retry).toContain(`consent?switch=${requestId}`);
+		expect(retry).toContain('/w/acme/approvals');
+		expect(listPendingSwitches('u1', acme.id).map((r) => r.id)).toEqual([requestId]);
+		expect(listPendingSwitches('u1', personal.id).map((r) => r.id)).toEqual([requestId]);
+		expect(listPendingSwitches('someone-else', acme.id)).toEqual([]);
+
+		// Confirmed on the page: the dialog round that comes back reports the switch
+		await decideSwitchRequest(deps, { requestId, userId: 'u1', confirm: true });
+		const late = await call(
+			'workspace_switch',
+			{ workspace: 'acme' },
+			{ ...modernForm, requestState: { kind: 'switch_form', requestId } }
+		);
+		expect(textOf(late)).toMatch(/Switched to Acme/);
+		expect(listPendingSwitches('u1', acme.id)).toEqual([]);
 	});
 
 	it('uses URL elicitation when only URL mode is declared', async () => {

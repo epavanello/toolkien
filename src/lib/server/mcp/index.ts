@@ -17,10 +17,12 @@ import {
 import { db } from '#lib/server/db/index.ts';
 import { oauthClient, user } from '#lib/server/db/schema/index.ts';
 import * as limits from '#lib/server/limits/index.ts';
+import { listForUser } from '#lib/server/workspaces/index.ts';
 import { createMcpEndpoint, originPolicy } from './endpoint.ts';
 import { createHandleMcpRequest } from './handler.ts';
 import { services } from './services.ts';
-import type { HandleMcpRequest } from './types.ts';
+import { listPendingSwitches } from './switch-requests.ts';
+import type { HandleMcpRequest, PendingSwitchRow } from './types.ts';
 import { decideSwitchRequest } from './workspace-switch.ts';
 
 export * from './types.ts';
@@ -121,3 +123,25 @@ export const decideWorkspaceSwitch = (input: {
 	userId: string;
 	confirm: boolean;
 }) => decideSwitchRequest(services, input);
+
+/** The user's switches from or to a workspace that wait for an answer, oldest first */
+export async function pendingSwitchRows(
+	userId: string,
+	workspaceId: string
+): Promise<PendingSwitchRow[]> {
+	const pending = listPendingSwitches(userId, workspaceId);
+	if (pending.length === 0) return [];
+	const names = new Map((await listForUser(userId)).map((w) => [w.id, w.name]));
+	return pending.map((request) => ({
+		id: request.id,
+		client: [
+			request.clientName ?? 'Unnamed MCP client',
+			request.clientInfo && `(${request.clientInfo})`
+		]
+			.filter(Boolean)
+			.join(' '),
+		from: names.get(request.fromWorkspaceId) ?? 'Unknown workspace',
+		to: names.get(request.toWorkspaceId) ?? 'Unknown workspace',
+		expiresAt: request.expiresAt
+	}));
+}

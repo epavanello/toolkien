@@ -6,7 +6,7 @@ vi.mock('#lib/server/db/index.ts', async () => {
 });
 
 import { db } from '#lib/server/db/index.ts';
-import { auditEvent, oauthClient } from '#lib/server/db/schema/index.ts';
+import { auditEvent, mcpClientLabel, oauthClient } from '#lib/server/db/schema/index.ts';
 import { seedUser } from '#lib/server/workspaces/test-db.ts';
 import {
 	anonymizeUser,
@@ -175,6 +175,20 @@ describe('client of an event', () => {
 			clientInfo: 'codex-mcp-client 0.40.0'
 		});
 		expect(byType.get('auth.login')).toMatchObject({ clientName: null });
+	});
+
+	it("shows the client's current label on its past events, except the rename itself", async () => {
+		const workspaceId = crypto.randomUUID();
+		const clientId = `client-${crypto.randomUUID()}`;
+		const { id: userId } = await seedUser(db);
+		const used = { workspaceId, userId, clientId, clientName: 'Claude' };
+		await record({ type: 'tools.searched', outcome: 'success', ...used });
+		await record({ ...used, type: 'mcp_client.renamed', outcome: 'success', clientName: 'Pack' });
+		await db.insert(mcpClientLabel).values({ userId, clientId, label: 'Work laptop' });
+		const { events } = await queryViews({ workspaceId });
+		const byType = new Map(events.map((event) => [event.type, event]));
+		expect(byType.get('tools.searched')).toMatchObject({ clientName: 'Work laptop' });
+		expect(byType.get('mcp_client.renamed')).toMatchObject({ clientName: 'Pack' });
 	});
 });
 

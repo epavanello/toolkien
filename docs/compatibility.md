@@ -46,5 +46,7 @@ Toolkien (approval page / workspace confirmation page): see "Elicitation per pro
 5. **Elicitation URL**: same with a client that declares only `elicitation.url`; it should
    open `/consent?switch=…`.
 6. **Fallback**: on 2025-11-25 the tool result contains the link and `pending_confirmation`.
+   With any client, a pending switch is listed on the workspace "Pending approvals" page, and
+   calling `workspace_switch` again while it waits (dialog timed out) returns its link.
 7. **Notifications**: nothing is expected today; record whether the client opens a
    `subscriptions/listen` stream or a GET stream (Toolkien answers 405).

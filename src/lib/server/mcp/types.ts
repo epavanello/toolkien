@@ -48,9 +48,10 @@ export type McpClientCapabilities = {
 export type HandleMcpRequest = (request: Request, ctx: McpRequestContext) => Promise<Response>;
 
 /**
- * A workspace switch waiting for the human to confirm it on the Toolkien consent page
- * (`/consent?switch=<id>`): the out-of-band fallback and the URL-mode elicitation target.
- * Held in memory (single instance, short-lived), expires after `SWITCH_REQUEST_TTL_MS`.
+ * A workspace switch asked by an MCP client, whatever the channel: the human settles it in the
+ * client dialog or on the Toolkien consent page (`/consent?switch=<id>`, also listed on the
+ * workspace "Pending approvals" page). Held in memory (single instance, short-lived), expires
+ * after `SWITCH_REQUEST_TTL_MS`.
  */
 export type PendingWorkspaceSwitch = {
 	id: string;
@@ -61,6 +62,15 @@ export type PendingWorkspaceSwitch = {
 	fromWorkspaceId: string;
 	toWorkspaceId: string;
 	status: 'pending' | 'confirmed' | 'rejected';
+	expiresAt: Date;
+};
+
+/** A pending workspace switch as the "Pending approvals" page lists it */
+export type PendingSwitchRow = {
+	id: string;
+	client: string;
+	from: string;
+	to: string;
 	expiresAt: Date;
 };
 

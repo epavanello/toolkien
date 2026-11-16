@@ -25,7 +25,7 @@ import type { McpClientCapabilities } from './types.ts';
 
 /** What we seal into `requestState` between rounds (never content, only ids) */
 export type RequestStatePayload =
-	| { kind: 'switch_form'; toWorkspaceId: string }
+	| { kind: 'switch_form'; requestId: string }
 	| { kind: 'switch_url'; requestId: string }
 	| { kind: 'approval_form'; executionId: string; approvalId: string }
 	| { kind: 'approval_url'; executionId: string; approvalId: string };

@@ -12,6 +12,7 @@ import {
 } from '#lib/server/executions/index.ts';
 import { list as listConnectors } from '#lib/server/connectors/index.ts';
 import { requireUser, requireWorkspace } from '#lib/server/guards.ts';
+import { pendingSwitchRows } from '#lib/server/mcp/index.ts';
 
 /**
  * Approvals and execution status for the signed-in human. Approvals are decided only here (the
@@ -49,6 +50,27 @@ export const watchWorkspaceApprovals = query.live(
 			const connectors = pending.length ? await listConnectors(actor).catch(() => []) : [];
 			const icons = new Map(connectors.map((c) => [c.namespace, c.icon]));
 			const rows = pending.map((item) => pendingApprovalRow(item, icons));
+			const signature = JSON.stringify(rows);
+			if (signature !== last) {
+				last = signature;
+				yield rows;
+			}
+			await sleep(POLL_MS * 2);
+		}
+	}
+);
+
+/**
+ * The viewer's workspace switches from or to this workspace waiting for an answer: the same
+ * requests the client dialog and `/consent?switch=<id>` settle. Yields only when something changed.
+ */
+export const watchWorkspaceSwitches = query.live(
+	z.string().min(1).max(100),
+	async function* (slug) {
+		const { workspace, actor } = await requireWorkspace(slug);
+		let last = '';
+		while (true) {
+			const rows = await pendingSwitchRows(actor.userId, workspace.id);
 			const signature = JSON.stringify(rows);
 			if (signature !== last) {
 				last = signature;

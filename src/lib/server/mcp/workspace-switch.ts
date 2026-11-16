@@ -1,11 +1,12 @@
 /**
- * Applying a workspace switch, shared by `workspace_switch` (elicitation answered in the client)
- * and the Toolkien confirmation page (`/consent?switch=<id>`). Callers have the human's explicit
- * confirmation; every outcome is audited as `workspace.switched`.
+ * Workspace switches, shared by `workspace_switch` (elicitation answered in the client) and the
+ * Toolkien pages (`/consent?switch=<id>`, linked from "Pending approvals"). Every switch is a
+ * request in `switch-requests.ts` first, settled by whichever channel the human answers on;
+ * every step is audited as `workspace.switched` (pending, then success or denied).
  */
 import type { WorkspaceSummary } from '#lib/server/workspaces/types.ts';
 import type { McpDeps } from './deps.ts';
-import { getSwitchRequest, settleSwitchRequest } from './switch-requests.ts';
+import { createSwitchRequest, getSwitchRequest, settleSwitchRequest } from './switch-requests.ts';
 import type { PendingWorkspaceSwitch } from './types.ts';
 
 export type SwitchChannel = 'elicitation_form' | 'link' | 'consent';
@@ -16,6 +17,38 @@ type SwitchSubject = {
 	clientName: string | null;
 	clientInfo?: string | null;
 };
+
+/**
+ * Opens a switch request and audits it as pending, so a request nobody answers (a dialog that
+ * timed out, a link never opened) still leaves a trace.
+ */
+export async function openSwitchRequest(
+	deps: Pick<McpDeps, 'audit'>,
+	subject: SwitchSubject,
+	fromWorkspaceId: string,
+	toWorkspaceId: string,
+	channel: SwitchChannel
+): Promise<PendingWorkspaceSwitch> {
+	const request = createSwitchRequest({
+		userId: subject.userId,
+		clientId: subject.clientId,
+		clientName: subject.clientName,
+		clientInfo: subject.clientInfo ?? null,
+		fromWorkspaceId,
+		toWorkspaceId
+	});
+	await deps.audit.record({
+		type: 'workspace.switched',
+		outcome: 'pending',
+		workspaceId: toWorkspaceId,
+		userId: subject.userId,
+		clientId: subject.clientId,
+		clientName: subject.clientName,
+		clientInfo: subject.clientInfo ?? null,
+		metadata: { fromWorkspaceId, channel }
+	});
+	return request;
+}
 
 export async function applySwitch(
 	deps: Pick<McpDeps, 'workspaces' | 'audit'>,
@@ -39,7 +72,7 @@ export async function applySwitch(
 	});
 }
 
-export async function recordRefusedSwitch(
+async function recordRefusedSwitch(
 	deps: Pick<McpDeps, 'audit'>,
 	subject: SwitchSubject,
 	fromWorkspaceId: string,
@@ -59,13 +92,15 @@ export async function recordRefusedSwitch(
 }
 
 /**
- * The human answered on the confirmation page. Returns the settled request, or `null` when it
- * does not exist, expired, belongs to someone else or was already settled.
+ * The human answered, on the confirmation page (`link`) or in the client dialog. Returns the
+ * settled request, or `null` when it does not exist, expired, belongs to someone else or was
+ * already settled.
  */
 export async function decideSwitchRequest(
 	deps: Pick<McpDeps, 'workspaces' | 'audit'>,
-	input: { requestId: string; userId: string; confirm: boolean }
+	input: { requestId: string; userId: string; confirm: boolean; channel?: SwitchChannel }
 ): Promise<PendingWorkspaceSwitch | null> {
+	const channel = input.channel ?? 'link';
 	const request = getSwitchRequest(input.requestId, input.userId);
 	if (!request || request.status !== 'pending') return null;
 	// Settle first so a double submit cannot apply twice; undo if applying fails
@@ -77,7 +112,7 @@ export async function decideSwitchRequest(
 				request,
 				request.fromWorkspaceId,
 				{ id: request.toWorkspaceId },
-				'link'
+				channel
 			);
 		} else {
 			await recordRefusedSwitch(
@@ -85,7 +120,7 @@ export async function decideSwitchRequest(
 				request,
 				request.fromWorkspaceId,
 				request.toWorkspaceId,
-				'link'
+				channel
 			);
 		}
 	} catch (cause) {

@@ -1,7 +1,8 @@
 /**
- * Pending workspace switches waiting for the human on `/consent?switch=<id>` (out-of-band
- * fallback and URL-mode elicitation). In memory on purpose: one instance, ten-minute lifetime,
- * and losing them on restart only means the agent asks again.
+ * Every workspace switch an MCP client asks for, whatever the channel (form or URL elicitation,
+ * out-of-band link): the one source the dialog answer, `/consent?switch=<id>` and the workspace
+ * "Pending approvals" page all read and settle. In memory on purpose: one instance, ten-minute
+ * lifetime, and losing them on restart only means the agent asks again.
  */
 import { SWITCH_REQUEST_TTL_MS, type PendingWorkspaceSwitch } from './types.ts';
 
@@ -41,6 +42,42 @@ export function getSwitchRequest(
 		return null;
 	}
 	return request;
+}
+
+/** The client's request still waiting for the human to switch to `toWorkspaceId`, if any */
+export function findPendingSwitch(
+	userId: string,
+	clientId: string,
+	toWorkspaceId: string,
+	now = Date.now()
+): PendingWorkspaceSwitch | null {
+	sweep(now);
+	for (const request of requests.values()) {
+		if (
+			request.status === 'pending' &&
+			request.userId === userId &&
+			request.clientId === clientId &&
+			request.toWorkspaceId === toWorkspaceId
+		) {
+			return request;
+		}
+	}
+	return null;
+}
+
+/** The user's pending switches from or to a workspace, oldest first */
+export function listPendingSwitches(
+	userId: string,
+	workspaceId: string,
+	now = Date.now()
+): PendingWorkspaceSwitch[] {
+	sweep(now);
+	return [...requests.values()].filter(
+		(request) =>
+			request.status === 'pending' &&
+			request.userId === userId &&
+			(request.fromWorkspaceId === workspaceId || request.toWorkspaceId === workspaceId)
+	);
 }
 
 export function settleSwitchRequest(id: string, status: PendingWorkspaceSwitch['status']) {

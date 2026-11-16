@@ -443,11 +443,16 @@ describe('MCP', () => {
 
 		const list = await client.callTool({ name: 'workspace_list', arguments: {} });
 		expect(JSON.stringify(list.content)).toContain('Active workspace: Acme (acme)');
-		const { eq } = await import('drizzle-orm');
+		const { and, eq } = await import('drizzle-orm');
 		const [switched] = await db
 			.select()
 			.from(schema.auditEvent)
-			.where(eq(schema.auditEvent.type, 'workspace.switched'));
+			.where(
+				and(
+					eq(schema.auditEvent.type, 'workspace.switched'),
+					eq(schema.auditEvent.outcome, 'success')
+				)
+			);
 		expect(switched).toMatchObject({
 			clientName: 'DCR Test Client',
 			clientInfo: 'modern-test 1.0.0'
