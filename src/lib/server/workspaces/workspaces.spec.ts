@@ -4,6 +4,16 @@ vi.mock('#lib/server/db/index.ts', async () => {
 	const { createTestDb } = await import('./test-db.ts');
 	return { db: await createTestDb() };
 });
+// The modules this one reaches lazily (`await import(...)`) when a member leaves or a workspace
+// is scheduled for deletion: their own specs cover them. Loaded for real, their module graphs
+// (MCP SDK, typegen, crypto, runner) were transformed inside the first test that reached them,
+// about 1 s alone and past the 5 s test timeout under the load of the full parallel run.
+const { connectors, limits } = vi.hoisted(() => ({
+	connectors: { remove: vi.fn(async () => {}), revokeUserCredentials: vi.fn(async () => 0) },
+	limits: { cancelExecutionsInScope: vi.fn(async () => {}) }
+}));
+vi.mock('#lib/server/connectors/index.ts', () => connectors);
+vi.mock('#lib/server/limits/index.ts', () => limits);
 
 import { db } from '#lib/server/db/index.ts';
 import { auditEvent, organization, workspaceInviteLink } from '#lib/server/db/schema/index.ts';
@@ -108,6 +118,8 @@ describe('company workspaces and roles', () => {
 		// A member can leave; an admin can remove a member
 		await removeMember({ workspaceId, userId: plain.id, role: 'member' }, plain.id);
 		expect(await getById(plain.id, workspaceId)).toBeNull();
+		// Their credentials on shared connectors are revoked upstream through the connectors module
+		expect(connectors.revokeUserCredentials).toHaveBeenCalledWith(workspaceId, plain.id);
 	});
 });
 
@@ -276,6 +288,7 @@ describe('workspace deletion', () => {
 
 		const state = await scheduleDeletion(actor, { confirm: slug });
 		expect(state.purgeAt.getTime() - state.scheduledAt.getTime()).toBe(DELETION_GRACE_DAYS * DAY);
+		expect(limits.cancelExecutionsInScope).toHaveBeenCalledWith({ workspaceId });
 		await cancelDeletion(actor);
 		expect((await getById(actor.userId, workspaceId))?.deleteScheduledAt).toBeNull();
 
