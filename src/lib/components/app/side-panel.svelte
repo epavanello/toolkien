@@ -57,7 +57,10 @@
 			</div>
 			{#if description}<Sheet.Description>{description}</Sheet.Description>{/if}
 		</Sheet.Header>
-		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">{@render children()}</div>
+		<!-- `shrink-0`: sections with `overflow-hidden` would otherwise shrink to fit and clip instead of scrolling -->
+		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 *:shrink-0">
+			{@render children()}
+		</div>
 		{#if footer}<Sheet.Footer class="flex-row justify-end border-t px-4 py-3"
 				>{@render footer()}</Sheet.Footer
 			>{/if}
