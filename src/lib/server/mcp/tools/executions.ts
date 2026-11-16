@@ -139,7 +139,11 @@ async function listAwaitingApproval(deps: McpDeps, env: ToolEnv): Promise<ToolRe
 		clientId: env.request.clientId
 	});
 	return text(
-		pendingApprovalsText(`Workspace: ${label(workspace)}`, pending, `${deps.origin}/approve`)
+		pendingApprovalsText(
+			`Workspace: ${label(workspace)}`,
+			pending,
+			`${deps.origin}/w/${workspace.slug}/approvals`
+		)
 	);
 }
 

@@ -4,6 +4,7 @@ import Cable from '@lucide/svelte/icons/cable';
 import LibraryBig from '@lucide/svelte/icons/library-big';
 import Plug from '@lucide/svelte/icons/plug';
 import Settings from '@lucide/svelte/icons/settings';
+import Stamp from '@lucide/svelte/icons/stamp';
 import ShieldCheck from '@lucide/svelte/icons/shield-check';
 import Users from '@lucide/svelte/icons/users';
 import { resolve } from '$app/paths';
@@ -45,6 +46,11 @@ export function workspaceNavigation(workspace: string): NavGroup[] {
 		{
 			title: 'Workspace',
 			items: [
+				{
+					title: 'Approvals',
+					href: resolve('/w/[workspace]/approvals', { workspace }),
+					icon: Stamp
+				},
 				{
 					title: 'Activity',
 					href: resolve('/w/[workspace]/activity', { workspace }),

@@ -520,7 +520,7 @@ describe('execution_status', () => {
 		const { call } = setup();
 		const text = textOf(await call('execution_status', {}));
 		expect(text).toContain('No executions started by this client are waiting for approval');
-		expect(text).toContain('https://toolkien.test/approve');
+		expect(text).toContain('https://toolkien.test/w/personal-u1/approvals');
 	});
 
 	it('tells the model how to recover a timed-out approval', () => {

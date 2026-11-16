@@ -67,6 +67,24 @@ export type PendingApproval = ApprovalPrompt & {
 	clientInfo: string | null;
 };
 
+/**
+ * One row of the workspace's "Pending approvals" page: the viewer's own request, with the
+ * arguments preview cut to one line (the approval page shows all of it) and the client label.
+ */
+export type PendingApprovalRow = {
+	approvalId: string;
+	executionId: string;
+	toolPath: string;
+	connectorName: string;
+	/** Logo URL Toolkien serves for the connector, `null` for the monogram */
+	connectorIcon: string | null;
+	argumentsPreview: string;
+	/** `Claude Code (claude-code 2.1.3)`; self-asserted by the client, display only */
+	client: string | null;
+	createdAt: Date;
+	expiresAt: Date;
+};
+
 /** The three answers offered to the human (elicitation and approval page) */
 export const APPROVAL_CHOICES = ['approve_once', 'approve_tool', 'reject'] as const;
 export type ApprovalChoice = (typeof APPROVAL_CHOICES)[number];

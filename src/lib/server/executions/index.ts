@@ -21,6 +21,8 @@ export {
 	APPROVAL_CHOICE_LABELS,
 	approvalMessage,
 	decisionFromChoice,
+	pendingApprovalRow,
+	previewLine,
 	truncateOutput
 } from './output.ts';
 

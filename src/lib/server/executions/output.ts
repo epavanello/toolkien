@@ -1,4 +1,11 @@
-import type { ApprovalDecision, ApprovalChoice, ApprovalPrompt } from './types.ts';
+import { clientLabel } from '#lib/core/format.ts';
+import type {
+	ApprovalDecision,
+	ApprovalChoice,
+	ApprovalPrompt,
+	PendingApproval,
+	PendingApprovalRow
+} from './types.ts';
 
 /** Pure helpers for what goes back to the agent and to the human approver */
 
@@ -61,3 +68,33 @@ export const decisionFromChoice = (choice: ApprovalChoice): ApprovalDecision =>
 	choice === 'reject'
 		? { decision: 'reject' }
 		: { decision: 'approve', scope: choice === 'approve_tool' ? 'tool_in_script' : 'once' };
+
+/** Arguments preview in a listing: one line, cut short (the approval page shows all of it) */
+export const PREVIEW_LINE_MAX = 160;
+
+export function previewLine(preview: string, max = PREVIEW_LINE_MAX): string {
+	const line = preview.replace(/\s+/g, ' ').trim();
+	if (!line) return '(none)';
+	return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
+/**
+ * A pending approval as the workspace page lists it. `icons` maps connector namespaces (the
+ * first segment of the tool path) to their logo URL.
+ */
+export function pendingApprovalRow(
+	pending: PendingApproval,
+	icons: Map<string, string | null>
+): PendingApprovalRow {
+	return {
+		approvalId: pending.approvalId,
+		executionId: pending.executionId,
+		toolPath: pending.toolPath,
+		connectorName: pending.connectorName,
+		connectorIcon: icons.get(pending.toolPath.split('.')[0]) ?? null,
+		argumentsPreview: previewLine(pending.argumentsPreview),
+		client: clientLabel(pending.clientName, pending.clientInfo),
+		createdAt: pending.createdAt,
+		expiresAt: pending.expiresAt
+	};
+}

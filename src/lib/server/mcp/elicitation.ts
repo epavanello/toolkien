@@ -19,6 +19,7 @@ import {
 	type ApprovalPrompt,
 	type PendingApproval
 } from '#lib/server/executions/types.ts';
+import { previewLine } from '#lib/server/executions/output.ts';
 import { text, type ToolEnv, type ToolResult } from './register.ts';
 import type { McpClientCapabilities } from './types.ts';
 
@@ -134,15 +135,6 @@ export function approvalFallback(
 	);
 }
 
-/** Arguments preview in a listing: one line, cut short (the approval page shows all of it) */
-const LISTED_PREVIEW_MAX = 160;
-
-export function shortPreview(preview: string): string {
-	const line = preview.replace(/\s+/g, ' ').trim();
-	if (!line) return '(none)';
-	return line.length > LISTED_PREVIEW_MAX ? `${line.slice(0, LISTED_PREVIEW_MAX - 1)}…` : line;
-}
-
 /**
  * `execution_status` without an id: this client's executions waiting for the user's approval in
  * the active workspace, with their links. The recovery path when an approval dialog timed out
@@ -158,7 +150,7 @@ export function pendingApprovalsText(
 		return [
 			header,
 			'No executions started by this client are waiting for approval in this workspace.',
-			`The user can see every pending approval at ${allApprovalsUrl}.`
+			`The user sees every pending approval of this workspace at ${allApprovalsUrl}.`
 		].join('\n');
 	}
 	const lines = [header, `Executions waiting for the user's approval (${pending.length}):`, ''];
@@ -166,7 +158,7 @@ export function pendingApprovalsText(
 		lines.push(
 			`- Execution ${item.executionId}`,
 			`  Tool: ${item.toolPath} (${item.connectorName})`,
-			`  Arguments: ${shortPreview(item.argumentsPreview)}`,
+			`  Arguments: ${previewLine(item.argumentsPreview)}`,
 			`  Approval link: ${item.approvalUrl}`,
 			`  Expires at: ${item.expiresAt.toISOString()}`,
 			''

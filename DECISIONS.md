@@ -110,8 +110,9 @@ removed after this merge).
   the dialog stays and `execution_status` without an `executionId` lists the executions waiting
   for approval, with links, tool, a one-line arguments preview and expiry. Scoped to the user,
   the active workspace and the calling OAuth client (the same key as the active workspace), so a
-  model never sees another client's scripts; `/approve` lists everything for the human. Plain
-  text, never an elicitation: nothing in it can decide an approval.
+  model never sees another client's scripts; the human sees all of them on the workspace's
+  Approvals page, whose link the listing gives. Plain text, never an elicitation: nothing in it
+  can decide an approval.
 - Six tools; descriptions teach search → describe → execute. `tools_describe` returns one
   declaration per namespace.
 
@@ -189,4 +190,11 @@ removed after this merge).
   `.dark`. `CodeBlock` gets HTML through a batched remote query (no Shiki in the client bundle);
   mdsvex code fences use the same module; ` ```ts twoslash ` fences get CSS-only type hovers at
   build time.
+- **Pending approvals per workspace**: its own page in the workspace navigation
+  (`/w/<slug>/approvals`, "Approvals"), not a block on Activity, so it has a stable URL the MCP
+  listing can point to and an empty state of its own. It lists the viewer's own paused requests
+  in that workspace (same scope as `/approve`: admins decide members' requests through the link
+  they get), live, with tool, connector, a one-line arguments preview (the viewer's own
+  content, as on the approval page), client, requested and expiry; "Review" opens the existing
+  `/approve/<id>` page, which stays the only place that decides.
 - No OG image yet (would need satori/resvg).

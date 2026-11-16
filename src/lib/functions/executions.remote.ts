@@ -7,9 +7,11 @@ import {
 	decisionFromChoice,
 	getApproval,
 	listPendingApprovals,
+	pendingApprovalRow,
 	status
 } from '#lib/server/executions/index.ts';
-import { requireUser } from '#lib/server/guards.ts';
+import { list as listConnectors } from '#lib/server/connectors/index.ts';
+import { requireUser, requireWorkspace } from '#lib/server/guards.ts';
 
 /**
  * Approvals and execution status for the signed-in human. Approvals are decided only here (the
@@ -30,6 +32,32 @@ export const watchPendingApprovals = query.live(async function* () {
 		await sleep(POLL_MS * 2);
 	}
 });
+
+/**
+ * The viewer's own pending approvals in one workspace (the workspace "Pending approvals" page),
+ * with a one-line arguments preview and the client: the same scope as `/approve`, so an admin
+ * sees only their own requests here and decides members' ones through the link they get.
+ * Yields only when something changed.
+ */
+export const watchWorkspaceApprovals = query.live(
+	z.string().min(1).max(100),
+	async function* (slug) {
+		const { workspace, actor } = await requireWorkspace(slug);
+		let last = '';
+		while (true) {
+			const pending = await listPendingApprovals(actor.userId, { workspaceId: workspace.id });
+			const connectors = pending.length ? await listConnectors(actor).catch(() => []) : [];
+			const icons = new Map(connectors.map((c) => [c.namespace, c.icon]));
+			const rows = pending.map((item) => pendingApprovalRow(item, icons));
+			const signature = JSON.stringify(rows);
+			if (signature !== last) {
+				last = signature;
+				yield rows;
+			}
+			await sleep(POLL_MS * 2);
+		}
+	}
+);
 
 /** One approval with the status of its execution, until both are settled */
 export const watchApproval = query.live(id, async function* (approvalId) {
