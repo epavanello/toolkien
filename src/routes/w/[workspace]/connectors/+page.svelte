@@ -33,6 +33,7 @@
 	} from '#lib/functions/connectors.remote.ts';
 	import type { ConnectorSummary } from '#lib/server/connectors/types.ts';
 	import ConnectorPanel from './connector-panel.svelte';
+	import TokenHelp from './token-help.svelte';
 	import {
 		accessStatus,
 		audienceLabel,
@@ -318,6 +319,7 @@
 >
 	<input {...saveToken.fields.workspace.as('hidden', workspace)} />
 	<input {...saveToken.fields.id.as('hidden', tokenFor?.id ?? '')} />
+	{#if tokenFor}<TokenHelp {workspace} id={tokenFor.id} />{/if}
 	<FormField
 		field={saveToken.fields.token}
 		type="password"
