@@ -24,4 +24,10 @@
 		href={withRedirect(resolve('/(auth)/login'))}>Sign in</a
 	>
 </AuthHeading>
-<EmailSignIn redirectTo={data.redirectTo} submitLabel="Email me a code" passkey={false} />
+<EmailSignIn
+	redirectTo={data.redirectTo}
+	submitLabel="Email me a code"
+	passkey={false}
+	google={data.googleSignIn}
+	googleFailed={data.signInError !== null}
+/>

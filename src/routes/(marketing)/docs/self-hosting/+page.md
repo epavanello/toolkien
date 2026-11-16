@@ -28,7 +28,7 @@ The database is libSQL: a Turso database (pick an EU region if you serve EU user
 
 ## Steps in short
 
-1. Clone the repository and copy `deploy/compose.env.example` to an env file; set `ORIGIN`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `PLATFORM_ADMIN_EMAILS` and the runner secret.
+1. Clone the repository and copy `deploy/compose.env.example` to an env file; set `ORIGIN`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `PLATFORM_ADMIN_EMAILS` and the runner secret. Optionally set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (redirect URI `ORIGIN/api/auth/callback/google`) to offer "Continue with Google".
 2. Start the OpenBao stack (`deploy/openbao/compose.yml`) and initialise it once with the provided script: it creates the transit key and the AppRole for the app, prints the unseal keys (keep them **offline**) and revokes the root token. Put the AppRole `role_id` and `secret_id` in the app's environment.
 3. Start the app stack: `docker compose --env-file .env.production up -d --build`. On Coolify, two Docker Compose resources.
 4. Unseal OpenBao after a server reboot with the provided script (app deploys do not restart it).

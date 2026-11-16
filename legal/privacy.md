@@ -16,17 +16,17 @@ Toolkien is a gateway between your AI clients (Claude, Codex, Cursor…) and the
 
 ## What we collect
 
-| Category                | Examples                                                | Why                                                    |
-| ----------------------- | ------------------------------------------------------- | ------------------------------------------------------ |
-| Account                 | name, email, passkeys (public keys only)                | Sign-in (email codes and links, passkeys) and security |
-| Workspaces              | memberships, roles, invite links (hashed), admin policy | Running personal and company workspaces                |
-| Connector configuration | server URLs, names, scopes, permission levels           | Connecting your MCP servers                            |
-| Upstream credentials    | OAuth tokens or API keys you provide                    | Calling your servers on your behalf; always encrypted  |
-| Activity logs           | who, when, which tool, outcome, duration, client name   | Your activity timeline, admin audit, abuse prevention  |
-| Technical logs          | request ids, errors, no personal data beyond ids        | Operating and debugging the service                    |
-| Usage counters          | executions and tool calls per workspace and day         | Capacity planning and future pricing                   |
+| Category                | Examples                                                                                                                                                       | Why                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Account                 | name, email, passkeys (public keys only); with Google sign-in, your Google account id, profile picture URL and Google's sign-in tokens (encrypted, never used) | Sign-in (email codes and links, passkeys, Google) and security |
+| Workspaces              | memberships, roles, invite links (hashed), admin policy                                                                                                        | Running personal and company workspaces                        |
+| Connector configuration | server URLs, names, scopes, permission levels                                                                                                                  | Connecting your MCP servers                                    |
+| Upstream credentials    | OAuth tokens or API keys you provide                                                                                                                           | Calling your servers on your behalf; always encrypted          |
+| Activity logs           | who, when, which tool, outcome, duration, client name                                                                                                          | Your activity timeline, admin audit, abuse prevention          |
+| Technical logs          | request ids, errors, no personal data beyond ids                                                                                                               | Operating and debugging the service                            |
+| Usage counters          | executions and tool calls per workspace and day                                                                                                                | Capacity planning and future pricing                           |
 
-Sign-in codes, sign-in links and workspace invitations are sent by email through our email provider (see [sub-processors](/legal/sub-processors)); the codes and links are stored only hashed and expire after 10 minutes. We measure page visits with a cookieless, self-hosted instance of Plausible Analytics operated by us: no cookies, no cross-site tracking, no personal profiles. Before an event leaves our servers we strip query strings and replace workspace names, invite tokens and other identifiers in page addresses with placeholders; your IP address and browser user agent are used only to compute a daily-rotating anonymous visitor count and are not stored by Plausible. We use no advertising or third-party tracking. We only set technical cookies (see the [cookie policy](/legal/cookies)).
+Sign-in codes, sign-in links and workspace invitations are sent by email through our email provider (see [sub-processors](/legal/sub-processors)); the codes and links are stored only hashed and expire after 10 minutes. We measure page visits with a cookieless, self-hosted instance of Plausible Analytics operated by us: no cookies, no cross-site tracking, no personal profiles. Before an event leaves our servers we strip query strings and replace workspace names, invite tokens and other identifiers in page addresses with placeholders; your IP address and browser user agent are used only to compute a daily-rotating anonymous visitor count and are not stored by Plausible. If you choose "Continue with Google", Google authenticates you under its own privacy policy and shares your name, email address and profile picture with us; we request no other Google data. We use no advertising or third-party tracking. We only set technical cookies (see the [cookie policy](/legal/cookies)).
 
 ## Legal bases (GDPR)
 

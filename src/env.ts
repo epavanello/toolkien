@@ -41,6 +41,16 @@ export const variables = defineEnvVars({
 			'Secret that signs sessions and tokens: at least 32 random characters (`openssl rand -base64 32`).',
 		schema: optional
 	},
+	// ─── Google sign-in (optional) ──────────────────────────────────────────
+	GOOGLE_CLIENT_ID: {
+		description:
+			'OAuth client ID of a Google Cloud "Web application" client. With `GOOGLE_CLIENT_SECRET`, adds "Continue with Google" to sign-in and sign-up; unset, the button is hidden. Authorized redirect URI: `${ORIGIN}/api/auth/callback/google`.',
+		schema: optional
+	},
+	GOOGLE_CLIENT_SECRET: {
+		description: 'Client secret of the Google OAuth client. Set both Google variables or neither.',
+		schema: optional
+	},
 	// ─── Email (passwordless sign-in, invitations) ───────────────────────────
 	RESEND_API_KEY: {
 		description:

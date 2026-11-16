@@ -37,6 +37,7 @@ cp deploy/compose.env.example .env.production && chmod 600 .env.production
 | `OPENBAO_ROLE_ID`, `OPENBAO_SECRET_ID`                                                          | yes\*    | Printed by `init.sh` on first boot                        |
 | `TOOLKIEN_MASTER_KEY`, `VAULT_NETWORK_EXTERNAL`                                                 | no\*     | Only without OpenBao, see "Without OpenBao"               |
 | `RESEND_API_KEY`, `EMAIL_FROM`                                                                  | yes      | Sign-in email (code + link) and invitations, see below    |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                                      | no       | "Continue with Google", see below                         |
 | `PLATFORM_ADMIN_EMAILS`                                                                         | no       | Access to `/admin` (limits, kill switches)                |
 | `APP_PUBLISH`                                                                                   | no       | Host port for the reverse proxy, default `127.0.0.1:3000` |
 | `APP_DOMAIN`, `PUBLIC_NETWORK*`, `TRAEFIK_CERT_RESOLVER`                                        | no       | Only with Traefik (Coolify raw mode)                      |
@@ -52,6 +53,15 @@ HTTP API: create an API key with sending access only, verify your sender domain 
 region for the domain), and set `EMAIL_FROM` to an address on it. `RESEND_BASE_URL` overrides the
 API base if you use a compatible endpoint. Without a key the app refuses email sign-in (passkeys
 still work); calls go out through the egress proxy like every other outbound request.
+
+Google sign-in (optional): in Google Cloud Console → APIs & Services, configure the OAuth consent
+screen (scopes `openid`, `email`, `profile` only, no verification needed for them) and create an
+OAuth client ID of type **Web application** with authorized JavaScript origin `ORIGIN` and
+authorized redirect URI `ORIGIN/api/auth/callback/google`. Set `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` (both or neither: the app refuses to start with only one). Sign-in and
+sign-up then show "Continue with Google"; a Google account with the email of an existing user
+signs into that user. Token exchange and key fetches go to Google directly, not through the
+egress proxy (fixed Google hosts, never user-supplied URLs).
 
 Reverse proxy (Caddy, `/etc/caddy/Caddyfile`):
 

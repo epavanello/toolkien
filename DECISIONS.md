@@ -50,6 +50,17 @@ removed after this merge).
   link scanners prefetch GET links). Tokens and codes are stored hashed, valid 10 minutes, single
   use (5 code attempts). Better Auth's HTTP endpoints for these flows are disabled; our remote
   functions call them server-side and rate-limit sends (5 per address, 20 per IP, 15 minutes).
+- **Google sign-in, optional** (`GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, both or neither:
+  half a pair refuses to start). "Continue with Google" on sign-in and sign-up, hidden when not
+  configured; it also signs up (personal workspace through the same user hook). Scopes `openid
+email profile`, `prompt=select_account`; the callback lands on `redirectTo` (so the MCP consent
+  flow survives the round trip), a failure comes back to the same page with `?error=`. A Google
+  account whose email matches an existing user links to it (Better Auth implicit linking, only
+  for emails Google marks verified). Google's tokens are never used and stored encrypted
+  (`account.encryptOAuthTokens`). Exception to "every outbound call through the egress proxy":
+  Better Auth calls Google's token and key endpoints with the global `fetch`; they are fixed
+  Google hosts, never user-supplied URLs, so there is no SSRF surface. Google is not a second
+  factor: admins of company workspaces still need a passkey.
 - **No passwords and no TOTP.** TOTP would not gate an email sign-in, so the second factor
   required of **owners and admins of company workspaces is a registered passkey**, checked on role
   grants and before every admin action (an admin without one keeps the role, loses the powers).

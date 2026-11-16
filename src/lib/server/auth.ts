@@ -1,5 +1,10 @@
 import { building, dev } from '$app/env';
-import { BETTER_AUTH_SECRET, ORIGIN } from '$app/env/private';
+import {
+	BETTER_AUTH_SECRET,
+	GOOGLE_CLIENT_ID,
+	GOOGLE_CLIENT_SECRET,
+	ORIGIN
+} from '$app/env/private';
 import { getRequestEvent } from '$app/server';
 import { cimd } from '@better-auth/cimd';
 import { mcp } from '@better-auth/mcp';
@@ -16,6 +21,12 @@ import { safeFetch } from '#lib/server/net/index.ts';
 import { ensurePersonalWorkspace } from '#lib/server/personal-workspace.ts';
 
 if (!building && !dev && !BETTER_AUTH_SECRET) throw new Error('BETTER_AUTH_SECRET is not set');
+if (!building && Boolean(GOOGLE_CLIENT_ID) !== Boolean(GOOGLE_CLIENT_SECRET)) {
+	throw new Error('Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither');
+}
+
+/** "Continue with Google" is offered only when the deploy configures a Google OAuth client */
+export const googleSignInEnabled = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
 /** The MCP protected resource: access tokens are audience-bound to it (RFC 8707) */
 export const MCP_RESOURCE = `${ORIGIN}/mcp`;
@@ -65,8 +76,28 @@ export const auth = betterAuth({
 		},
 		deleteUser: { enabled: true }
 	},
-	// Passwordless: email (magic link + code) and passkeys. No passwords to leak or reset.
+	// Passwordless: email (magic link + code), passkeys and, when configured, Google. No passwords
+	// to leak or reset.
 	emailAndPassword: { enabled: false },
+	/**
+	 * Optional Google sign-in (also signs up). Google asserts `email_verified`, so a Google account
+	 * with the address of an existing user links to it (Better Auth implicit linking) instead of
+	 * creating a second account; unverified Google emails are never linked. Only `openid email
+	 * profile` is requested; Google's tokens are never used for API calls and are stored encrypted
+	 * (`account.encryptOAuthTokens`).
+	 */
+	socialProviders: googleSignInEnabled
+		? {
+				google: {
+					clientId: GOOGLE_CLIENT_ID!,
+					clientSecret: GOOGLE_CLIENT_SECRET!,
+					// Always show the account chooser: shared machines, several Google accounts
+					prompt: 'select_account'
+				}
+			}
+		: {},
+	// Social sign-in stores the provider's tokens on `account`: encrypt them with the auth secret
+	account: { encryptOAuthTokens: true },
 	databaseHooks: {
 		user: {
 			create: {
