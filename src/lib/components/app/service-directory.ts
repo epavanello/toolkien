@@ -17,6 +17,7 @@ export type DirectoryItem = Pick<
 	| 'category'
 	| 'tags'
 	| 'popular'
+	| 'featured'
 	| 'publisher'
 	| 'authType'
 	| 'supported'
@@ -73,9 +74,10 @@ export const addLabel = (authType: DirectoryEntry['authType'], service: string) 
 			? 'Add and paste API key'
 			: 'Add';
 
-/** `''` = all, `popular` = featured, else a category */
+/** `''` = all, `featured` = sponsored, `popular`, else a category */
 export type DirectoryFilter = string;
 export const POPULAR = 'popular';
+export const FEATURED = 'featured';
 
 const normalize = (value: string) =>
 	value.toLocaleLowerCase('en').normalize('NFKD').replace(/[̀-ͯ]/g, '');
@@ -92,7 +94,9 @@ export function filterDirectory<T extends DirectoryItem>(
 	return entries
 		.filter((entry) => {
 			if (filter === POPULAR && !entry.popular) return false;
-			if (filter && filter !== POPULAR && entry.category !== filter) return false;
+			if (filter === FEATURED && !entry.featured) return false;
+			if (filter && filter !== POPULAR && filter !== FEATURED && entry.category !== filter)
+				return false;
 			if (terms.length === 0) return true;
 			const haystack = normalize(
 				[
@@ -105,7 +109,12 @@ export function filterDirectory<T extends DirectoryItem>(
 			);
 			return terms.every((term) => haystack.includes(term));
 		})
-		.sort((a, b) => Number(b.popular) - Number(a.popular) || a.name.localeCompare(b.name, 'en'));
+		.sort(
+			(a, b) =>
+				Number(b.featured) - Number(a.featured) ||
+				Number(b.popular) - Number(a.popular) ||
+				a.name.localeCompare(b.name, 'en')
+		);
 }
 
 export type FilterChip = { value: DirectoryFilter; label: string; count: number };
@@ -122,8 +131,10 @@ export function directoryFilters(entries: DirectoryItem[]): FilterChip[] {
 		(a, b) => rank(a) - rank(b) || a.localeCompare(b, 'en')
 	);
 	const popular = entries.filter((entry) => entry.popular).length;
+	const featured = entries.filter((entry) => entry.featured).length;
 	return [
 		{ value: '', label: 'All', count: entries.length },
+		...(featured > 0 ? [{ value: FEATURED, label: 'Featured', count: featured }] : []),
 		...(popular > 0 ? [{ value: POPULAR, label: 'Popular', count: popular }] : []),
 		...categories.map((value) => ({
 			value,

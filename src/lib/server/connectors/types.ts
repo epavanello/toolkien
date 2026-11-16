@@ -89,6 +89,8 @@ export type DirectoryEntry = {
 	examples: string[];
 	/** (additive) Featured in the "Popular" filter and the landing showcase */
 	popular: boolean;
+	/** (additive) Sponsored/featured: pinned first, in the "Featured" filter */
+	featured: boolean;
 	/**
 	 * (additive) Toolkien can connect it today: `false` when its OAuth server only accepts
 	 * pre-registered clients (no dynamic registration, no CIMD)

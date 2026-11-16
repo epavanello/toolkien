@@ -1,0 +1,32 @@
+{
+	"$schema": "../schema.json",
+	"id": "devpost",
+	"name": "DevPost",
+	"tagline": "Your social command center",
+	"description": "Draft, schedule and publish posts to X, LinkedIn, Instagram, TikTok, YouTube and Reddit, follow replies and mentions, and read post metrics.",
+	"homepage": "https://devpost.app",
+	"icon": "icons/devpost.png",
+	"url": "https://devpost.app/mcp",
+	"namespace": "devpost",
+	"publisher": "official",
+	"category": "marketing",
+	"tags": ["social-media", "scheduling", "publishing", "analytics"],
+	"featured": true,
+	"examples": [
+		"Schedule a LinkedIn post about our launch for tomorrow at 9",
+		"Which of last week posts got the most engagement?"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-16",
+		"notes": "Live check 2026-11-16: authorization server devpost.app publishes OAuth metadata with a dynamic client registration endpoint."
+	}
+}

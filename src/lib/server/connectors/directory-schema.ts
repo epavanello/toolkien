@@ -109,6 +109,8 @@ export const directoryEntrySchema = z
 		tags: z.array(z.string().regex(ID).max(30)).max(10).default([]),
 		/** (additive) Featured in the "Popular" filter and the landing showcase */
 		popular: z.boolean().optional(),
+		/** (additive) Sponsored/featured: pinned first in the directory, in the "Featured" filter */
+		featured: z.boolean().optional(),
 		/** (additive) Example prompts an agent can run with this server (shown in the details) */
 		examples: z.array(z.string().min(5).max(160)).max(5).default([]),
 		auth: z

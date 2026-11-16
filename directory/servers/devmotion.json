@@ -1,0 +1,32 @@
+{
+	"$schema": "../schema.json",
+	"id": "devmotion",
+	"name": "DevMotion",
+	"tagline": "Animated videos from prompts, scenes and layers",
+	"description": "Build animated videos from layers and scripted HTML, GSAP and Three.js scenes, generate footage, voice-overs and music, and render the result.",
+	"homepage": "https://devmotion.app",
+	"icon": "icons/devmotion.png",
+	"url": "https://devmotion.app/mcp",
+	"namespace": "devmotion",
+	"publisher": "official",
+	"category": "design",
+	"tags": ["video", "animation", "motion-graphics", "rendering"],
+	"featured": true,
+	"examples": [
+		"Make a 20-second launch video for our new pricing page",
+		"Add captions to my latest DevMotion project and render it"
+	],
+	"auth": {
+		"type": "oauth",
+		"oauth": {
+			"registration": ["dcr"]
+		}
+	},
+	"tools": {},
+	"verification": {
+		"status": "documented",
+		"by": "toolkien-maintainers",
+		"on": "2026-11-16",
+		"notes": "Live check 2026-11-16: authorization server devmotion.app publishes OAuth metadata with a dynamic client registration endpoint."
+	}
+}

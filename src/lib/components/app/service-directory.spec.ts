@@ -15,6 +15,7 @@ const item = (patch: Partial<DirectoryItem> & { id: string }): DirectoryItem => 
 	category: 'other',
 	tags: [],
 	popular: false,
+	featured: false,
 	publisher: 'official',
 	authType: 'oauth',
 	supported: true,

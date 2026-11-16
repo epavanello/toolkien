@@ -25,6 +25,8 @@
 		/** Category label ("Project management") */
 		category: string;
 		authType: DirectoryEntry['authType'];
+		/** Sponsored listing: tagged "Featured" */
+		featured?: boolean;
 		/** Already added to the workspace */
 		added?: boolean;
 		onSelect: () => void;
@@ -41,6 +43,7 @@
 		reviewNote,
 		category,
 		authType,
+		featured = false,
 		added = false,
 		onSelect,
 		action
@@ -69,6 +72,9 @@
 		</span>
 	</div>
 	<div class="mt-auto flex min-w-0 items-center gap-2">
+		{#if featured}
+			<Badge variant="outline" class="rounded-sm border-primary/40 text-primary">Featured</Badge>
+		{/if}
 		<Badge variant="secondary" class="rounded-sm">{category}</Badge>
 		<AuthHint {authType} service={name} />
 		<span class="relative z-10 ml-auto flex shrink-0 items-center gap-2">

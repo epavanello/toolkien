@@ -1,6 +1,8 @@
 <script lang="ts" generics="T extends DirectoryEntry">
 	import type { Snippet } from 'svelte';
+	import Mail from '@lucide/svelte/icons/mail';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import Callout from './callout.svelte';
 	import type { DirectoryEntry } from '#lib/server/connectors/types.ts';
 	import CategoryFilter from './category-filter.svelte';
 	import FilterBar from './filter-bar.svelte';
@@ -9,7 +11,16 @@
 	import ServiceLogo from './service-logo.svelte';
 	import SidePanel from './side-panel.svelte';
 	import SourceBadge from './source-badge.svelte';
-	import { categoryLabel, directoryFilters, filterDirectory } from './service-directory.ts';
+	import {
+		categoryLabel,
+		directoryFilters,
+		FEATURED,
+		filterDirectory
+	} from './service-directory.ts';
+
+	const SPONSOR_MAIL =
+		'mailto:emanuele@devmotion.app?subject=' +
+		encodeURIComponent('Featured MCP server on Toolkien');
 
 	/**
 	 * The server directory as a browsable catalogue (in-app and public pages): search, category
@@ -75,6 +86,7 @@
 						reviewNote={entry.verification.notes}
 						category={categoryLabel(entry.category)}
 						authType={entry.authType}
+						featured={entry.featured}
 						added={added(entry)}
 						onSelect={() => show(entry)}
 					>
@@ -98,6 +110,17 @@
 		</ul>
 	{:else if noResults}
 		{@render noResults(search)}
+	{/if}
+
+	{#if filter === FEATURED}
+		<Callout
+			title="Feature your MCP server"
+			description="Featured listings are sponsored: they are pinned to the top of the directory and tagged Featured. Get in touch for availability and pricing."
+		>
+			{#snippet action()}
+				<Button size="sm" variant="outline" icon={Mail} href={SPONSOR_MAIL}>Get in touch</Button>
+			{/snippet}
+		</Callout>
 	{/if}
 </div>
 

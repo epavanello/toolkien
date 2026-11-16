@@ -54,6 +54,7 @@ export function toDirectoryEntry(
 		tagline: file.tagline,
 		examples: file.examples,
 		popular: file.popular ?? false,
+		featured: file.featured ?? false,
 		supported: isSupportedEntry(file),
 		toolNotes,
 		tokenHelp: file.auth.tokenHelp,

@@ -81,6 +81,9 @@
 		"popular": {
 			"type": "boolean"
 		},
+		"featured": {
+			"type": "boolean"
+		},
 		"examples": {
 			"default": [],
 			"maxItems": 5,
