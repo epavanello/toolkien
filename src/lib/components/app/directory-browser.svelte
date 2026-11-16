@@ -19,7 +19,7 @@
 	} from './service-directory.ts';
 
 	const SPONSOR_MAIL =
-		'mailto:emanuele@devmotion.app?subject=' +
+		'mailto:me@emadev.co?subject=' +
 		encodeURIComponent('Featured MCP server on Toolkien');
 
 	/**
