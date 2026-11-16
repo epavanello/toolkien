@@ -18,6 +18,7 @@ import {
 import { registerDiscoveryTools } from './tools/discovery.ts';
 import { registerExecutionTools } from './tools/executions.ts';
 import { registerWorkspaceTools } from './tools/workspaces.ts';
+import { INSTRUCTIONS } from './server.ts';
 import { MCP_TOOL_NAMES } from './types.ts';
 import { decideSwitchRequest } from './workspace-switch.ts';
 
@@ -462,6 +463,71 @@ describe('execution_status', () => {
 			executionId: 'exec-1',
 			resume: true
 		});
+		expect(deps.executions.listPendingApprovals).not.toHaveBeenCalled();
+	});
+
+	it('with an id keeps answering with the approval form while it is pending', async () => {
+		const { call, deps } = setup();
+		deps.executions.status.mockResolvedValueOnce(pendingApproval());
+		const result = asInputRequired(
+			await call('execution_status', { executionId: 'exec-1' }, modernForm)
+		);
+		expect(result.inputRequests!.approval.method).toBe('elicitation/create');
+	});
+
+	const waiting = (executionId: string, approvalId: string) => ({
+		...pendingApproval(approvalId).approval!,
+		argumentsPreview: `{\n  "title": "Bug ${approvalId}",\n  "body": "${'x'.repeat(300)}"\n}`,
+		executionId,
+		workspaceId: acme.id,
+		status: 'pending' as const,
+		createdAt: new Date('2026-11-14T11:30:00Z')
+	});
+
+	it("without an id lists this client's executions awaiting approval with their links", async () => {
+		const { call, deps } = setup({ active: acme });
+		deps.executions.listPendingApprovals.mockResolvedValueOnce([
+			waiting('exec-1', 'appr-1'),
+			waiting('exec-2', 'appr-2')
+		]);
+		const result = await call('execution_status', {}, modernForm);
+		const text = textOf(result);
+		expect(deps.executions.listPendingApprovals).toHaveBeenCalledWith('u1', {
+			workspaceId: acme.id,
+			clientId: 'client-1'
+		});
+		expect(deps.executions.status).not.toHaveBeenCalled();
+		expect(deps.executions.answerApproval).not.toHaveBeenCalled();
+		expect(text.split('\n')[0]).toBe('Workspace: Acme (acme)');
+		expect(text).toContain("waiting for the user's approval (2)");
+		expect(text).toContain('- Execution exec-1');
+		expect(text).toContain('Tool: github.createIssue (GitHub)');
+		expect(text).toContain('Approval link: https://toolkien.test/approve/appr-2');
+		expect(text).toContain('Expires at: 2026-11-14T12:00:00.000Z');
+		// Previews are one short line
+		expect(text).toMatch(/Arguments: \{ "title": "Bug appr-1", "body": "x+…$/m);
+		expect(text).not.toContain('x'.repeat(200));
+		expect(text).toMatch(/cannot approve or reject these yourself/);
+		// A listing never asks the client for input: nothing the model sends can decide it
+		expect('resultType' in result).toBe(false);
+	});
+
+	it('without an id says when nothing is waiting and points to the approvals page', async () => {
+		const { call } = setup();
+		const text = textOf(await call('execution_status', {}));
+		expect(text).toContain('No executions started by this client are waiting for approval');
+		expect(text).toContain('https://toolkien.test/approve');
+	});
+
+	it('tells the model how to recover a timed-out approval', () => {
+		const { tools } = setup();
+		const description = tools.get('execution_status')!.config.description;
+		expect(description).toMatch(/Without executionId: lists/);
+		expect(description).toMatch(/never approve/);
+		expect(tools.get('execute')!.config.description).toMatch(
+			/call execution_status without executionId/
+		);
+		expect(INSTRUCTIONS).toMatch(/execution_status without an executionId/);
 	});
 });
 

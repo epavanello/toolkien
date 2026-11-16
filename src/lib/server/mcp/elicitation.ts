@@ -16,7 +16,8 @@ import type { CallToolResult, InputRequest } from '@modelcontextprotocol/server'
 import {
 	APPROVAL_CHOICES,
 	type ApprovalChoice,
-	type ApprovalPrompt
+	type ApprovalPrompt,
+	type PendingApproval
 } from '#lib/server/executions/types.ts';
 import { text, type ToolEnv, type ToolResult } from './register.ts';
 import type { McpClientCapabilities } from './types.ts';
@@ -131,6 +132,51 @@ export function approvalFallback(
 			`The request expires at ${prompt.expiresAt.toISOString()}.`
 		].join('\n')
 	);
+}
+
+/** Arguments preview in a listing: one line, cut short (the approval page shows all of it) */
+const LISTED_PREVIEW_MAX = 160;
+
+export function shortPreview(preview: string): string {
+	const line = preview.replace(/\s+/g, ' ').trim();
+	if (!line) return '(none)';
+	return line.length > LISTED_PREVIEW_MAX ? `${line.slice(0, LISTED_PREVIEW_MAX - 1)}…` : line;
+}
+
+/**
+ * `execution_status` without an id: this client's executions waiting for the user's approval in
+ * the active workspace, with their links. The recovery path when an approval dialog timed out
+ * on the client (the execution stays paused and its link valid). Links only: approving is
+ * always the human's action on the page.
+ */
+export function pendingApprovalsText(
+	header: string,
+	pending: PendingApproval[],
+	allApprovalsUrl: string
+): string {
+	if (pending.length === 0) {
+		return [
+			header,
+			'No executions started by this client are waiting for approval in this workspace.',
+			`The user can see every pending approval at ${allApprovalsUrl}.`
+		].join('\n');
+	}
+	const lines = [header, `Executions waiting for the user's approval (${pending.length}):`, ''];
+	for (const item of pending) {
+		lines.push(
+			`- Execution ${item.executionId}`,
+			`  Tool: ${item.toolPath} (${item.connectorName})`,
+			`  Arguments: ${shortPreview(item.argumentsPreview)}`,
+			`  Approval link: ${item.approvalUrl}`,
+			`  Expires at: ${item.expiresAt.toISOString()}`,
+			''
+		);
+	}
+	lines.push(
+		'You cannot approve or reject these yourself. Ask the user to open the approval link and decide,',
+		'then call execution_status with that executionId to resume the execution and get its result.'
+	);
+	return lines.join('\n');
 }
 
 /**

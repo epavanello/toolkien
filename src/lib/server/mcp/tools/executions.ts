@@ -1,11 +1,17 @@
 import { z } from 'zod';
 import type { ExecutionOutcome } from '#lib/server/executions/types.ts';
 import type { McpDeps } from '../deps.ts';
-import { approvalFallback, readApprovalChoice, requestApproval } from '../elicitation.ts';
+import {
+	approvalFallback,
+	pendingApprovalsText,
+	readApprovalChoice,
+	requestApproval
+} from '../elicitation.ts';
 import {
 	defineTool,
 	type McpServerLike,
 	type ToolEnv,
+	text,
 	type ToolEnvResolver,
 	type ToolResult
 } from '../register.ts';
@@ -120,6 +126,23 @@ async function continueApproval(
 	return renderOutcome(env, outcome, { askAgain: !samePending });
 }
 
+/**
+ * `execution_status` without an id: the recovery path when the client gave up on an approval
+ * dialog (the model saw a timeout, no executionId, no link). Lists this user's executions
+ * started by this client in the active workspace that wait for approval: the same scope as the
+ * active workspace (per user and client), so another client's scripts never show up here.
+ */
+async function listAwaitingApproval(deps: McpDeps, env: ToolEnv): Promise<ToolResult> {
+	const { workspace } = await activeActor(deps, env.request);
+	const pending = await deps.executions.listPendingApprovals(env.request.userId, {
+		workspaceId: workspace.id,
+		clientId: env.request.clientId
+	});
+	return text(
+		pendingApprovalsText(`Workspace: ${label(workspace)}`, pending, `${deps.origin}/approve`)
+	);
+}
+
 export function registerExecutionTools(
 	server: McpServerLike,
 	resolveEnv: ToolEnvResolver,
@@ -139,7 +162,7 @@ export function registerExecutionTools(
 			'Some upstream tools require bookkeeping fields (e.g. conversation ids); pass what their descriptions say, and if a value is only known after a first call, make the first call, read it from the result, then reuse it.',
 			'Long scripts answer `running` after about 45 s: then call execution_status with the executionId to get the result.',
 			'No network, filesystem or environment access: only the declared tool functions.',
-			"Some tool calls need the user's approval: the user decides in a dialog or on a Toolkien link, then call execution_status. You can never approve on the user's behalf."
+			"Some tool calls need the user's approval: the user decides in a dialog or on a Toolkien link, then call execution_status. If the call timed out or the dialog never appeared, call execution_status without executionId to get the pending executions and their approval links. You can never approve on the user's behalf."
 		].join(' '),
 		input: z.object({
 			code: z
@@ -172,15 +195,21 @@ export function registerExecutionTools(
 	defineTool(server, resolveEnv, {
 		name: 'execution_status',
 		title: 'Execution status',
-		description:
+		description: [
 			'Status of an execution started by execute. Waits for a running execution (up to about 45 s per call) and returns its result; when it was waiting for approval and the user has decided, it resumes and returns the result. Use it after execute answered `running`, or after the user approved or rejected on the Toolkien link.',
+			"Without executionId: lists this client's executions in the active workspace that are waiting for the user's approval, with the approval link, tool and expiry of each. Use it when execute timed out or failed while an approval was pending (e.g. the approval dialog never showed up) or when you lost the executionId: give the user the link, and once they decided call execution_status with that executionId.",
+			'You can never approve anything yourself: only the user can, in the dialog or on the link.'
+		].join(' '),
 		input: z.object({
 			executionId: z
 				.string()
 				.trim()
 				.min(1)
 				.max(100)
-				.describe('The executionId returned by execute'),
+				.optional()
+				.describe(
+					'The executionId returned by execute. Omit it to list the executions waiting for approval'
+				),
 			resume: z
 				.boolean()
 				.optional()
@@ -188,6 +217,7 @@ export function registerExecutionTools(
 		}),
 		annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: true },
 		handler: async (env, { executionId, resume = true }) => {
+			if (!executionId) return listAwaitingApproval(deps, env);
 			const continued = await continueApproval(deps, env, executionId);
 			if (continued) return continued;
 			const outcome = await deps.executions.status({

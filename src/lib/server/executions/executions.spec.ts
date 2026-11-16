@@ -899,3 +899,109 @@ describe('bridge guards', () => {
 		expect(sys.connectors.upstream).toHaveLength(0);
 	});
 });
+
+describe('pending approvals listing', () => {
+	it("lists the user's paused executions, scoped by workspace and client, never others'", async () => {
+		const sys = makeSystem(t.db, PROGRAMS);
+		tools.push(
+			await seedResolved(t.db, otherWs, tools[3].connectorId, 'gh.createIssue', {
+				readOnlyHint: false
+			})
+		);
+		const mine = await sys.service.start({
+			actor: actor(),
+			clientId: 'claude',
+			code: 'deleteRepo'
+		});
+		const otherClient = await sys.service.start({
+			actor: actor(),
+			clientId: 'cursor',
+			code: 'deleteRepo'
+		});
+		const otherWorkspace = await sys.service.start({
+			actor: { workspaceId: otherWs, userId: user, role: 'owner' },
+			clientId: 'claude',
+			code: 'readThenWrite'
+		});
+		const peers = await sys.service.start({
+			actor: { workspaceId: ws, userId: peer, role: 'member' },
+			clientId: 'claude',
+			code: 'deleteRepo'
+		});
+		for (const outcome of [mine, otherClient, otherWorkspace, peers]) {
+			expect(outcome.status).toBe('awaiting_approval');
+		}
+
+		const scoped = await sys.service.listPendingApprovals(user, {
+			workspaceId: ws,
+			clientId: 'claude'
+		});
+		expect(scoped).toHaveLength(1);
+		expect(scoped[0]).toMatchObject({
+			executionId: mine.executionId,
+			workspaceId: ws,
+			workspaceName: 'Acme',
+			connectorName: 'GitHub',
+			toolPath: 'gh.deleteRepo',
+			status: 'pending',
+			approvalUrl: `https://toolkien.test/approve/${mine.approval!.approvalId}`
+		});
+		expect(scoped[0].argumentsPreview).toContain('a/b');
+
+		const ids = async (scope?: { workspaceId?: string; clientId?: string }) =>
+			(await sys.service.listPendingApprovals(user, scope)).map((p) => p.executionId).sort();
+		expect(await ids({ workspaceId: ws })).toEqual(
+			[mine.executionId, otherClient.executionId].sort()
+		);
+		expect(await ids({ clientId: 'claude' })).toEqual(
+			[mine.executionId, otherWorkspace.executionId].sort()
+		);
+		expect(await ids()).toEqual(
+			[mine.executionId, otherClient.executionId, otherWorkspace.executionId].sort()
+		);
+		// The admin of the workspace does not get members' approvals in their own listing
+		expect(await sys.service.listPendingApprovals(admin, { workspaceId: ws })).toEqual([]);
+		expect(
+			(await sys.service.listPendingApprovals(peer, { workspaceId: ws })).map((p) => p.executionId)
+		).toEqual([peers.executionId]);
+	});
+
+	it('leaves out expired, decided and cancelled executions', async () => {
+		const sys = makeSystem(t.db, PROGRAMS);
+		const expiring = await sys.service.start({
+			actor: actor(),
+			clientId: 'claude',
+			code: 'deleteRepo'
+		});
+		nowMs += 20 * 60 * 1000;
+		const decided = await sys.service.start({
+			actor: actor(),
+			clientId: 'claude',
+			code: 'deleteRepo'
+		});
+		const cancelled = await sys.service.start({
+			actor: actor(),
+			clientId: 'claude',
+			code: 'deleteRepo'
+		});
+		const fresh = await sys.service.start({
+			actor: actor(),
+			clientId: 'claude',
+			code: 'deleteRepo'
+		});
+		await sys.service.decideApproval({
+			approvalId: decided.approval!.approvalId,
+			deciderUserId: user,
+			decision: { decision: 'reject' }
+		});
+		await sys.service.cancel({ userId: user, executionId: cancelled.executionId });
+		// The first one is past its 30 minutes, even before the expiry job ran
+		nowMs += 11 * 60 * 1000;
+		const listed = await sys.service.listPendingApprovals(user, {
+			workspaceId: ws,
+			clientId: 'claude'
+		});
+		expect(listed.map((p) => p.executionId)).toEqual([fresh.executionId]);
+		expect(expiring.status).toBe('awaiting_approval');
+	});
+});

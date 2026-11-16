@@ -640,19 +640,29 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 		};
 	}
 
-	const listPendingApprovals: ExecutionsService['listPendingApprovals'] = async (userId) => {
+	const listPendingApprovals: ExecutionsService['listPendingApprovals'] = async (
+		userId,
+		scope = {}
+	) => {
+		const now = clock();
 		const rows = await db
-			.select()
+			.select({ approval })
 			.from(approval)
+			.innerJoin(execution, eq(execution.id, approval.executionId))
 			.where(
 				and(
 					eq(approval.userId, userId),
 					eq(approval.status, 'pending'),
-					gt(approval.expiresAt, clock())
+					gt(approval.expiresAt, now),
+					eq(execution.userId, userId),
+					eq(execution.status, 'paused'),
+					or(isNull(execution.expiresAt), gt(execution.expiresAt, now)),
+					scope.workspaceId ? eq(approval.workspaceId, scope.workspaceId) : undefined,
+					scope.clientId ? eq(execution.clientId, scope.clientId) : undefined
 				)
 			)
 			.orderBy(asc(approval.createdAt));
-		return Promise.all(rows.map(toPending));
+		return Promise.all(rows.map((row) => toPending(row.approval)));
 	};
 
 	/** The execution's user decides; an admin/owner of the workspace may decide for a member */

@@ -91,6 +91,14 @@ removed after this merge).
 - **Approvals**: 2026-07-28 clients get form elicitation (else URL mode, else a link); 2025 clients
   always get the out-of-band link (stateless legacy cannot carry an elicitation answer). There is
   no approve tool: the model can never answer.
+- **Recovering a lost approval dialog**: some clients never show the form (Claude Code in a cloud
+  session viewed from the iOS app gives up after ~4 minutes; the model only sees a timeout) while
+  the execution stays paused and its link valid. The server cannot tell such clients apart, so
+  the dialog stays and `execution_status` without an `executionId` lists the executions waiting
+  for approval, with links, tool, a one-line arguments preview and expiry. Scoped to the user,
+  the active workspace and the calling OAuth client (the same key as the active workspace), so a
+  model never sees another client's scripts; `/approve` lists everything for the human. Plain
+  text, never an elicitation: nothing in it can decide an approval.
 - Six tools; descriptions teach search → describe → execute. `tools_describe` returns one
   declaration per namespace.
 

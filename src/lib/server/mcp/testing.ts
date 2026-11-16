@@ -101,7 +101,8 @@ export function fakeDeps(options: { active?: WorkspaceSummary } = {}) {
 		executions: {
 			start: vi.fn<McpDeps['executions']['start']>(),
 			status: vi.fn<McpDeps['executions']['status']>(),
-			answerApproval: vi.fn<McpDeps['executions']['answerApproval']>()
+			answerApproval: vi.fn<McpDeps['executions']['answerApproval']>(),
+			listPendingApprovals: vi.fn<McpDeps['executions']['listPendingApprovals']>(async () => [])
 		},
 		audit: { record: vi.fn(async () => {}) }
 	} satisfies McpDeps;

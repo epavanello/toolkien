@@ -16,7 +16,10 @@ export type McpDeps = {
 	>;
 	connectors: Pick<ConnectorsService, 'searchTools' | 'describeTools' | 'resolveTool'>;
 	permissions: Pick<PermissionsService, 'getEffectiveLevels'>;
-	executions: Pick<ExecutionsService, 'start' | 'status' | 'answerApproval'>;
+	executions: Pick<
+		ExecutionsService,
+		'start' | 'status' | 'answerApproval' | 'listPendingApprovals'
+	>;
 	audit: Pick<AuditService, 'record'>;
 	/** Public origin, for the confirmation links (`${origin}/consent?switch=…`) */
 	origin: string;

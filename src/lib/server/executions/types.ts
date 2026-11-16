@@ -99,7 +99,15 @@ export interface ExecutionsService {
 		resume: boolean;
 	}): Promise<ExecutionOutcome>;
 	cancel(input: { userId: string; executionId: string }): Promise<void>;
-	listPendingApprovals(userId: string): Promise<PendingApproval[]>;
+	/**
+	 * Pending, unexpired approvals of this user's paused executions, oldest first. `scope` narrows
+	 * them to one workspace and/or the MCP client that started the execution (the MCP
+	 * `execution_status` listing). Read-only: nothing here decides an approval.
+	 */
+	listPendingApprovals(
+		userId: string,
+		scope?: { workspaceId?: string; clientId?: string }
+	): Promise<PendingApproval[]>;
 	/** Called by the approval page or the MCP layer when the human answered an elicitation */
 	decideApproval(input: {
 		approvalId: string;

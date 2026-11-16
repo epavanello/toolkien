@@ -33,7 +33,7 @@ Some upstream tools require bookkeeping fields (e.g. conversation ids); pass wha
 
 Connectors are namespaces (\`github.createIssue\`). The same server can be connected more than once, one instance per account (\`posthogDevmotion\`, \`posthogDevpost\`): use the namespace of the account the user means; one script can call several.
 
-Every result names the active workspace. Switch workspace (workspace_switch) only when the user asks; the user confirms it. Some tool calls need the user's approval: the user decides in a dialog or on a link, then use execution_status. You can never approve anything yourself.`;
+Every result names the active workspace. Switch workspace (workspace_switch) only when the user asks; the user confirms it. Some tool calls need the user's approval: the user decides in a dialog or on a link, then use execution_status. If a call timed out or the approval dialog never appeared, call execution_status without an executionId: it lists the executions waiting for approval with their links, to give to the user. You can never approve anything yourself.`;
 
 export type ServerOptions = {
 	era: 'legacy' | 'modern';
