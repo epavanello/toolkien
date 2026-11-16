@@ -22,4 +22,9 @@
 <AuthHeading title="Sign in">
 	No account? <a href={withRedirect(resolve('/(auth)/signup'))}>Create one</a>
 </AuthHeading>
-<EmailSignIn redirectTo={data.redirectTo} submitLabel="Email me a sign-in code" />
+<EmailSignIn
+	redirectTo={data.redirectTo}
+	submitLabel="Email me a sign-in code"
+	google={data.googleSignIn}
+	googleFailed={data.signInError !== null}
+/>

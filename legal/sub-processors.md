@@ -17,6 +17,7 @@ The managed Toolkien service uses the following sub-processors. They process dat
 What is **not** a sub-processor:
 
 - **The MCP servers you connect** (GitHub, Gmail, Slack…): you choose them and they receive data from your agent under their own terms.
+- **Google, when you choose "Continue with Google"**: Google authenticates you as an independent controller under its own terms and sends us your name, email and profile picture; nothing is sent to Google about your use of Toolkien.
 - **Analytics**: cookieless page analytics with Plausible Analytics (open source), self-hosted by us in the EU; it receives redacted page addresses only (see the privacy policy). **Advertising providers**: we use none.
 - **Marketing email providers**: Toolkien sends transactional email only (sign-in, invitations), never newsletters or marketing.
 

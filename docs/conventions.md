@@ -12,7 +12,7 @@ src/
 ├── lib/
 │   ├── brand.ts                 # product name + taglines (single source)
 │   ├── navigation.ts            # workspace sidebar sections (single source)
-│   ├── auth-client.ts           # browser Better Auth client (passkeys only)
+│   ├── auth-client.ts           # browser Better Auth client (passkeys, Google redirect)
 │   ├── core/                    # isomorphic helpers: attempt, remote-errors, errors, format, redirects
 │   ├── components/
 │   │   ├── ui/                  # shadcn-svelte (style vega) — Button is custom, never regenerate
@@ -68,7 +68,7 @@ Files `src/lib/functions/<domain>.remote.ts`; `query`, `query.live`, `query.batc
 
 ## Better Auth
 
-`src/lib/server/auth.ts`: drizzle sqlite adapter, no passwords (`emailAndPassword` disabled), plugins `organization()` (workspace = organization, roles owner/admin/member, extra fields `kind`, `deleteScheduledAt`, `suspendedAt`, deletion disabled in favour of our grace period), `passkey()`, `magicLink()` + `emailOTP()` (one email with link + code, sent by `#lib/server/email`; their HTTP endpoints are disabled and `#lib/server/email-sign-in.ts` calls them server-side), `jwt()`, `mcp()` (OAuth 2.1 AS for MCP clients, resource `${ORIGIN}/mcp`, 15 min access tokens, 30 day rotating refresh tokens, DCR allowed), `cimd()` (fetches through `net.safeFetch`), and `sveltekitCookies` **last**.
+`src/lib/server/auth.ts`: drizzle sqlite adapter, no passwords (`emailAndPassword` disabled), plugins `organization()` (workspace = organization, roles owner/admin/member, extra fields `kind`, `deleteScheduledAt`, `suspendedAt`, deletion disabled in favour of our grace period), optional Google `socialProviders` (only with `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, OAuth tokens encrypted), `passkey()`, `magicLink()` + `emailOTP()` (one email with link + code, sent by `#lib/server/email`; their HTTP endpoints are disabled and `#lib/server/email-sign-in.ts` calls them server-side), `jwt()`, `mcp()` (OAuth 2.1 AS for MCP clients, resource `${ORIGIN}/mcp`, 15 min access tokens, 30 day rotating refresh tokens, DCR allowed), `cimd()` (fetches through `net.safeFetch`), and `sveltekitCookies` **last**.
 
 - Every new user gets a personal workspace (`databaseHooks.user.create.after` → `ensurePersonalWorkspace`, idempotent; `/` calls it again).
 - `locals.user` / `locals.session` come from the cookie session in `hooks.server.ts`; suspended users are treated as signed out. `/mcp` never reads cookies (bearer only).
