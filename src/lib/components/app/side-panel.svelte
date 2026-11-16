@@ -48,7 +48,8 @@
 
 <Sheet.Root bind:open>
 	<Sheet.Content class={sidePanelVariants({ size })}>
-		<Sheet.Header class="border-b px-4 py-3 pr-12">
+		<!-- min-h-14 + centered: the title row lines up with the close button (top-3.5, 28px) -->
+		<Sheet.Header class="min-h-14 justify-center border-b px-4 py-2 pr-12">
 			<div class="flex flex-wrap items-center gap-2">
 				{#if media}{@render media()}{/if}
 				<Sheet.Title>{title}</Sheet.Title>
