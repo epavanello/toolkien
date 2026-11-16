@@ -16,5 +16,6 @@ const service = createPermissionsService({ db, audit: { record } });
 export const getEffectiveLevel = service.getEffectiveLevel;
 export const getEffectiveLevels = service.getEffectiveLevels;
 export const setLevel = service.setLevel;
+export const setLevels = service.setLevels;
 export const visibleToolIds = service.visibleToolIds;
 export const listToolPermissions = service.listToolPermissions;

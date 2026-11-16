@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import {
 		Boundary,
+		BulkLevelMenu,
 		Disclosure,
 		EmptyState,
 		FilterBar,
@@ -80,8 +81,12 @@
 			</FilterBar>
 
 			{#each shown as section (section.id)}
+				{@const subject = narrowed
+					? `of ${section.displayName} matching the search or filter`
+					: `of ${section.displayName}`}
 				<Disclosure
 					variant="flush"
+					sticky
 					title={section.displayName}
 					meta={narrowed
 						? `${section.shown.length} of ${section.tools.length} tools`
@@ -95,12 +100,28 @@
 						<Mono value={section.namespace} variant="path" />
 						{#if section.unverified}<UnverifiedBadge />{/if}
 					{/snippet}
+					{#snippet actions()}
+						<BulkLevelMenu
+							{workspace}
+							tools={section.shown}
+							{subject}
+							canSetWorkspaceLevels={data.canSetWorkspaceLevels}
+						/>
+					{/snippet}
 					<ToolGroupList
 						items={section.shown}
 						annotations={(tool) => tool.annotations}
 						key={(tool) => tool.toolId}
 						note={groupDefault}
 					>
+						{#snippet actions(tools, group)}
+							<BulkLevelMenu
+								{workspace}
+								{tools}
+								subject={`in “${group.title}” ${subject}`}
+								canSetWorkspaceLevels={data.canSetWorkspaceLevels}
+							/>
+						{/snippet}
 						{#snippet row(tool)}
 							<ToolPermissionRow
 								{workspace}

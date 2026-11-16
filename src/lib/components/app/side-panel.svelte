@@ -57,9 +57,11 @@
 			</div>
 			{#if description}<Sheet.Description>{description}</Sheet.Description>{/if}
 		</Sheet.Header>
-		<!-- `shrink-0`: sections with `overflow-hidden` would otherwise shrink to fit and clip instead of scrolling -->
-		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 *:shrink-0">
-			{@render children()}
+		<!-- The padding is inside the scroller, not on it: sticky headers (`ToolGroupList`) stick to
+		     its very top edge, with no gap above them for content to scroll through.
+		     `shrink-0`: sections with `overflow-hidden` would otherwise shrink to fit and clip. -->
+		<div class="min-h-0 flex-1 overflow-y-auto">
+			<div class="flex flex-col gap-4 p-4 *:shrink-0">{@render children()}</div>
 		</div>
 		{#if footer}<Sheet.Footer class="flex-row justify-end border-t px-4 py-3"
 				>{@render footer()}</Sheet.Footer

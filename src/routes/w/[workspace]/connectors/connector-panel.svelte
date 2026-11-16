@@ -2,6 +2,7 @@
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import {
 		Boundary,
+		BulkLevelMenu,
 		Callout,
 		EmptyState,
 		KeyValueList,
@@ -189,6 +190,17 @@
 					key={(tool) => tool.id}
 					note={(tools) => groupDefault(tools.flatMap((tool) => levels.get(tool.id) ?? []))}
 				>
+					{#snippet actions(tools, group)}
+						{@const groupLevels = tools.flatMap((tool) => levels.get(tool.id) ?? [])}
+						{#if groupLevels.length > 0}
+							<BulkLevelMenu
+								{workspace}
+								tools={groupLevels}
+								subject={`in “${group.title}” of ${c.displayName}`}
+								canSetWorkspaceLevels={permissions.canSetWorkspaceLevels}
+							/>
+						{/if}
+					{/snippet}
 					{#snippet row(tool)}
 						{@const definition = { ...tool, unverified: c.unverified }}
 						{@const level = levels.get(tool.id)}

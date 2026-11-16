@@ -38,7 +38,11 @@ The **Permissions** page lists every tool of the workspace by connector, then by
 | **Destructive**  | `destructiveHint: true`        | May delete or overwrite data |
 | **Not declared** | no annotations                 | Unknown: treated as a write  |
 
-Each group header shows its count and the default level of its tools (_Proposed_ while the connector's defaults wait for your confirmation). Each tool shows its effective level, your level and, for admins of a company workspace, the workspace minimum; **Confirm** accepts a proposed or changed level as it is. Search by tool or connector name, filter by level (including _to confirm_), and fold connectors you are not working on. The same rows appear in each connector's panel on the **Connectors** page, next to the tool's TypeScript signature: a level changed in one place shows in the other.
+Each group header shows its count and the default level of its tools (_Proposed_ while the connector's defaults wait for your confirmation). Each tool shows its effective level, your level and, for admins of a company workspace, the workspace minimum; **Confirm** accepts a proposed or changed level as it is. Search by tool or connector name, filter by level (including _to confirm_), and fold connectors you are not working on. While you scroll a long list, the connector and group headers stay at the top.
+
+**Set all**, on a connector header and on each group header, sets your level (or, for admins, the workspace minimum) for every tool listed under it at once, or confirms every tool _to confirm_ there. A dialog shows how many tools change and asks before anything is saved; allowing destructive tools is spelled out, and tools whose workspace minimum is stricter than the level you chose are left as they are and named. The change applies to all the tools or, if the server refuses any of them (say an admin raised a minimum meanwhile), to none.
+
+The same rows appear in each connector's panel on the **Connectors** page, next to the tool's TypeScript signature: a level changed in one place shows in the other.
 
 ## Admin floors
 

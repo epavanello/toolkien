@@ -1,8 +1,14 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AuditEventInput } from '#lib/server/audit/types.ts';
 import type { Db } from '#lib/server/db/index.ts';
-import { workspacePolicy } from '#lib/server/db/schema/index.ts';
+import {
+	permissionLevel,
+	tool,
+	toolVersion,
+	workspacePolicy
+} from '#lib/server/db/schema/index.ts';
 import {
 	bumpToolSignature,
 	createTestDb,
@@ -86,6 +92,18 @@ const httpCode = async (promise: Promise<unknown>) => {
 	}
 	return 'resolved';
 };
+
+/** The error body of a rejected call (code and user-facing message) */
+const httpError = (promise: Promise<unknown>) =>
+	promise.then(
+		() => ({ code: 'resolved', message: '' }),
+		(e: { body?: { code?: string; message?: string } }) => ({
+			code: e.body?.code,
+			message: e.body?.message ?? ''
+		})
+	);
+
+const rowCount = async () => (await db.select().from(permissionLevel)).length;
 
 describe('permissions service', () => {
 	it('applies the default table', async () => {
@@ -327,5 +345,248 @@ describe('permissions service', () => {
 		expect(list.find((r) => r.path === 'gh.listIssues')!.annotations).toEqual({
 			readOnlyHint: true
 		});
+	});
+});
+
+describe('setLevels (bulk)', () => {
+	const bulk = (input: {
+		actorUserId: string;
+		userId: string | null;
+		toolIds: string[];
+		level: 'allow' | 'ask' | 'block' | 'current';
+	}) => service.setLevels({ workspaceId: ws, ...input });
+
+	it('sets every tool of one scope, confirms them and audits one event per tool', async () => {
+		await bumpToolSignature(db, writeTool, 'sig-2');
+		const result = await bulk({
+			actorUserId: memberId,
+			userId: memberId,
+			toolIds: [readTool, writeTool, urlTool, urlTool],
+			level: 'block'
+		});
+		// Duplicates count once
+		expect(result).toEqual({ updated: 3 });
+		for (const id of [readTool, writeTool, urlTool]) {
+			expect(await level(memberId, id)).toEqual({
+				level: 'block',
+				needsConfirmation: false,
+				source: 'user'
+			});
+		}
+		// Other users and the workspace rows are untouched
+		expect((await level(admin, readTool)).level).toBe('allow');
+		expect(audit.record).toHaveBeenCalledTimes(3);
+		expect(audit.record).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'permission.changed',
+				toolPath: 'gh.createIssue',
+				metadata: { toolId: writeTool, scope: 'user', level: 'block', previous: null, bulk: 3 }
+			})
+		);
+
+		// Again: rows are updated in place, `previous` is the old level
+		await bulk({ actorUserId: memberId, userId: memberId, toolIds: [readTool], level: 'ask' });
+		expect(audit.record).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				metadata: { toolId: readTool, scope: 'user', level: 'ask', previous: 'block' }
+			})
+		);
+		expect(await rowCount()).toBe(3);
+	});
+
+	it('"current" confirms the level each tool has now', async () => {
+		await service.setLevel({
+			workspaceId: ws,
+			actorUserId: memberId,
+			userId: memberId,
+			toolId: writeTool,
+			level: 'block'
+		});
+		await bumpToolSignature(db, writeTool, 'sig-2');
+		expect(await level(memberId, writeTool)).toMatchObject({ needsConfirmation: true });
+		await bulk({
+			actorUserId: memberId,
+			userId: memberId,
+			toolIds: [urlTool, communityTool, writeTool],
+			level: 'current'
+		});
+		// The proposed default of unverified connectors, and the user's own row
+		expect(await level(memberId, urlTool)).toEqual({
+			level: 'allow',
+			needsConfirmation: false,
+			source: 'user'
+		});
+		expect((await level(memberId, communityTool)).level).toBe('allow');
+		expect(await level(memberId, writeTool)).toMatchObject({
+			level: 'block',
+			needsConfirmation: false
+		});
+		// Admins confirming the workspace rows: the workspace row, else the default
+		await bulk({ actorUserId: admin, userId: null, toolIds: [urlTool], level: 'current' });
+		expect(
+			(await service.listToolPermissions({ workspaceId: ws, userId: admin, role: 'admin' })).find(
+				(r) => r.toolId === urlTool
+			)
+		).toMatchObject({ workspaceLevel: 'allow', effective: { needsConfirmation: false } });
+	});
+
+	it('is all or nothing: a floor on one tool refuses the batch and names it', async () => {
+		await service.setLevel({
+			workspaceId: ws,
+			actorUserId: admin,
+			userId: null,
+			toolId: readTool,
+			level: 'ask'
+		});
+		audit.record.mockClear();
+		const before = await rowCount();
+		const refused = await httpError(
+			bulk({
+				actorUserId: memberId,
+				userId: memberId,
+				toolIds: [urlTool, readTool, communityTool],
+				level: 'allow'
+			})
+		);
+		expect(refused.code).toBe('POLICY_DENIED');
+		expect(refused.message).toContain('Nothing was changed');
+		expect(refused.message).toContain('gh.listIssues');
+		expect(refused.message).not.toContain('free.read');
+		expect(await rowCount()).toBe(before);
+		expect(await level(memberId, urlTool)).toMatchObject({ needsConfirmation: true });
+		expect(audit.record).not.toHaveBeenCalled();
+
+		// Without the floored tool the same change goes through
+		await bulk({
+			actorUserId: memberId,
+			userId: memberId,
+			toolIds: [urlTool, communityTool],
+			level: 'allow'
+		});
+		expect((await level(memberId, urlTool)).level).toBe('allow');
+	});
+
+	it('"current" below a newer workspace minimum is refused, not silently tightened', async () => {
+		await service.setLevel({
+			workspaceId: ws,
+			actorUserId: memberId,
+			userId: memberId,
+			toolId: writeTool,
+			level: 'allow'
+		});
+		await service.setLevel({
+			workspaceId: ws,
+			actorUserId: admin,
+			userId: null,
+			toolId: writeTool,
+			level: 'ask'
+		});
+		await bumpToolSignature(db, writeTool, 'sig-2');
+		expect(
+			await httpCode(
+				bulk({
+					actorUserId: memberId,
+					userId: memberId,
+					toolIds: [writeTool, urlTool],
+					level: 'current'
+				})
+			)
+		).toBe('POLICY_DENIED');
+		expect(await level(memberId, urlTool)).toMatchObject({ needsConfirmation: true });
+	});
+
+	it('the workspace scope follows the policy floor and is for admins only', async () => {
+		expect(
+			await httpCode(
+				bulk({ actorUserId: memberId, userId: null, toolIds: [readTool], level: 'block' })
+			)
+		).toBe('FORBIDDEN');
+		expect(
+			await httpCode(
+				bulk({ actorUserId: admin, userId: memberId, toolIds: [readTool], level: 'block' })
+			)
+		).toBe('FORBIDDEN');
+		expect(
+			await httpCode(
+				bulk({ actorUserId: outsider, userId: outsider, toolIds: [readTool], level: 'block' })
+			)
+		).toBe('NOT_FOUND');
+
+		await db.insert(workspacePolicy).values({ workspaceId: ws, permissionFloor: 'ask' });
+		const refused = await httpError(
+			bulk({ actorUserId: admin, userId: null, toolIds: [readTool, writeTool], level: 'allow' })
+		);
+		expect(refused.code).toBe('POLICY_DENIED');
+		expect(refused.message).toContain('gh.createIssue, gh.listIssues');
+		await bulk({ actorUserId: admin, userId: null, toolIds: [readTool, writeTool], level: 'ask' });
+		const list = await service.listToolPermissions({
+			workspaceId: ws,
+			userId: memberId,
+			role: 'member'
+		});
+		expect(list.find((r) => r.toolId === readTool)).toMatchObject({
+			workspaceLevel: 'ask',
+			floor: 'ask',
+			policyFloor: 'ask'
+		});
+		expect(audit.record).toHaveBeenCalledWith(
+			expect.objectContaining({ metadata: expect.objectContaining({ scope: 'workspace' }) })
+		);
+	});
+
+	it('refuses the batch when a tool is not visible (foreign, private, unknown)', async () => {
+		for (const hidden of [foreignTool, privateTool, 'nope']) {
+			const refused = await httpError(
+				bulk({
+					actorUserId: memberId,
+					userId: memberId,
+					toolIds: [readTool, hidden],
+					level: 'block'
+				})
+			);
+			expect(refused).toMatchObject({ code: 'NOT_FOUND' });
+			expect(refused.message).toContain('Nothing was changed');
+		}
+		expect(await rowCount()).toBe(0);
+		expect(
+			await bulk({ actorUserId: memberId, userId: memberId, toolIds: [], level: 'block' })
+		).toEqual({ updated: 0 });
+	});
+
+	it('rolls back every row when a write fails midway (several statements)', async () => {
+		const connectorId = (await seedConnector(db, ws, { namespace: 'many' })).id;
+		const ids = Array.from({ length: 450 }, () => randomUUID());
+		await db.insert(tool).values(
+			ids.map((id, i) => ({
+				id,
+				workspaceId: ws,
+				connectorId,
+				upstreamName: `t${i}`,
+				path: `many.t${i}`,
+				currentVersion: 1
+			}))
+		);
+		await db
+			.insert(toolVersion)
+			.values(
+				ids.map((toolId) => ({ toolId, version: 1, inputSchema: {}, signatureHash: 'sig-1' }))
+			);
+		const last = ids.at(-1)!;
+		await db.run(
+			sql.raw(
+				`create trigger fail_last before insert on permission_level when new.tool_id = '${last}' begin select raise(abort, 'boom'); end`
+			)
+		);
+		await expect(
+			bulk({ actorUserId: memberId, userId: memberId, toolIds: ids, level: 'block' })
+		).rejects.toThrow();
+		expect(await rowCount()).toBe(0);
+		expect(audit.record).not.toHaveBeenCalled();
+
+		await db.run(sql.raw('drop trigger fail_last'));
+		expect(
+			await bulk({ actorUserId: memberId, userId: memberId, toolIds: ids, level: 'block' })
+		).toEqual({ updated: 450 });
+		expect(await rowCount()).toBe(450);
 	});
 });

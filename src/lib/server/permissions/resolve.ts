@@ -44,9 +44,7 @@ export const floorFor = (
 	workspaceRow: PermissionRowInput
 ): PermissionLevel => mostRestrictive(policyFloor, workspaceRow?.level);
 
-/** `level` is at least as restrictive as `minimum` */
-export const satisfiesFloor = (level: PermissionLevel, minimum: PermissionLevel) =>
-	LEVEL_RANK[level] >= LEVEL_RANK[minimum];
+export { satisfiesFloor } from '#lib/core/permission-levels.ts';
 
 /**
  * Effective level of one tool for one user.

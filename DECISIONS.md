@@ -140,6 +140,23 @@ removed after this merge).
 - **Default levels**: `readOnlyHint` (and not destructive) → allow, anything else → ask. Free-URL
   and unverified tools are "to confirm" (≥ ask) until a person confirms. Effective level = most
   restrictive of user row, admin workspace row, policy floor and "to confirm".
+- **Bulk level changes** (`setToolLevels`, "Set all" on the Permissions page and in the
+  connector panel): one level for many tools of one scope (the viewer's own, or the workspace
+  minimum for admins), or `current` to confirm the level each tool has now. The server is
+  strict and all or nothing: the same guard and checks as `setToolLevel` run for every tool in
+  one transaction (reads included), and one refused tool (not visible, or a minimum stricter
+  than its target) refuses the batch, naming the tools; nothing is written. Tools a minimum
+  legitimately keeps from a level are not an error the user should meet, so the UI plans first
+  (`bulkPlan`, with the same `satisfiesFloor` the server uses, from `#lib/core`): it leaves
+  them out and names them in the confirmation ("1 tool keeps its level, the workspace minimum
+  is stricter"), and sends only the rest. A server refusal then only means the data changed
+  since the page loaded. Skipping on the server instead was rejected: the confirmed count could
+  silently differ from what was applied. "Confirm" in bulk uses `current`, resolved on the
+  server, so a stale page cannot confirm a level the tool no longer has; a tool whose current
+  level is below a newer minimum cannot be confirmed (as with the single Confirm) and is named.
+  Every tool gets its own `permission.changed` event (metadata `bulk` = count), recorded after
+  the commit. Always confirmed in a dialog with the count, whatever the size; allowing
+  destructive tools is spelled out and the button turns destructive.
 - **Bridge order**: execution ownership → kill switches → durable replay by `seq` (results and
   errors cached; a pending write is never re-sent) → tool-call limit → resolve tool → effective
   level (block / approval gate / allow) → claim → upstream → seal outcome → audit (no content).
@@ -197,4 +214,12 @@ removed after this merge).
   they get), live, with tool, connector, a one-line arguments preview (the viewer's own
   content, as on the approval page), client, requested and expiry; "Review" opens the existing
   `/approve/<id>` page, which stays the only place that decides.
+- **Sticky tool headers**: on the Permissions page the connector summary sticks to the top of
+  the page while its section scrolls and the operation-type group header sticks right below it
+  (its offset is the summary's measured height, `--sticky-top`, since the summary wraps on
+  phones); in the connector panel the group headers stick to the panel's scroller, whose
+  padding moved inside so nothing scrolls above them. The workspace top bar is not sticky, so
+  the page offset is 0. Opaque backgrounds, z-index above row content (code block copy
+  buttons), and `overflow-clip` instead of `overflow-hidden` on the cards so they are not
+  scroll containers.
 - No OG image yet (would need satori/resvg).

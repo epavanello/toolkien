@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
-import { and, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { AuditService } from '#lib/server/audit/types.ts';
-import type { Db } from '#lib/server/db/index.ts';
+import type { Db, Tx } from '#lib/server/db/index.ts';
 import {
 	connector,
 	member,
@@ -46,6 +46,14 @@ type ToolFacts = {
 const DENIED: EffectiveLevel = { level: 'block', needsConfirmation: false, source: 'policy' };
 const CHUNK = 400;
 
+/** "a.b, c.d and 3 more": the tools an error is about */
+const NAMED_TOOLS = 5;
+const describeTools = (paths: string[]) => {
+	const named = paths.slice(0, NAMED_TOOLS).join(', ');
+	const rest = paths.length - NAMED_TOOLS;
+	return rest > 0 ? `${named} and ${rest} more` : named;
+};
+
 const chunks = <T>(items: T[]) =>
 	Array.from({ length: Math.ceil(items.length / CHUNK) }, (_, i) =>
 		items.slice(i * CHUNK, (i + 1) * CHUNK)
@@ -58,10 +66,11 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 	async function loadTools(
 		workspaceId: string,
 		userId: string,
-		toolIds: string[] | null
+		toolIds: string[] | null,
+		q: Db | Tx = db
 	): Promise<ToolFacts[]> {
 		const query = (ids: string[] | null) =>
-			db
+			q
 				.select({
 					toolId: tool.id,
 					path: tool.path,
@@ -94,11 +103,11 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 		return rows;
 	}
 
-	async function loadRows(workspaceId: string, userId: string, toolIds: string[]) {
+	async function loadRows(workspaceId: string, userId: string, toolIds: string[], q: Db | Tx = db) {
 		const workspaceRows = new Map<string, NonNullable<PermissionRowInput>>();
 		const userRows = new Map<string, NonNullable<PermissionRowInput>>();
 		for (const ids of chunks(toolIds)) {
-			const rows = await db
+			const rows = await q
 				.select({
 					toolId: permissionLevel.toolId,
 					userId: permissionLevel.userId,
@@ -121,8 +130,11 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 		return { workspaceRows, userRows };
 	}
 
-	async function policyFloor(workspaceId: string): Promise<PermissionLevel | null> {
-		const [row] = await db
+	async function policyFloor(
+		workspaceId: string,
+		q: Db | Tx = db
+	): Promise<PermissionLevel | null> {
+		const [row] = await q
 			.select({ floor: workspacePolicy.permissionFloor })
 			.from(workspacePolicy)
 			.where(eq(workspacePolicy.workspaceId, workspaceId))
@@ -206,14 +218,20 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 					chosen: (userRow ?? workspaceRow)?.level ?? proposed,
 					userLevel: userRow?.level ?? null,
 					workspaceLevel: workspaceRow?.level ?? null,
-					floor: floorFor(floor, workspaceRow)
+					floor: floorFor(floor, workspaceRow),
+					policyFloor: floor
 				};
 			})
 			.sort((a, b) => a.path.localeCompare(b.path));
 	};
 
-	const setLevel: PermissionsService['setLevel'] = async (input) => {
-		const { workspaceId, actorUserId, toolId, level } = input;
+	const setLevels: PermissionsService['setLevels'] = async (input) => {
+		const { workspaceId, actorUserId, level } = input;
+		const scope = input.userId === null ? 'workspace' : 'user';
+		const toolIds = [...new Set(input.toolIds)];
+		if (toolIds.length === 0) return { updated: 0 };
+		const single = toolIds.length === 1;
+
 		const [membership] = await db
 			.select({ role: member.role })
 			.from(member)
@@ -229,64 +247,108 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 			error(403, 'You can only change your own levels.', { code: 'FORBIDDEN' });
 		}
 
-		const [facts] = await loadTools(workspaceId, actorUserId, [toolId]);
-		if (!facts) error(404, 'Tool not found.', { code: 'NOT_FOUND' });
+		// Validation and writes share one transaction: every tool takes the level, or none does
+		const changes = await db.transaction(async (tx) => {
+			const facts = await loadTools(workspaceId, actorUserId, toolIds, tx);
+			if (facts.length < toolIds.length) {
+				const missing = toolIds.length - facts.length;
+				error(
+					404,
+					single
+						? 'Tool not found.'
+						: `Nothing was changed: ${missing} of these tools no longer exist. Reload and try again.`,
+					{ code: 'NOT_FOUND' }
+				);
+			}
+			const rows = await loadRows(workspaceId, actorUserId, toolIds, tx);
+			const floor = await policyFloor(workspaceId, tx);
 
-		const rows = await loadRows(workspaceId, actorUserId, [toolId]);
-		const floor = await policyFloor(workspaceId);
-		const workspaceRow = rows.workspaceRows.get(toolId) ?? null;
-		const minimum = input.userId === null ? (floor ?? 'allow') : floorFor(floor, workspaceRow);
-		if (!satisfiesFloor(level, minimum)) {
-			error(403, `The workspace policy requires at least "${minimum}" for this tool.`, {
-				code: 'POLICY_DENIED'
+			const planned = facts.map((fact) => {
+				const workspaceRow = rows.workspaceRows.get(fact.toolId) ?? null;
+				const own = input.userId === null ? workspaceRow : rows.userRows.get(fact.toolId);
+				// 'current' confirms what the scope has now: its row, else (users) the workspace row,
+				// else the default, as the "Confirm" button of one row does
+				const target =
+					level === 'current'
+						? ((own ?? (input.userId === null ? null : workspaceRow))?.level ?? defaultLevel(fact))
+						: level;
+				const minimum = input.userId === null ? (floor ?? 'allow') : floorFor(floor, workspaceRow);
+				return { tool: fact, target, minimum, previous: own?.level ?? null };
+			});
+
+			const refused = planned.filter((p) => !satisfiesFloor(p.target, p.minimum));
+			if (refused.length > 0) {
+				error(
+					403,
+					single
+						? `The workspace policy requires at least "${refused[0].minimum}" for this tool.`
+						: `Nothing was changed: the workspace policy requires a stricter level for ${describeTools(refused.map((p) => p.tool.path).sort())}.`,
+					{ code: 'POLICY_DENIED' }
+				);
+			}
+
+			for (const batch of chunks(planned)) {
+				const values = batch.map((p) => ({
+					workspaceId,
+					userId: input.userId,
+					toolId: p.tool.toolId,
+					level: p.target,
+					confirmedSignatureHash: p.tool.signatureHash,
+					setBy: actorUserId
+				}));
+				// Each row keeps its own level and signature: take them from the conflicting insert
+				const set = {
+					level: sql`excluded.level`,
+					confirmedSignatureHash: sql`excluded.confirmed_signature_hash`,
+					setBy: sql`excluded.set_by`
+				};
+				await tx
+					.insert(permissionLevel)
+					.values(values)
+					.onConflictDoUpdate(
+						input.userId === null
+							? {
+									target: [permissionLevel.workspaceId, permissionLevel.toolId],
+									targetWhere: isNull(permissionLevel.userId),
+									set
+								}
+							: {
+									target: [
+										permissionLevel.workspaceId,
+										permissionLevel.toolId,
+										permissionLevel.userId
+									],
+									targetWhere: isNotNull(permissionLevel.userId),
+									set
+								}
+					);
+			}
+			return planned;
+		});
+
+		// One event per tool, like single changes; after the commit, so a rollback leaves none
+		for (const { tool, target, previous } of changes) {
+			await deps.audit.record({
+				type: 'permission.changed',
+				outcome: 'success',
+				workspaceId,
+				userId: actorUserId,
+				connectorId: tool.connectorId,
+				toolPath: tool.path,
+				metadata: {
+					toolId: tool.toolId,
+					scope,
+					level: target,
+					previous,
+					...(single ? {} : { bulk: changes.length })
+				}
 			});
 		}
+		return { updated: changes.length };
+	};
 
-		const previous =
-			(input.userId === null ? workspaceRow : rows.userRows.get(toolId))?.level ?? null;
-		const values = {
-			workspaceId,
-			userId: input.userId,
-			toolId,
-			level,
-			confirmedSignatureHash: facts.signatureHash,
-			setBy: actorUserId
-		};
-		const set = { level, confirmedSignatureHash: facts.signatureHash, setBy: actorUserId };
-		if (input.userId === null) {
-			await db
-				.insert(permissionLevel)
-				.values(values)
-				.onConflictDoUpdate({
-					target: [permissionLevel.workspaceId, permissionLevel.toolId],
-					targetWhere: isNull(permissionLevel.userId),
-					set
-				});
-		} else {
-			await db
-				.insert(permissionLevel)
-				.values(values)
-				.onConflictDoUpdate({
-					target: [permissionLevel.workspaceId, permissionLevel.toolId, permissionLevel.userId],
-					targetWhere: isNotNull(permissionLevel.userId),
-					set
-				});
-		}
-
-		await deps.audit.record({
-			type: 'permission.changed',
-			outcome: 'success',
-			workspaceId,
-			userId: actorUserId,
-			connectorId: facts.connectorId,
-			toolPath: facts.path,
-			metadata: {
-				toolId,
-				scope: input.userId === null ? 'workspace' : 'user',
-				level,
-				previous
-			}
-		});
+	const setLevel: PermissionsService['setLevel'] = async ({ toolId, ...input }) => {
+		await setLevels({ ...input, toolIds: [toolId] });
 	};
 
 	return {
@@ -294,6 +356,7 @@ export function createPermissionsService(deps: PermissionsDeps): PermissionsServ
 		getEffectiveLevel,
 		getEffectiveLevels,
 		setLevel,
+		setLevels,
 		visibleToolIds,
 		listToolPermissions
 	};

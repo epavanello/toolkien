@@ -6,6 +6,7 @@ export { default as ActionsMenu, type ActionItem } from './actions-menu.svelte';
 export { default as AuthHint } from './auth-hint.svelte';
 export { default as AuthFrame } from './auth-frame.svelte';
 export { default as Boundary } from './boundary.svelte';
+export { default as BulkLevelMenu } from './bulk-level-menu.svelte';
 export { default as Callout } from './callout.svelte';
 export { default as CategoryFilter, type CategoryOption } from './category-filter.svelte';
 export { default as Checklist, type ChecklistItem } from './checklist.svelte';
@@ -69,12 +70,17 @@ export {
 } from './tool-groups.ts';
 export { default as ToolPermissionRow } from './tool-permission-row.svelte';
 export {
+	bulkConfirmation,
+	bulkItemLabel,
+	bulkPlan,
 	filterPermissions,
 	groupDefault,
 	LEVEL_FILTER_OPTIONS,
 	LEVEL_LABELS,
 	matchesLevel,
-	permissionSummary
+	permissionSummary,
+	type BulkPlan,
+	type BulkScope
 } from './tool-permission.ts';
 export { default as Toolbar } from './toolbar.svelte';
 export { default as ToolPath } from './tool-path.svelte';

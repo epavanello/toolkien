@@ -26,16 +26,8 @@ export type { PermissionLevel };
  * `block`ed tools never appear in discovery; the bridge checks the level on EVERY call.
  */
 
-/** block > ask > allow */
-export const LEVEL_RANK: Record<PermissionLevel, number> = { allow: 0, ask: 1, block: 2 };
-
-export const mostRestrictive = (
-	...levels: (PermissionLevel | null | undefined)[]
-): PermissionLevel =>
-	levels.reduce<PermissionLevel>(
-		(worst, level) => (level && LEVEL_RANK[level] > LEVEL_RANK[worst] ? level : worst),
-		'allow'
-	);
+/** block > ask > allow; the rules live in `#lib/core/permission-levels.ts` (shared with the UI) */
+export { LEVEL_RANK, mostRestrictive } from '#lib/core/permission-levels.ts';
 
 export type PermissionSubject = { workspaceId: string; userId: string; toolId: string };
 
@@ -99,7 +91,16 @@ export type ToolPermission = {
 	workspaceLevel: PermissionLevel | null;
 	/** Most restrictive of policy floor and workspace row: the user cannot go below it */
 	floor: PermissionLevel;
+	/** (additive) `workspace_policy.permission_floor`: the workspace minimum cannot go below it */
+	policyFloor: PermissionLevel | null;
 };
+
+/**
+ * Level of a bulk change: one level for every tool, or `current` to confirm the level each tool
+ * has now in that scope (its row, else for a user the workspace row, else the default), as the
+ * "Confirm" of a single row does.
+ */
+export type BulkLevel = PermissionLevel | 'current';
 
 export interface PermissionsService {
 	/** Pure: default level from the origin table above */
@@ -123,6 +124,21 @@ export interface PermissionsService {
 		toolId: string;
 		level: PermissionLevel;
 	}): Promise<void>;
+	/**
+	 * (additive) `setLevel` for many tools of one scope, all or nothing: the same authorization,
+	 * visibility and floor checks run for every tool inside one transaction; if any tool is
+	 * missing (removed, foreign, private connector of someone else) or its minimum is stricter
+	 * than its target level, nothing is written and the error names the refused tools. Duplicate
+	 * ids count once. One `permission.changed` event per tool (metadata `bulk` = count) after the
+	 * commit. `setLevel` is this with one tool.
+	 */
+	setLevels(input: {
+		workspaceId: string;
+		actorUserId: string;
+		userId: string | null;
+		toolIds: string[];
+		level: BulkLevel;
+	}): Promise<{ updated: number }>;
 	/** Tools of `toolIds` that are not blocked for the user (discovery and declarations) */
 	visibleToolIds(workspaceId: string, userId: string, toolIds: string[]): Promise<string[]>;
 	/** Every non-removed tool the actor can see, with its levels (permissions page) */

@@ -1,16 +1,10 @@
-<script lang="ts" module>
-	import type { PermissionLevel } from '#lib/server/db/schema/workspaces.ts';
-	import { LEVEL_LABELS as LABELS } from './tool-permission.ts';
-
-	// Mirrors `PERMISSION_LEVELS` / `LEVEL_RANK` (server modules cannot be imported client side)
-	const LEVELS = ['allow', 'ask', 'block'] as const satisfies readonly PermissionLevel[];
-	const RANK: Record<PermissionLevel, number> = { allow: 0, ask: 1, block: 2 };
-</script>
-
 <script lang="ts">
 	import Lock from '@lucide/svelte/icons/lock';
 	import * as NativeSelect from '#lib/components/ui/native-select/index.js';
 	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
+	import { LEVELS, satisfiesFloor } from '#lib/core/permission-levels.ts';
+	import type { PermissionLevel } from '#lib/server/db/schema/workspaces.ts';
+	import { LEVEL_LABELS as LABELS } from './tool-permission.ts';
 
 	/**
 	 * Level selector of one tool. Options looser than `floor` (workspace policy) are disabled and
@@ -58,7 +52,7 @@
 	>
 		{#if value === null}<NativeSelect.Option value="" disabled>Not set</NativeSelect.Option>{/if}
 		{#each LEVELS as level (level)}
-			<NativeSelect.Option value={level} disabled={RANK[level] < RANK[floor]}>
+			<NativeSelect.Option value={level} disabled={!satisfiesFloor(level, floor)}>
 				{LABELS[level]}
 			</NativeSelect.Option>
 		{/each}

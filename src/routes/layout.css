@@ -160,6 +160,8 @@
 	--color-accent: var(--accent);
 	--color-muted-foreground: var(--muted-foreground);
 	--color-muted: var(--muted);
+	/* `muted/40` over a card, but opaque: sticky headers that rows scroll under */
+	--color-muted-solid: color-mix(in oklab, var(--muted) 40%, var(--card));
 	--color-secondary-foreground: var(--secondary-foreground);
 	--color-secondary: var(--secondary);
 	--color-primary-foreground: var(--primary-foreground);

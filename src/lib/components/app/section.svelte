@@ -15,7 +15,9 @@
 			variant: {
 				card: { root: 'rounded-lg border bg-card', header: 'px-4 pt-3', body: 'p-4' },
 				plain: { root: 'gap-2' },
-				flush: { root: 'overflow-hidden rounded-lg border bg-card', header: 'border-b px-4 py-2.5' }
+				// `overflow-clip`, not `hidden`: clips the corners without becoming a scroll container,
+				// so sticky headers inside (`ToolGroupList`) stick to the page or panel scroll
+				flush: { root: 'overflow-clip rounded-lg border bg-card', header: 'border-b px-4 py-2.5' }
 			},
 			/** `danger` frames destructive settings (delete workspace) */
 			tone: { default: '', danger: { root: 'border-destructive/40', title: 'text-destructive' } }
