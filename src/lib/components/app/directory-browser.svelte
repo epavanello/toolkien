@@ -19,8 +19,7 @@
 	} from './service-directory.ts';
 
 	const SPONSOR_MAIL =
-		'mailto:me@emadev.co?subject=' +
-		encodeURIComponent('Featured MCP server on Toolkien');
+		'mailto:me@emadev.co?subject=' + encodeURIComponent('Featured MCP server on Toolkien');
 
 	/**
 	 * The server directory as a browsable catalogue (in-app and public pages): search, category

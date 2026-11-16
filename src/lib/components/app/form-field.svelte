@@ -68,8 +68,7 @@
 			rows={props.rows ?? 4}
 			placeholder={props.placeholder}
 			required={props.required}
-			{...props.field.as('text')}
-			{...props.value !== undefined ? { value: props.value } : {}}
+			{...props.field.as('text', props.value)}
 		/>
 	{:else if props.type === 'select'}
 		<NativeSelect.Root
@@ -97,8 +96,7 @@
 			placeholder={props.placeholder}
 			required={props.required}
 			autocomplete={props.autocomplete}
-			{...props.field.as(props.type)}
-			{...props.value !== undefined ? { value: props.value } : {}}
+			{...props.field.as(props.type, props.value)}
 		/>
 	{/if}
 	{#if props.description}<Field.Description>{props.description}</Field.Description>{/if}

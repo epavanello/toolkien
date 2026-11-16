@@ -1,26 +1,26 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.epavanello/toolkien",
-  "title": "Toolkien",
-  "description": "One MCP server for all your MCP servers: code mode, per-tool permissions, approvals and audit.",
-  "version": "0.0.2",
-  "websiteUrl": "https://toolkien.dev",
-  "repository": {
-    "url": "https://github.com/epavanello/toolkien",
-    "source": "github",
-    "id": "1457674350"
-  },
-  "icons": [
-    {
-      "src": "https://toolkien.dev/icon-512.png",
-      "mimeType": "image/png",
-      "sizes": ["512x512"]
-    }
-  ],
-  "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://toolkien.dev/mcp"
-    }
-  ]
+	"$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+	"name": "io.github.epavanello/toolkien",
+	"title": "Toolkien",
+	"description": "One MCP server for all your MCP servers: code mode, per-tool permissions, approvals and audit.",
+	"version": "0.0.2",
+	"websiteUrl": "https://toolkien.dev",
+	"repository": {
+		"url": "https://github.com/epavanello/toolkien",
+		"source": "github",
+		"id": "1457674350"
+	},
+	"icons": [
+		{
+			"src": "https://toolkien.dev/icon-512.png",
+			"mimeType": "image/png",
+			"sizes": ["512x512"]
+		}
+	],
+	"remotes": [
+		{
+			"type": "streamable-http",
+			"url": "https://toolkien.dev/mcp"
+		}
+	]
 }
