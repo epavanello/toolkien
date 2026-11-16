@@ -37,5 +37,6 @@ export const acknowledgeChanges: ConnectorsService['acknowledgeChanges'] =
 export const searchTools: ConnectorsService['searchTools'] = discovery.searchTools;
 export const describeTools: ConnectorsService['describeTools'] = discovery.describeTools;
 export const declarationsFor: ConnectorsService['declarationsFor'] = discovery.declarationsFor;
+export const toolFootprint: ConnectorsService['toolFootprint'] = discovery.toolFootprint;
 export const resolveTool: ConnectorsService['resolveTool'] = discovery.resolveTool;
 export const callTool: ConnectorsService['callTool'] = service.callTool;

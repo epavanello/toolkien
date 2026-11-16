@@ -1,7 +1,9 @@
 import { command, query } from '$app/server';
 import { z } from 'zod';
+import { toolFootprint } from '#lib/server/connectors/index.ts';
 import { PERMISSION_LEVELS } from '#lib/server/db/schema/index.ts';
 import { requireWorkspace } from '#lib/server/guards.ts';
+import { gatewayContextSize } from '#lib/server/mcp/surface.ts';
 import { listToolPermissions, setLevel, setLevels } from '#lib/server/permissions/index.ts';
 import { hasRole } from '#lib/server/workspaces/index.ts';
 
@@ -15,6 +17,15 @@ export const listPermissions = query(slug, async (workspaceSlug) => {
 		canSetWorkspaceLevels: workspace.kind === 'company' && hasRole(workspace.role, 'admin'),
 		tools: await listToolPermissions(actor)
 	};
+});
+
+/**
+ * Sizes for the context-savings estimate: the viewer's usable tools as native definitions, and
+ * what Toolkien loads instead (sizes only, no content)
+ */
+export const getContextFootprint = query(slug, async (workspaceSlug) => {
+	const { actor } = await requireWorkspace(workspaceSlug);
+	return { native: await toolFootprint(actor), gatewayChars: gatewayContextSize() };
 });
 
 /**
@@ -38,6 +49,7 @@ export const setToolLevel = command(
 			level
 		});
 		void listPermissions(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 	}
 );
 
@@ -63,6 +75,7 @@ export const setToolLevels = command(
 			level
 		});
 		void listPermissions(workspace).refresh();
+		void getContextFootprint(workspace).refresh();
 		return result;
 	}
 );

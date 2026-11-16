@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ToolPermission } from '#lib/server/permissions/types.ts';
-import { connectorSections, type ConnectorInfo } from './permissions.ts';
+import { connectorSections, heaviestConnector, type ConnectorInfo } from './permissions.ts';
 
 const tool = (toolId: string, path: string, connectorId: string) =>
 	({
@@ -54,5 +54,42 @@ describe('connectorSections', () => {
 			icon: null,
 			unverified: true
 		});
+	});
+});
+
+describe('heaviestConnector', () => {
+	const github = connector('c1', 'GitHub', 'github');
+	const linear = connector('c2', 'Linear', 'linear');
+
+	it('names the first (heaviest) connector with its logo and size', () => {
+		const footprint = {
+			connectors: [
+				{ connectorId: 'c1', tools: 35, chars: 100_000 },
+				{ connectorId: 'c2', tools: 5, chars: 8_000 }
+			]
+		};
+		expect(heaviestConnector(footprint, [linear, github])).toEqual({
+			name: 'GitHub',
+			icon: '/connectors/icon/c1',
+			tools: 35,
+			chars: 100_000
+		});
+	});
+
+	it('stays quiet with a single connector or an unknown one', () => {
+		expect(
+			heaviestConnector({ connectors: [{ connectorId: 'c1', tools: 3, chars: 900 }] }, [github])
+		).toBeUndefined();
+		expect(
+			heaviestConnector(
+				{
+					connectors: [
+						{ connectorId: 'gone', tools: 3, chars: 900 },
+						{ connectorId: 'c1', tools: 1, chars: 100 }
+					]
+				},
+				[github]
+			)
+		).toBeUndefined();
 	});
 });

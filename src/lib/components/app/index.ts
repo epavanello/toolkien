@@ -54,6 +54,7 @@ export {
 export { default as ServiceLogo, type ServiceLogoSize } from './service-logo.svelte';
 export { default as SidePanel } from './side-panel.svelte';
 export { default as SourceBadge } from './source-badge.svelte';
+export { default as ContextSavings, type HeaviestConnector } from './context-savings.svelte';
 export { default as Stats, type StatItem } from './stats.svelte';
 export { default as StatusBadge } from './status-badge.svelte';
 export { default as Steps, type StepItem, type StepStatus } from './steps.svelte';

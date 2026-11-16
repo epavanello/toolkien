@@ -308,6 +308,19 @@ export type ToolDescription = {
 	textResult?: boolean;
 };
 
+/**
+ * What the tools an actor can use weigh as native tool definitions: the name, description and
+ * input schema a client sends to the model for every tool of every server it connects directly.
+ * Same tools as `searchTools` (blocked ones left out). Sizes only, no content.
+ */
+export type ToolFootprint = {
+	tools: number;
+	/** Characters of all those definitions, serialized as JSON */
+	chars: number;
+	/** Per connector, heaviest first */
+	connectors: { connectorId: string; tools: number; chars: number }[];
+};
+
 export type UpstreamCallResult =
 	| { ok: true; structuredContent?: unknown; content: unknown[]; isError?: false }
 	| {
@@ -398,6 +411,8 @@ export interface ConnectorsService {
 	 * `toolIds` means every callable tool.
 	 */
 	declarationsFor(actor: WorkspaceActor, toolIds: string[]): Promise<string>;
+	/** (additive) Size of the actor's usable tools as native definitions (context savings) */
+	toolFootprint(actor: WorkspaceActor): Promise<ToolFootprint>;
 	resolveTool(actor: WorkspaceActor, path: string): Promise<ResolvedTool | null>;
 	/**
 	 * Calls the upstream tool with the right credential (shared or the actor's own).

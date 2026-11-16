@@ -28,6 +28,8 @@ import { decideSwitchRequest } from './workspace-switch.ts';
 export * from './types.ts';
 export { methodNotAllowed } from './endpoint.ts';
 export { getSwitchRequest } from './switch-requests.ts';
+/** Light on purpose (no services): pages import it directly too */
+export { gatewayContextSize } from './surface.ts';
 export {
 	allowClient,
 	denyClient,

@@ -412,6 +412,24 @@ describe('free URL with a pasted token', () => {
 		expect(await connectors.declarationsFor(bob, [])).not.toContain('listIssues');
 	});
 
+	it('sizes the usable tools as native definitions, blocked ones left out', async () => {
+		const of = async () =>
+			(await connectors.toolFootprint(bob)).connectors.find((c) => c.connectorId === id)!;
+		const create = (await connectors.resolveTool(bob, 'issues.createIssue'))!;
+		const list = (await connectors.resolveTool(bob, 'issues.listIssues'))!;
+		expect((await of()).tools).toBe(2);
+		blocked.add(list.toolId);
+		const issues = await of();
+		// Only createIssue is left, as name + description + input schema
+		expect(issues.tools).toBe(1);
+		expect(issues.chars).toBeGreaterThan(JSON.stringify(create.inputSchema).length);
+		const footprint = await connectors.toolFootprint(bob);
+		expect(footprint.tools).toBe(footprint.connectors.reduce((sum, c) => sum + c.tools, 0));
+		expect(footprint.chars).toBe(footprint.connectors.reduce((sum, c) => sum + c.chars, 0));
+		const sizes = footprint.connectors.map((c) => c.chars);
+		expect(sizes).toEqual([...sizes].sort((a, b) => b - a));
+	});
+
 	it('refreshes on invalid params and returns the current signature', async () => {
 		const tool = (await connectors.resolveTool(bob, 'issues.createIssue'))!;
 		const result = await connectors.callTool(bob, tool, { name: 'x' });

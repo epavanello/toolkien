@@ -12,7 +12,13 @@ import { moduleDeclaration, type ToolTypeInput } from '#lib/server/typegen/index
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
 import { visibleTo } from './access.ts';
 import { likePattern, queryWords, rank, score, stem } from './search.ts';
-import type { ResolvedTool, ToolAnnotations, ToolDescription, ToolSearchHit } from './types.ts';
+import type {
+	ResolvedTool,
+	ToolAnnotations,
+	ToolDescription,
+	ToolFootprint,
+	ToolSearchHit
+} from './types.ts';
 
 /**
  * Discovery: what an actor can find and call. A tool is callable when its connector is
@@ -240,6 +246,37 @@ export async function describeTools(
 		});
 	}
 	return result;
+}
+
+/** A tool as a native client sends it to the model: name, description, input schema */
+const nativeDefinitionChars = (row: ToolRecord) =>
+	JSON.stringify({
+		name: row.upstreamName,
+		description: row.description ?? row.title ?? '',
+		input_schema: row.inputSchema
+	}).length;
+
+export async function toolFootprint(actor: WorkspaceActor): Promise<ToolFootprint> {
+	const rows = await withoutBlocked(actor, (await usableTools(actor)) as ToolRecord[]);
+	const byConnector = new Map<string, ToolFootprint['connectors'][number]>();
+	let chars = 0;
+	for (const row of rows) {
+		const size = nativeDefinitionChars(row);
+		const entry = byConnector.get(row.connectorId) ?? {
+			connectorId: row.connectorId,
+			tools: 0,
+			chars: 0
+		};
+		entry.tools += 1;
+		entry.chars += size;
+		chars += size;
+		byConnector.set(row.connectorId, entry);
+	}
+	return {
+		tools: rows.length,
+		chars,
+		connectors: [...byConnector.values()].sort((a, b) => b.chars - a.chars)
+	};
 }
 
 export async function declarationsFor(actor: WorkspaceActor, toolIds: string[]): Promise<string> {
