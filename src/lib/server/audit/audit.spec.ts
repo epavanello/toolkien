@@ -89,6 +89,49 @@ describe('timeline grouping', () => {
 		]);
 		expect(entry.kind === 'execution' && entry.outcome).toBe('pending');
 	});
+
+	it('says whether a paused execution waits for the human or for the agent', () => {
+		const t = (s: number) => new Date(Date.UTC(2026, 10, 14, 10, 0, s));
+		const requested = [
+			view({
+				occurredAt: t(3),
+				type: 'execution.paused',
+				executionId: 'p',
+				outcome: 'pending',
+				metadata: { approvalId: 'a1' }
+			}),
+			view({
+				occurredAt: t(2),
+				type: 'approval.requested',
+				executionId: 'p',
+				outcome: 'pending',
+				metadata: { approvalId: 'a1' }
+			}),
+			view({ occurredAt: t(1), type: 'execution.started', executionId: 'p' })
+		];
+		const decided = view({
+			occurredAt: t(4),
+			type: 'approval.decided',
+			executionId: 'p',
+			metadata: { approvalId: 'a1' }
+		});
+		const resumedCall = view({ occurredAt: t(5), type: 'tool.called', executionId: 'p' });
+		const awaiting = (events: AuditEventView[]) => {
+			const [entry] = groupByExecution(events);
+			return entry.kind === 'execution' ? entry.awaiting : undefined;
+		};
+		expect(awaiting(requested)).toBe('approval');
+		expect(awaiting([decided, ...requested])).toBe('agent');
+		expect(awaiting([resumedCall, decided, ...requested])).toBeNull();
+		expect(
+			awaiting([
+				view({ occurredAt: t(6), type: 'execution.completed', executionId: 'p' }),
+				resumedCall,
+				decided,
+				...requested
+			])
+		).toBeNull();
+	});
 });
 
 describe('csv export', () => {

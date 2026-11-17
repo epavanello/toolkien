@@ -99,7 +99,9 @@
 		</FilterBar>
 		<Timeline
 			label="Activity"
-			items={toTimelineItems(feed.entries, feed.allMembers)}
+			items={toTimelineItems(feed.entries, feed.allMembers, {
+				approval: (id) => resolve('/approve/[id]', { id })
+			})}
 			empty={{
 				art: 'ledger',
 				title: 'No activity in this period',

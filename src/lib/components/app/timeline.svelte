@@ -11,6 +11,8 @@
 		/** Secondary facts, joined with a dot (user, client, counts) */
 		meta?: (string | null | undefined)[];
 		durationMs?: number | null;
+		/** The row links there (already resolved by the caller) */
+		href?: string;
 		/** Grouped rows (events of one execution); the item becomes expandable */
 		children?: TimelineItem[];
 	};
@@ -43,6 +45,8 @@
 	let { items, label, empty = { title: 'Nothing yet' }, footer }: Props = $props();
 
 	let open = $state<Record<string, boolean>>({});
+
+	const linkClass = 'hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none';
 
 	const row = tv({
 		slots: {
@@ -106,13 +110,27 @@
 							{#if expanded}
 								<ul class="divide-y border-t" aria-label="{item.title} events">
 									{#each item.children as child (child.id)}
-										<li class={row({ child: true }).root()}>
-											<span></span>
-											{@render line(child, true)}
+										<li>
+											{#if child.href}
+												<a href={child.href} class="{row({ child: true }).root()} {linkClass}">
+													<span></span>
+													{@render line(child, true, false)}
+												</a>
+											{:else}
+												<div class={row({ child: true }).root()}>
+													<span></span>
+													{@render line(child, true)}
+												</div>
+											{/if}
 										</li>
 									{/each}
 								</ul>
 							{/if}
+						{:else if item.href}
+							<a href={item.href} class="{row().root()} {linkClass}">
+								<span></span>
+								{@render line(item, false, false)}
+							</a>
 						{:else}
 							<div class={row().root()}>
 								<span></span>

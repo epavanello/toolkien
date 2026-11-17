@@ -13,6 +13,7 @@ const TONES: Record<string, Tone> = {
 	paused: 'pending',
 	pending: 'pending',
 	awaiting_approval: 'pending',
+	awaiting_agent: 'pending',
 	failed: 'error',
 	failure: 'error',
 	rejected: 'error',

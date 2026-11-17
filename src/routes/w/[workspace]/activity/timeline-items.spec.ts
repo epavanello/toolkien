@@ -29,6 +29,7 @@ describe('activity timeline items', () => {
 				startedAt: at,
 				lastAt: at,
 				outcome: 'success',
+				awaiting: null,
 				userId: 'u1',
 				userName: 'Ann',
 				clientName: 'Claude Code',
@@ -49,6 +50,42 @@ describe('activity timeline items', () => {
 		expect(execution.children![0].meta).not.toContain('via Claude Code (claude-code 2.1.3)');
 		expect(search.meta).toContain('via Cursor');
 		expect(permission.meta?.filter(Boolean)).toEqual([]);
+	});
+
+	it('settles answered approvals and links them to their approval page', () => {
+		const ids = { approvalId: 'a1' };
+		const entries: TimelineEntry[] = [
+			{
+				kind: 'execution',
+				id: 'execution:p',
+				executionId: 'p',
+				startedAt: at,
+				lastAt: at,
+				outcome: 'pending',
+				awaiting: 'agent',
+				userId: 'u1',
+				userName: 'Ann',
+				clientName: null,
+				clientInfo: null,
+				durationMs: null,
+				toolCalls: 0,
+				events: [
+					event({ type: 'approval.decided', metadata: ids }),
+					event({ type: 'execution.paused', outcome: 'pending', metadata: ids }),
+					event({ type: 'approval.requested', outcome: 'pending', metadata: ids }),
+					event({ type: 'execution.started' })
+				]
+			}
+		];
+		const [execution] = toTimelineItems(entries, false, { approval: (id) => `/approve/${id}` });
+		expect(execution.status).toBe('awaiting_agent');
+		expect(execution.meta?.[0]).toBe('continues when your agent checks back');
+		expect(execution.children!.map((child) => [child.status, child.href])).toEqual([
+			['success', '/approve/a1'],
+			[undefined, '/approve/a1'],
+			[undefined, '/approve/a1'],
+			['success', undefined]
+		]);
 	});
 
 	it('labels a client known only by its MCP client info', () => {

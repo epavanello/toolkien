@@ -95,6 +95,11 @@ export type TimelineEntry =
 			lastAt: Date;
 			/** Outcome of the final `execution.*` event, else of the latest event */
 			outcome: AuditOutcome;
+			/**
+			 * Paused, and on whom it waits: the human (an approval is unanswered) or the agent
+			 * (every approval answered; it resumes when the agent calls `execution_status`)
+			 */
+			awaiting: 'approval' | 'agent' | null;
 			userId: string | null;
 			userName: string | null;
 			clientName: string | null;
