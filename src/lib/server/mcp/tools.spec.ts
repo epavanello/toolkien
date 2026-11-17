@@ -582,6 +582,16 @@ describe('execution_status', () => {
 		expect(text).toContain('https://toolkien.test/w/personal-u1/approvals');
 	});
 
+	it('teaches filtering on a seen sample, not on guessed keys or cut text', () => {
+		const { tools } = setup();
+		const execute = tools.get('execute')!.config.description;
+		expect(execute).toMatch(/return one raw item/);
+		expect(execute).toMatch(/never guess field names/);
+		expect(execute).toMatch(/do not cut text/);
+		expect(execute).toMatch(/instead of passing `undefined` on/);
+		expect(INSTRUCTIONS).toMatch(/not on guessed field names/);
+	});
+
 	it('tells the model how to recover a timed-out approval', () => {
 		const { tools } = setup();
 		const description = tools.get('execution_status')!.config.description;

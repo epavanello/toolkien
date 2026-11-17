@@ -157,19 +157,16 @@ export function registerExecutionTools(
 		name: 'execute',
 		title: 'Run a script',
 		description: [
-			'Step 3 of 3 (search → describe → execute). Runs TypeScript in an isolated sandbox, in the active workspace (named in the result).',
-			'`code` is the BODY of an async function: use `await`, and `return` the value you want back. No import/export and no dynamic import.',
-			'Each connector instance is a global object named by its namespace, with the functions declared by tools_describe; one script can call several connectors and several instances of the same server. Example:',
-			'`const a = await posthogDevmotion.query({ query: "select count() from events" }); const b = await posthogDevpost.query({ query: "select count() from events" }); return { devmotion: a, devpost: b };`.',
-			'Call tools_describe before using a tool, and call it exactly as declared. The script is type-checked before anything runs; type errors come back with the line, a caret and a hint.',
-			'Never silence them (`as any`, `as unknown as`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`): they report real problems, and a script that uses these gets a warning. "Cannot find name" for a connector means the active workspace is the wrong one or the connector is not added: tell the user, do not switch workspace on your own. Arguments rejected for a server that changed recently mean stale declarations: the user can refresh the connector in Toolkien.',
-			'Return only what you need: the return value and console.log output come back, truncated past the output limit.',
-			'A failed tool call throws `ToolCallError` (`e.code`, `e.path`, `e.message` with the server text): catch it to continue. Runtime errors report the script line.',
-			'Tools without an output schema return `ToolTextResult`: read `.text` (often plain text); if it is JSON, use `.json<T>()`, not `JSON.parse(x.text)`.',
+			'Step 3 of 3 (search → describe → execute). Runs TypeScript in an isolated sandbox, in the active workspace (named in the result). No network, filesystem or environment access: only the declared tool functions.',
+			'`code` is the BODY of an async function: `await` the calls and `return` what you want back. No import/export or dynamic import.',
+			'Each connector instance is a global named by its namespace, with the functions declared by tools_describe; one script can call several, e.g. `const a = await posthogDevmotion.query({ query: "select count() from events" }); const b = await posthogDevpost.query({ query: "select count() from events" }); return { a, b };`.',
+			'Call tools exactly as tools_describe declares them: the script is type-checked first, and errors come back with the line, a caret and a hint. Never silence them (`as any`, `as unknown as`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`): they report real problems. "Cannot find name" for a connector means the wrong workspace or a connector not added: tell the user, do not switch workspace on your own. Arguments rejected by a server that changed recently mean stale declarations: the user can refresh the connector in Toolkien.',
+			'Tools without an output schema return `ToolTextResult`: read `.text` (often plain text); if it is JSON, use `.json<T>()`, not `JSON.parse(x.text)`. A failed tool call throws `ToolCallError` (`e.code`, `e.path`, `e.message` with the server text): catch it to continue. Runtime errors report the script line.',
+			'Filtering saves context, but a wrong filter drops data silently. Before filtering a result whose shape you have not seen (text, untyped JSON, `Record<string, unknown>`), return one raw item and write the filter on the keys and format you actually saw: never guess field names. Drop whole fields or items you do not need, but do not cut text (`.slice(0, n)`) unless the user asked for an excerpt. Return values, not only key names. When a field you rely on is missing, throw or return the available keys instead of passing `undefined` on.',
+			'The return value and console.log output are truncated past the output limit, with a notice: if everything you need does not fit, split it across several executions.',
 			'Some upstream tools require bookkeeping fields (e.g. conversation ids); pass what their descriptions say, and if a value is only known after a first call, make the first call, read it from the result, then reuse it.',
-			'Long scripts answer `running` after about 45 s: then call execution_status with the executionId to get the result.',
-			'No network, filesystem or environment access: only the declared tool functions.',
-			"Some tool calls need the user's approval: the user decides in a dialog or on a Toolkien link, then call execution_status. If the call timed out or the dialog never appeared, call execution_status without executionId to get the pending executions and their approval links. You can never approve on the user's behalf."
+			'Long scripts answer `running` after about 45 s: then call execution_status with the executionId.',
+			"Some tool calls need the user's approval: the user decides in a dialog or on a Toolkien link, then call execution_status. If the call timed out or the dialog never appeared, call execution_status without executionId for the pending executions and their approval links. You can never approve on the user's behalf."
 		].join(' '),
 		input: z.object({
 			code: z
