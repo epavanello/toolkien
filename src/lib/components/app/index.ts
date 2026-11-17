@@ -3,6 +3,7 @@
  * states) lives here as variants, never as classes in pages. See docs/conventions.md → UI.
  */
 export { default as ActionsMenu, type ActionItem } from './actions-menu.svelte';
+export { default as ArgumentsPreview } from './arguments-preview.svelte';
 export { default as AuthHint } from './auth-hint.svelte';
 export { default as AuthFrame } from './auth-frame.svelte';
 export { default as Boundary } from './boundary.svelte';

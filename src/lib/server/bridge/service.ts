@@ -19,6 +19,7 @@ import type { LimitsService } from '#lib/server/limits/types.ts';
 import { isReadOnly } from '#lib/server/permissions/resolve.ts';
 import type { PermissionsService } from '#lib/server/permissions/types.ts';
 import {
+	argumentsFields,
 	argumentsPreview,
 	hashArgs,
 	readSealed,
@@ -193,7 +194,8 @@ export function createBridge(deps: BridgeDeps): HandleToolCall {
 
 		const sealed = await deps.crypto.encryptJsonForWorkspace(exec.workspaceId, {
 			argsHash,
-			text: argumentsPreview(args)
+			text: argumentsPreview(args),
+			fields: argumentsFields(args)
 		} satisfies SealedPreview);
 		const columns = writeSealed(sealed);
 		const expiresAt = new Date(now.getTime() + APPROVAL_TTL_MS);

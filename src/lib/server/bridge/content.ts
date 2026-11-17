@@ -57,6 +57,64 @@ export function argumentsPreview(args: unknown): string {
 }
 
 /**
+ * Structured preview of the arguments for the approval page: one field per argument, plain
+ * objects as nested fields (a few levels), arrays and deeper values as indented JSON. Strings
+ * that hold a JSON object or array are shown parsed. Same content as `argumentsPreview`, larger
+ * limits (the page has room); sealed at rest with it and wiped with it once decided.
+ */
+export type PreviewValue =
+	| { kind: 'text'; text: string }
+	| { kind: 'fields'; fields: PreviewField[]; more: number }
+	| { kind: 'json'; text: string };
+export type PreviewField = { key: string; value: PreviewValue };
+
+const MAX_FIELD_CHARS = 4000;
+const MAX_NESTED_DEPTH = 3;
+const MAX_FIELDS = 50;
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** A string holding a JSON object or array, parsed; anything else unchanged */
+function decodeJsonString(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	const trimmed = value.trim();
+	if (!/^[[{]/.test(trimmed)) return value;
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		return typeof parsed === 'object' && parsed !== null ? parsed : value;
+	} catch {
+		return value;
+	}
+}
+
+function previewValue(raw: unknown, depth: number): PreviewValue {
+	const value = decodeJsonString(raw);
+	if (typeof value === 'string') return { kind: 'text', text: clip(value, MAX_FIELD_CHARS) };
+	if (isPlainObject(value) && depth < MAX_NESTED_DEPTH) {
+		const entries = Object.entries(value).filter(([, v]) => v !== undefined);
+		return {
+			kind: 'fields',
+			fields: entries
+				.slice(0, MAX_FIELDS)
+				.map(([key, v]) => ({ key, value: previewValue(v, depth + 1) })),
+			more: Math.max(0, entries.length - MAX_FIELDS)
+		};
+	}
+	if (value === null || typeof value !== 'object') {
+		return { kind: 'text', text: JSON.stringify(value) ?? 'null' };
+	}
+	return { kind: 'json', text: clip(JSON.stringify(value, null, 2), MAX_FIELD_CHARS) };
+}
+
+/** `null` when there are no arguments */
+export function argumentsFields(args: unknown): PreviewValue | null {
+	if (args === undefined || args === null) return null;
+	if (isPlainObject(args) && Object.values(args).every((v) => v === undefined)) return null;
+	return previewValue(args, 0);
+}
+
+/**
  * Value of a result from a tool without an output schema (`ToolCallResponse.text`): every content
  * block as the server sent it, plus `structuredContent` if it sent one anyway. Nothing is parsed
  * or dropped here; the sandbox prelude wraps it as `ToolTextResult` (`text`, `content`, `json()`).
@@ -71,8 +129,8 @@ export const textResultValue = (result: {
 		? { content: result.content }
 		: { content: result.content, structuredContent: result.structuredContent };
 
-/** Sealed payload of `approval.preview_*` (`text` is dropped once decided) */
-export type SealedPreview = { argsHash: string; text?: string };
+/** Sealed payload of `approval.preview_*` (`text` and `fields` are dropped once decided) */
+export type SealedPreview = { argsHash: string; text?: string; fields?: PreviewValue | null };
 
 type SealedColumns = {
 	ciphertext: Buffer | Uint8Array | null;

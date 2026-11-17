@@ -14,7 +14,7 @@ import type { HandleToolCall } from './types.ts';
 
 export type * from './types.ts';
 export { argumentsPreview, hashArgs, stableStringify, textResultValue } from './content.ts';
-export type { TextResultValue } from './content.ts';
+export type { PreviewField, PreviewValue, TextResultValue } from './content.ts';
 
 export const handleToolCall: HandleToolCall = createBridge({
 	db,

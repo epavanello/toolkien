@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import {
+		ArgumentsPreview,
 		Boundary,
 		CodeBlock,
 		EmptyState,
@@ -48,11 +49,15 @@
 		</Section>
 
 		{#if view.canDecide}
-			<CodeBlock
-				label="Main arguments"
-				lang="text"
-				code={view.argumentsPreview || '(no arguments)'}
-			/>
+			{#if view.argumentsFields}
+				<ArgumentsPreview value={view.argumentsFields} />
+			{:else}
+				<CodeBlock
+					label="Main arguments"
+					lang="text"
+					code={view.argumentsPreview || '(no arguments)'}
+				/>
+			{/if}
 			{#if view.onBehalfOfOtherUser}
 				<EmptyState
 					title="You are answering as a workspace admin"

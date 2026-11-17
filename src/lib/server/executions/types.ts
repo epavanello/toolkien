@@ -4,6 +4,7 @@ import type {
 	ExecutionStatus
 } from '#lib/server/db/schema/index.ts';
 import type { WorkspaceActor } from '#lib/server/workspaces/types.ts';
+import type { PreviewValue } from '#lib/server/bridge/content.ts';
 
 export type { ApprovalScope, ApprovalStatus, ExecutionStatus };
 
@@ -96,6 +97,8 @@ export type ApprovalChannel = 'elicitation' | 'web';
 
 /** One approval as the approval page shows it (preview only while pending) */
 export type ApprovalView = PendingApproval & {
+	/** Structured arguments for the page; `null` once decided, or for approvals sealed before it existed */
+	argumentsFields: PreviewValue | null;
 	scope: ApprovalScope | null;
 	decidedAt: Date | null;
 	executionStatus: ExecutionStatus;

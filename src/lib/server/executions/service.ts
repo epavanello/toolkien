@@ -289,21 +289,19 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 		return row?.name ?? 'Unknown connector';
 	}
 
-	async function previewText(row: ApprovalRow): Promise<string> {
+	/** The sealed preview of a pending approval, `null` once decided, wiped or unreadable */
+	async function openPreview(row: ApprovalRow): Promise<SealedPreview | null> {
+		if (row.status !== 'pending') return null;
 		const sealed = readSealed({
 			ciphertext: row.previewCiphertext,
 			nonce: row.previewNonce,
 			keyVersion: row.previewKeyVersion
 		});
-		if (!sealed) return '';
+		if (!sealed) return null;
 		try {
-			const preview = await deps.crypto.decryptJsonForWorkspace<SealedPreview>(
-				row.workspaceId,
-				sealed
-			);
-			return preview.text ?? '';
+			return await deps.crypto.decryptJsonForWorkspace<SealedPreview>(row.workspaceId, sealed);
 		} catch {
-			return '';
+			return null;
 		}
 	}
 
@@ -313,7 +311,7 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			workspaceName,
 			connectorName: await connectorNameOf(row.toolId),
 			toolPath: row.path,
-			argumentsPreview: row.status === 'pending' ? await previewText(row) : '',
+			argumentsPreview: (await openPreview(row))?.text ?? '',
 			approvalUrl: `${deps.origin}/approve/${row.id}`,
 			expiresAt: row.expiresAt
 		};
@@ -848,9 +846,10 @@ export function createExecutionsService(deps: ExecutionsDeps): ExecutionsService
 			.select({ status: execution.status })
 			.from(execution)
 			.where(eq(execution.id, row.executionId));
-		const pending = await toPending(row);
+		const [pending, preview] = await Promise.all([toPending(row), openPreview(row)]);
 		return {
 			...pending,
+			argumentsFields: preview?.fields ?? null,
 			scope: row.scope,
 			decidedAt: row.decidedAt,
 			executionStatus: exec?.status ?? 'cancelled',
