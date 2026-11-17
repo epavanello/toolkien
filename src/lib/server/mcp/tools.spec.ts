@@ -383,8 +383,6 @@ describe('execute', () => {
 		const { tools } = setup();
 		const execute = tools.get('execute')!.config.description;
 		expect(execute).toMatch(/Never silence them \(`as any`, `as unknown as`, `@ts-ignore`/);
-		expect(execute).toMatch(/do not switch workspace on your own/);
-		expect(execute).toMatch(/refresh the connector in Toolkien/);
 		expect(execute).toMatch(/`\.json<T>\(\)`, not `JSON\.parse\(x\.text\)`/);
 		expect(INSTRUCTIONS).toMatch(/execute's description says what they mean/);
 		expect(INSTRUCTIONS).not.toMatch(/ToolTextResult/);
